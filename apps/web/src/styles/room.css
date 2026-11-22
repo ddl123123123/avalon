@@ -12,6 +12,9 @@
   gap: 12px;
   padding: 12px clamp(14px, 3vw, 28px);
 }
+.room-bar .link {
+  white-space: nowrap;
+}
 .room-bar-actions {
   display: flex;
   gap: 8px;

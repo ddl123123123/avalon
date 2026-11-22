@@ -6,6 +6,7 @@ import './styles/home.css';
 import './styles/room.css';
 import './styles/avalon.css';
 import './styles/citadels.css';
+import './styles/glassworks.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -1,0 +1,452 @@
+/* 琉璃工坊 */
+.shard,
+.panel-card,
+.commission-tile {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.gw-board {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+
+/* 一个人的料与炉色 */
+.palette {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+}
+.palette-col {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  transition: opacity 0.3s;
+}
+.palette-col.is-empty {
+  opacity: 0.35;
+}
+.palette-kiln,
+.palette-glass {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 20px;
+  color: var(--vellum);
+}
+.palette-kiln svg,
+.palette-glass svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+.palette b {
+  display: inline-block;
+  min-width: 0.7em;
+  font-family: var(--font-numeral);
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.palette-kiln.is-zero {
+  opacity: 0.3;
+}
+.palette-glass.is-pickable {
+  padding: 2px 4px;
+  border-radius: 6px;
+  outline: 2px dashed rgba(246, 217, 138, 0.8);
+  cursor: pointer;
+}
+.palette-glass.is-pickable:disabled {
+  outline-color: transparent;
+  cursor: default;
+}
+.palette-out {
+  position: absolute;
+  right: -6px;
+  top: -8px;
+  padding: 0 4px;
+  font-style: normal;
+  font-size: 0.7rem;
+  line-height: 15px;
+  color: #fff;
+  background: var(--ruby);
+  border-radius: 999px;
+}
+
+/* 对手 */
+.gw-rivals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: 8px;
+  padding: 2px clamp(10px, 2.4vw, 24px) 8px;
+}
+.gw-seat {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  padding: 7px 10px;
+  background: linear-gradient(180deg, rgba(20, 29, 76, 0.6), rgba(8, 12, 36, 0.7));
+  border: 1px solid rgba(224, 176, 74, 0.2);
+  border-radius: 6px;
+  transition:
+    border-color 0.3s,
+    box-shadow 0.3s;
+}
+.gw-seat.is-active,
+.gw-mine.is-active {
+  border-color: var(--gilt);
+  box-shadow:
+    0 0 0 1px var(--gilt),
+    0 0 26px rgba(224, 176, 74, 0.35);
+}
+.gw-seat.is-offline {
+  opacity: 0.6;
+}
+.gw-seat-who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gw-seat-who .city-crest {
+  width: 26px;
+}
+.gw-seat-name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.95rem;
+}
+.gw-seat-name small {
+  margin-left: 6px;
+  color: var(--vellum-dim);
+  font-size: 0.72rem;
+}
+.gw-score {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  font-family: var(--font-numeral);
+  font-size: 1.7rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--gilt-bright);
+  flex: none;
+}
+.gw-score small {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--vellum-dim);
+}
+.gw-seat-sketches {
+  display: flex;
+  gap: 4px;
+}
+.gw-mini {
+  display: block;
+  width: 26px;
+  flex: none;
+}
+
+/* 桌面：委托、画廊、晾架 */
+.gw-table {
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: clamp(8px, 1.6vh, 16px);
+  padding: 4px clamp(10px, 2.4vw, 24px) 10px;
+}
+.gw-commissions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.gw-commission {
+  width: clamp(100px, min(21vw, 22vh), 168px);
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.5));
+}
+.gw-gallery {
+  display: grid;
+  gap: clamp(5px, 1vh, 10px);
+  perspective: 1200px;
+}
+.gw-row {
+  display: grid;
+  /* 窗片既不能宽过屏幕，也不能高到把晾架挤出去 */
+  grid-template-columns: repeat(5, clamp(52px, min(15.5vw, 10.5vh), 100px));
+  gap: clamp(5px, 1.2vw, 12px);
+}
+.gw-card {
+  position: relative;
+  display: block;
+  aspect-ratio: 5 / 7;
+  border-radius: 8px;
+  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.55));
+  transition:
+    filter 0.2s,
+    transform 0.2s var(--ease-out);
+}
+.gw-card:not(:disabled):hover {
+  transform: translateY(-3px);
+}
+.gw-card-empty {
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  filter: none;
+}
+.gw-card.is-ready::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 10px;
+  border: 2px solid rgba(246, 217, 138, 0.8);
+  pointer-events: none;
+}
+.gw-card.is-picked {
+  transform: translateY(-6px) scale(1.04);
+  filter: drop-shadow(0 0 14px rgba(246, 217, 138, 0.95));
+  z-index: 2;
+}
+.gw-card.is-picked::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 11px;
+  border: 3px solid var(--gilt-bright);
+  pointer-events: none;
+}
+.gw-deck {
+  opacity: 0.9;
+}
+.gw-deck:disabled {
+  cursor: default;
+}
+.gw-deck-count {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  min-width: 22px;
+  padding: 0 5px;
+  font-family: var(--font-numeral);
+  font-weight: 700;
+  line-height: 22px;
+  text-align: center;
+  color: #1b1404;
+  background: var(--gilt);
+  border: 1px solid var(--lead);
+  border-radius: 999px;
+}
+
+.gw-rack-area {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  width: 100%;
+}
+/* 晾架：一根横杆，料挂在上面 */
+.gw-rack {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  gap: clamp(4px, 1.2vw, 10px);
+  min-height: clamp(40px, 9vw, 58px);
+  padding: 8px clamp(10px, 2vw, 20px) 6px;
+  border-top: 3px solid #6b5a2c;
+  border-radius: 2px;
+  background: linear-gradient(180deg, rgba(224, 176, 74, 0.12), transparent 70%);
+}
+.gw-rack.is-open {
+  border-top-color: var(--gilt);
+}
+.gw-shard {
+  width: clamp(30px, 8vw, 46px);
+  flex: none;
+  border-radius: 50%;
+  filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.6));
+}
+.gw-shard:disabled {
+  cursor: default;
+}
+.gw-shard.is-selected {
+  filter: drop-shadow(0 0 10px rgba(246, 217, 138, 1)) brightness(1.15);
+}
+.gw-bag {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 10px;
+  font-size: 0.78rem;
+  color: var(--vellum-dim);
+}
+.gw-bag span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-numeral);
+  font-size: 1rem;
+  color: var(--vellum);
+}
+.gw-bag span.is-zero {
+  opacity: 0.35;
+}
+.gw-bag svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* 屏幕够宽时委托竖排在画廊左边，把高度让给画廊 */
+@media (min-width: 900px) {
+  .gw-table {
+    grid-template-columns: auto auto;
+    justify-content: center;
+    align-items: start;
+    column-gap: 22px;
+  }
+  .gw-commissions {
+    flex-direction: column;
+    flex-wrap: nowrap;
+  }
+}
+
+/* 我的作坊 */
+.gw-me {
+  display: grid;
+  gap: 6px;
+  padding: 4px clamp(10px, 2.4vw, 24px) max(10px, env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(224, 176, 74, 0.18);
+  background: linear-gradient(180deg, rgba(8, 12, 36, 0.5), rgba(5, 8, 26, 0.95));
+}
+.gw-mine {
+  width: min(100%, 720px);
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  padding: 8px 12px;
+  background: linear-gradient(180deg, rgba(20, 29, 76, 0.6), rgba(8, 12, 36, 0.7));
+  border: 1px solid rgba(224, 176, 74, 0.2);
+  border-radius: 6px;
+  transition:
+    border-color 0.3s,
+    box-shadow 0.3s;
+}
+.gw-mine-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1 1 280px;
+}
+.gw-mine .gw-score {
+  font-size: 2.3rem;
+}
+.gw-mine .palette {
+  flex: 1;
+  max-width: 360px;
+}
+.gw-mine .palette svg {
+  width: 24px;
+  height: 24px;
+}
+.gw-mine .palette b {
+  font-size: 1.4rem;
+}
+.gw-sketches {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gw-sketches-label {
+  font-size: 0.78rem;
+  color: var(--vellum-dim);
+  writing-mode: vertical-rl;
+  letter-spacing: 0.2em;
+}
+.gw-sketch {
+  width: clamp(48px, 10vw, 66px);
+}
+.gw-me .ct-actions {
+  min-height: 70px;
+}
+
+/* 大厅说明 */
+.gw-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: 0.86rem;
+  color: #cfc8b2;
+}
+.gw-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.gw-legend svg {
+  width: 20px;
+  height: 20px;
+}
+.gw-howto li {
+  grid-template-columns: 1fr;
+}
+.gw-samples {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 96px));
+  gap: 12px;
+}
+.gw-samples figure {
+  margin: 0;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--vellum-dim);
+}
+
+/* 结算里每个人烧成的窗片 */
+.gw-end-panels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.gw-end-panels .gw-mini {
+  width: 34px;
+}
+
+@media (max-width: 640px) {
+  .gw-target {
+    display: none;
+  }
+  .gw-rivals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .gw-rivals[data-count='1'] {
+    grid-template-columns: 1fr;
+  }
+  .gw-seat {
+    padding: 5px 7px;
+  }
+  .gw-seat .palette svg {
+    width: 13px;
+    height: 13px;
+  }
+  .gw-seat .palette b {
+    font-size: 0.95rem;
+  }
+  .gw-score {
+    font-size: 1.35rem;
+  }
+  .gw-mine-head {
+    gap: 10px;
+  }
+  .gw-end-panels {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}

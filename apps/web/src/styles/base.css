@@ -1,0 +1,322 @@
+/*
+ * 视觉基调：深夜的礼拜堂，彩色玻璃窗透下来的光。
+ * 靛蓝的夜、羊皮纸色的字、铅条勾边的宝石色玻璃，金色只用来指示「可以点」和「正在发生」。
+ */
+:root {
+  --abyss: #060a1e;
+  --night: #0c1232;
+  --night-2: #141d4c;
+  --lead: #05081a;
+  --vellum: #efe6cf;
+  --vellum-dim: #aaa58e;
+  --gilt: #e0b04a;
+  --gilt-bright: #f6d98a;
+  --gilt-deep: #9c6f1e;
+  --sapphire: #4c86ea;
+  --sapphire-soft: #9dbcf6;
+  --sapphire-deep: #1d3f94;
+  --ruby: #d2384f;
+  --ruby-soft: #f08d9a;
+  --ruby-deep: #7c1429;
+
+  --font-display: 'ZCOOL XiaoWei', 'Cormorant Garamond', 'Songti SC', 'STSong', 'SimSun', serif;
+  --font-numeral: 'Cormorant Garamond', 'ZCOOL XiaoWei', 'Songti SC', serif;
+  --font-body: -apple-system, 'PingFang SC', 'HarmonyOS Sans SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --cut: 10px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(120% 80% at 70% -10%, #1b2a6e 0%, transparent 55%),
+    radial-gradient(90% 70% at 0% 100%, #2a1038 0%, transparent 60%),
+    linear-gradient(180deg, var(--night) 0%, var(--abyss) 100%);
+  background-attachment: fixed;
+  color: var(--vellum);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: 1.15;
+  margin: 0;
+}
+
+p {
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: 0;
+  background: none;
+  padding: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--gilt-bright);
+  outline-offset: 3px;
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.motes {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.click-spark {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 90;
+}
+.page {
+  position: relative;
+  z-index: 1;
+  min-height: 100%;
+}
+
+/* 按钮：切角，像切割过的宝石 */
+.btn {
+  --btn-bg: transparent;
+  --btn-fg: var(--vellum);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  min-height: 48px;
+  padding: 0 1.5em;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  letter-spacing: 0.08em;
+  color: var(--btn-fg);
+  background: var(--btn-bg);
+  clip-path: polygon(
+    var(--cut) 0,
+    calc(100% - var(--cut)) 0,
+    100% var(--cut),
+    100% calc(100% - var(--cut)),
+    calc(100% - var(--cut)) 100%,
+    var(--cut) 100%,
+    0 calc(100% - var(--cut)),
+    0 var(--cut)
+  );
+  transition:
+    transform 0.18s var(--ease-out),
+    filter 0.18s,
+    opacity 0.18s;
+  white-space: nowrap;
+}
+.btn:hover:not(:disabled) {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(1px) scale(0.985);
+}
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+.btn-primary {
+  --btn-fg: #1b1404;
+  --btn-bg: linear-gradient(180deg, var(--gilt-bright) 0%, var(--gilt) 55%, #c08f2e 100%);
+  overflow: hidden;
+}
+/* 主按钮上周期性划过的一道光 */
+.btn-primary:not(:disabled)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.65) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: sheen 4.5s ease-in-out infinite;
+}
+.btn-ghost {
+  --btn-bg: rgba(224, 176, 74, 0.1);
+  --btn-fg: var(--gilt-bright);
+  box-shadow: inset 0 0 0 1px rgba(224, 176, 74, 0.55);
+  clip-path: none;
+  border-radius: 4px;
+}
+.btn-danger {
+  --btn-fg: #fff1f1;
+  --btn-bg: linear-gradient(180deg, #e3566a 0%, var(--ruby) 55%, #9a1c33 100%);
+}
+.btn-small {
+  min-height: 36px;
+  font-size: 0.95rem;
+  padding: 0 1em;
+  --cut: 7px;
+}
+.link {
+  color: var(--gilt-bright);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(246, 217, 138, 0.4);
+}
+.link:hover {
+  text-decoration-color: currentColor;
+}
+
+@keyframes sheen {
+  0%,
+  62% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: var(--vellum-dim);
+}
+.input {
+  min-height: 48px;
+  padding: 0 14px;
+  background: rgba(5, 8, 26, 0.6);
+  border: 1px solid rgba(224, 176, 74, 0.35);
+  border-radius: 4px;
+  color: var(--vellum);
+  font-size: 1.05rem;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+  min-width: 0;
+}
+.input::placeholder {
+  color: #6f6e79;
+}
+.input:focus {
+  outline: none;
+  border-color: var(--gilt);
+  box-shadow: 0 0 0 3px rgba(224, 176, 74, 0.2);
+}
+
+/* 铅条镶边的面板 */
+.panel {
+  background: linear-gradient(180deg, rgba(20, 29, 76, 0.72), rgba(8, 12, 36, 0.82));
+  border: 1px solid rgba(224, 176, 74, 0.28);
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 4px rgba(5, 8, 26, 0.7),
+    0 24px 60px -20px rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+}
+
+/* 立体倾斜 + 跟随高光（配合 fx/Tilt） */
+.tilt {
+  --rx: 0deg;
+  --ry: 0deg;
+  --mx: 50%;
+  --my: 50%;
+  --glare: 0;
+  position: relative;
+  transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry));
+  transition: transform 0.25s var(--ease-out);
+  transform-style: preserve-3d;
+}
+.tilt .glare {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: var(--glare);
+  transition: opacity 0.3s;
+  background: radial-gradient(circle at var(--mx) var(--my), rgba(255, 244, 210, 0.38), transparent 55%);
+  mix-blend-mode: screen;
+}
+
+.crest {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.55));
+}
+
+/* 顶部的轻提示 */
+.toast {
+  position: fixed;
+  left: 50%;
+  top: max(16px, env(safe-area-inset-top));
+  z-index: 100;
+  max-width: min(92vw, 520px);
+  padding: 12px 20px;
+  background: #1a0d14;
+  border: 1px solid var(--ruby);
+  border-radius: 4px;
+  color: #ffe2e5;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+  text-align: center;
+}
+.link-status {
+  position: fixed;
+  left: 50%;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 95;
+  padding: 6px 16px;
+  font-size: 0.85rem;
+  background: rgba(5, 8, 26, 0.92);
+  border: 1px solid rgba(224, 176, 74, 0.4);
+  border-radius: 999px;
+  color: var(--gilt-bright);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

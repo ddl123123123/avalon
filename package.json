@@ -1,0 +1,16 @@
+{
+  "name": "tabletop",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n server,web -c blue,yellow \"SERVER_PORT=8790 pnpm --filter @tabletop/server dev\" \"pnpm --filter @tabletop/web dev\"",
+    "build": "pnpm --filter @tabletop/web build",
+    "start": "pnpm --filter @tabletop/server start",
+    "test": "pnpm --filter @tabletop/shared test",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.6.3"
+  }
+}

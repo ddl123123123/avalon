@@ -1,0 +1,308 @@
+.home {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: clamp(20px, 4vw, 48px) clamp(18px, 4vw, 48px) 72px;
+}
+
+.hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.95fr);
+  align-items: center;
+  gap: clamp(16px, 4vw, 56px);
+  min-height: min(760px, 92vh);
+}
+
+.hero-copy {
+  position: relative;
+  z-index: 2;
+  /* 允许网格项收缩到比内容更窄，否则不换行的标题会把手机页面撑宽 */
+  min-width: 0;
+}
+.hero-title {
+  font-size: clamp(5.5rem, 12.5vw, 13.5rem);
+  line-height: 0.95;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  margin-left: -0.04em;
+  color: var(--vellum);
+  text-shadow:
+    0 0 60px rgba(76, 134, 234, 0.45),
+    0 2px 0 var(--lead);
+}
+.hero-lede {
+  max-width: 26em;
+  margin-top: 1.4rem;
+  font-size: clamp(1.02rem, 1.5vw, 1.2rem);
+  color: #cfc8b2;
+  line-height: 1.8;
+}
+
+.entry {
+  display: grid;
+  gap: 16px;
+  margin-top: 2.2rem;
+  max-width: 440px;
+}
+.entry-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.entry-join {
+  display: flex;
+  gap: 8px;
+}
+.entry-join .input {
+  flex: 1;
+  font-family: var(--font-numeral);
+  font-size: 1.4rem;
+  letter-spacing: 0.3em;
+  text-align: center;
+}
+.entry-join .input::placeholder {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  letter-spacing: 0;
+}
+.entry-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--vellum-dim);
+  font-size: 0.85rem;
+}
+.entry-or::before,
+.entry-or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(224, 176, 74, 0.25);
+}
+.resume {
+  margin-top: 18px;
+}
+
+/* 玫瑰窗 */
+.hero-window {
+  position: relative;
+  aspect-ratio: 1;
+  width: min(100%, 620px);
+  justify-self: end;
+}
+.rose {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 0 46px rgba(76, 134, 234, 0.5)) drop-shadow(0 0 120px rgba(210, 56, 79, 0.25));
+}
+.rose-spin {
+  transform-box: view-box;
+  transform-origin: 300px 300px;
+}
+.rose-spin-slow {
+  animation: spin 260s linear infinite;
+}
+.rose-spin-reverse {
+  animation: spin 190s linear infinite reverse;
+}
+.pane {
+  animation: flicker 7s ease-in-out infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes flicker {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.45) saturate(1.15);
+  }
+}
+/* 从窗口斜射下来的光柱 */
+.rays {
+  position: absolute;
+  inset: -45% -30% -70% -90%;
+  z-index: 0;
+  pointer-events: none;
+  background: conic-gradient(
+    from 205deg at 72% 36%,
+    transparent 0deg,
+    rgba(120, 160, 255, 0.16) 8deg,
+    transparent 16deg,
+    rgba(240, 200, 120, 0.13) 24deg,
+    transparent 31deg,
+    rgba(230, 90, 110, 0.12) 39deg,
+    transparent 47deg,
+    rgba(120, 160, 255, 0.12) 55deg,
+    transparent 64deg
+  );
+  mask-image: radial-gradient(circle at 72% 36%, #000 8%, transparent 62%);
+  animation: sway 14s ease-in-out infinite alternate;
+  transform-origin: 72% 36%;
+}
+@keyframes sway {
+  from {
+    transform: rotate(-3deg);
+    opacity: 0.75;
+  }
+  to {
+    transform: rotate(3deg);
+    opacity: 1;
+  }
+}
+
+/* 怎么玩 */
+.howto {
+  margin-top: clamp(40px, 7vw, 88px);
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 2fr);
+  gap: clamp(20px, 4vw, 56px);
+  align-items: start;
+}
+.howto h2,
+.shelf h2 {
+  font-size: clamp(1.8rem, 3.2vw, 2.6rem);
+  color: var(--gilt-bright);
+}
+.howto-note {
+  margin-top: 12px;
+  color: var(--vellum-dim);
+  font-size: 0.95rem;
+}
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  counter-reset: step;
+}
+.steps li {
+  counter-increment: step;
+  padding: 4px 22px 4px 22px;
+  border-left: 1px solid rgba(224, 176, 74, 0.3);
+}
+.steps li::before {
+  content: counter(step);
+  display: block;
+  font-family: var(--font-numeral);
+  font-size: 3.2rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--gilt);
+}
+.steps h3 {
+  font-size: 1.4rem;
+  margin: 8px 0 6px;
+}
+.steps p {
+  color: #c9c3ae;
+  font-size: 0.95rem;
+}
+.wins {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 8px;
+}
+.win {
+  padding: 16px 20px;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  color: #d8d2bd;
+}
+.win strong {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.3rem;
+  margin-bottom: 4px;
+}
+.win-good {
+  background: linear-gradient(135deg, rgba(76, 134, 234, 0.22), rgba(76, 134, 234, 0.05));
+  box-shadow: inset 3px 0 0 var(--sapphire);
+}
+.win-good strong {
+  color: var(--sapphire-soft);
+}
+.win-evil {
+  background: linear-gradient(135deg, rgba(210, 56, 79, 0.22), rgba(210, 56, 79, 0.05));
+  box-shadow: inset 3px 0 0 var(--ruby);
+}
+.win-evil strong {
+  color: var(--ruby-soft);
+}
+
+/* 桌游柜 */
+.shelf {
+  margin-top: clamp(40px, 7vw, 88px);
+}
+.shelf-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+.game-tile {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 16px;
+  align-items: center;
+  padding: 18px 20px;
+}
+.game-tile h3 {
+  font-size: 1.5rem;
+}
+.game-tile p {
+  color: var(--vellum-dim);
+  font-size: 0.9rem;
+}
+.game-tile-empty {
+  border: 1px dashed rgba(224, 176, 74, 0.3);
+  border-radius: 6px;
+  color: var(--vellum-dim);
+  grid-template-columns: 1fr;
+  background: none;
+}
+.game-tile-icon {
+  width: 72px;
+  height: 72px;
+}
+
+@media (max-width: 860px) {
+  .hero {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    padding-top: 8px;
+  }
+  .hero-window {
+    grid-row: 1;
+    justify-self: center;
+    width: min(78vw, 400px);
+    margin-bottom: -18%;
+    opacity: 0.95;
+  }
+  .hero-title {
+    font-size: clamp(5rem, 27vw, 9rem);
+  }
+  .howto {
+    grid-template-columns: 1fr;
+  }
+  .steps {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .wins {
+    grid-column: 1;
+    grid-template-columns: 1fr;
+  }
+}

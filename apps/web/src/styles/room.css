@@ -1,0 +1,238 @@
+/* 房间外壳：顶栏、入口、大厅、通用圆桌 */
+:root {
+  --crest: clamp(40px, 5.6vw, 66px);
+  --seat-w: clamp(76px, 10vw, 118px);
+  --seat-h: calc(var(--crest) * 1.12 + 46px);
+}
+
+.room-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px clamp(14px, 3vw, 28px);
+}
+.room-bar-actions {
+  display: flex;
+  gap: 8px;
+}
+.room-code {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  color: var(--vellum-dim);
+  font-size: 0.85rem;
+}
+.room-code strong {
+  font-family: var(--font-numeral);
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.18em;
+  color: var(--gilt-bright);
+}
+
+.gate {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.gate-card {
+  width: min(100%, 420px);
+  padding: 32px 28px;
+  display: grid;
+  gap: 22px;
+  justify-items: start;
+}
+.gate-card h1 {
+  font-size: 2rem;
+}
+.gate-form {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+}
+
+/* 通用圆桌 */
+.round-table {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.round-table-ring {
+  position: absolute;
+  inset: calc(var(--seat-h) * 0.5) calc(var(--seat-w) * 0.5);
+}
+.round-table-surface {
+  position: absolute;
+  inset: 7% 6%;
+  filter: drop-shadow(0 30px 50px rgba(0, 0, 0, 0.7));
+}
+.table-surface {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.round-table-center {
+  position: absolute;
+  inset: 22% 20%;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+.round-table-seat {
+  position: absolute;
+  width: var(--seat-w);
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+
+/* 座位（大厅与对局共用） */
+.seat {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  width: 100%;
+  text-align: center;
+  color: var(--vellum);
+}
+.seat-crest {
+  position: relative;
+  width: var(--crest);
+  transition: filter 0.3s;
+}
+.seat-name {
+  max-width: 100%;
+  padding: 1px 9px;
+  font-size: clamp(0.72rem, 1.5vw, 0.86rem);
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: rgba(5, 8, 26, 0.78);
+  border: 1px solid transparent;
+  border-radius: 999px;
+}
+.seat-you {
+  margin-left: 5px;
+  font-size: 0.72em;
+  color: var(--gilt-bright);
+}
+.seat-note {
+  min-height: 1.35em;
+  font-size: clamp(0.66rem, 1.3vw, 0.76rem);
+  line-height: 1.35;
+  color: var(--vellum-dim);
+  white-space: nowrap;
+}
+.seat-me .seat-name {
+  border-color: rgba(224, 176, 74, 0.6);
+}
+.seat-offline .seat-crest {
+  filter: grayscale(1) brightness(0.55);
+}
+.seat-empty {
+  opacity: 0.55;
+}
+.seat-crest-empty {
+  aspect-ratio: 100 / 112;
+  border: 2px dashed rgba(224, 176, 74, 0.5);
+  border-radius: 10% 10% 50% 50% / 8% 8% 46% 46%;
+}
+.seat-kick {
+  position: absolute;
+  top: -8px;
+  right: calc(50% - var(--crest) * 0.5 - 14px);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--lead);
+  border: 1px solid rgba(240, 141, 154, 0.7);
+  color: var(--ruby-soft);
+  line-height: 1;
+  font-size: 1rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.seat:hover .seat-kick,
+.seat-kick:focus-visible {
+  opacity: 1;
+}
+@media (hover: none) {
+  .seat-kick {
+    opacity: 0.85;
+  }
+}
+
+/* 大厅 */
+.lobby {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-bottom: 48px;
+}
+.lobby-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.85fr);
+  gap: clamp(16px, 3vw, 40px);
+  align-items: start;
+  padding: 8px clamp(14px, 3vw, 28px) 0;
+}
+.lobby-table {
+  aspect-ratio: 5 / 4;
+  height: auto;
+  max-height: 76vh;
+}
+.lobby-center {
+  display: grid;
+  gap: 10px;
+}
+.lobby-center p {
+  color: var(--vellum-dim);
+  font-size: 0.95rem;
+}
+.lobby-count {
+  font-family: var(--font-numeral);
+  font-size: clamp(3rem, 8vw, 5.5rem);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--gilt-bright);
+}
+.lobby-count small {
+  font-size: 0.4em;
+  font-weight: 500;
+  color: var(--vellum-dim);
+}
+.lobby-side {
+  padding: 26px 24px;
+  display: grid;
+  gap: 20px;
+}
+.lobby-side h1 {
+  font-size: 2.6rem;
+}
+.lobby-actions {
+  display: grid;
+  gap: 12px;
+}
+.lobby-blocker {
+  color: var(--ruby-soft);
+  font-size: 0.9rem;
+}
+.lobby-waiting {
+  color: var(--vellum-dim);
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .lobby-body {
+    grid-template-columns: 1fr;
+  }
+  .lobby-table {
+    aspect-ratio: 1;
+  }
+  .room-code span {
+    display: none;
+  }
+}

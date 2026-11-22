@@ -2,6 +2,17 @@
  * 视觉基调：深夜的礼拜堂，彩色玻璃窗透下来的光。
  * 靛蓝的夜、羊皮纸色的字、铅条勾边的宝石色玻璃，金色只用来指示「可以点」和「正在发生」。
  */
+/*
+ * 站酷小薇体的「回」字内框是实心的，小字号下看起来像一个黑方块。
+ * 这里只把这一个字交给系统宋体（界面里用到的其余汉字都逐个检查过，没有同类问题）。
+ */
+@font-face {
+  font-family: 'Display Patch';
+  src: local('Songti SC'), local('STSongti-SC-Regular'), local('STSong'), local('SimSun'), local('Noto Serif CJK SC'),
+    local('Source Han Serif SC');
+  unicode-range: U+56DE;
+}
+
 :root {
   --abyss: #060a1e;
   --night: #0c1232;
@@ -19,7 +30,7 @@
   --ruby-soft: #f08d9a;
   --ruby-deep: #7c1429;
 
-  --font-display: 'ZCOOL XiaoWei', 'Cormorant Garamond', 'Songti SC', 'STSong', 'SimSun', serif;
+  --font-display: 'Display Patch', 'ZCOOL XiaoWei', 'Cormorant Garamond', 'Songti SC', 'STSong', 'SimSun', serif;
   --font-numeral: 'Cormorant Garamond', 'ZCOOL XiaoWei', 'Songti SC', serif;
   --font-body: -apple-system, 'PingFang SC', 'HarmonyOS Sans SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
 

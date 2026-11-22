@@ -1,6 +1,7 @@
 import type { ComponentType, ReactNode } from 'react';
 import type { RoomSnapshot } from '@tabletop/shared';
 import { avalonClient } from './avalon';
+import { citadelsClient } from './citadels';
 
 /**
  * 每款桌游在前端要提供的东西。大厅和房间外壳是通用的，
@@ -11,6 +12,18 @@ export interface GameClient {
   name: string;
   tagline: string;
   icon: ReactNode;
+  /** 首页上介绍这款桌游的内容 */
+  hero: {
+    lede: string;
+    /** 首页右侧的大幅彩窗 */
+    Art: ComponentType;
+    /** 人数、时长之类的一句话 */
+    note: string;
+    /** 一局的流程，按先后顺序 */
+    steps: { title: string; text: string }[];
+    /** 怎样算赢 */
+    goals: { tone: 'good' | 'evil' | 'gilt'; title: string; text: string }[];
+  };
   /** 大厅里的开局选项面板 */
   Options: ComponentType<{
     options: any;
@@ -25,4 +38,5 @@ export interface GameClient {
 
 export const GAME_CLIENTS: Record<string, GameClient> = {
   [avalonClient.id]: avalonClient,
+  [citadelsClient.id]: citadelsClient,
 };

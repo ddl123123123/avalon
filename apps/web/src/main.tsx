@@ -5,6 +5,7 @@ import './styles/base.css';
 import './styles/home.css';
 import './styles/room.css';
 import './styles/avalon.css';
+import './styles/citadels.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

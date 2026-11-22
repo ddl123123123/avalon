@@ -1,0 +1,643 @@
+/* 富饶之城 */
+.district-card,
+.coin {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.ct-board {
+  grid-template-rows: auto minmax(92px, 1fr) auto auto;
+}
+.ct-round {
+  align-self: center;
+  padding: 0 4px;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--vellum-dim);
+  white-space: nowrap;
+}
+.ct-round.is-final {
+  color: var(--ruby-soft);
+  text-shadow: 0 0 14px var(--ruby);
+}
+
+/* 对手的城市 */
+.ct-rivals {
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  align-content: start;
+  gap: 10px;
+  padding: 2px clamp(10px, 2.4vw, 24px) 8px;
+}
+.city-panel {
+  container-type: inline-size;
+  position: relative;
+  padding: 8px 10px 10px;
+  background: linear-gradient(180deg, rgba(20, 29, 76, 0.6), rgba(8, 12, 36, 0.7));
+  border: 1px solid rgba(224, 176, 74, 0.2);
+  border-radius: 6px;
+  transition:
+    border-color 0.3s,
+    box-shadow 0.3s;
+}
+.city-panel.is-active {
+  border-color: var(--gilt);
+  box-shadow:
+    0 0 0 1px var(--gilt),
+    0 0 26px rgba(224, 176, 74, 0.35);
+}
+.city-panel.is-offline {
+  opacity: 0.6;
+}
+.city-panel.is-picked {
+  border-color: var(--sapphire-soft);
+  box-shadow: 0 0 0 2px var(--sapphire-soft);
+}
+.city-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  color: var(--vellum);
+}
+button.city-head {
+  cursor: pointer;
+  border-radius: 4px;
+  outline: 2px dashed rgba(246, 217, 138, 0.7);
+  outline-offset: 3px;
+}
+.city-crest {
+  position: relative;
+  width: 34px;
+  flex: none;
+}
+.city-crown {
+  position: absolute;
+  left: 10%;
+  top: -42%;
+  width: 80%;
+  filter: drop-shadow(0 0 6px rgba(246, 217, 138, 0.8));
+}
+.city-crown svg {
+  display: block;
+  width: 100%;
+}
+.city-who {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+.city-name {
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.city-chars {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 20px;
+}
+.char-chip {
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 7px 0 2px;
+  font-size: 0.74rem;
+  line-height: 18px;
+  color: var(--vellum);
+  background: rgba(224, 176, 74, 0.16);
+  border: 1px solid rgba(224, 176, 74, 0.5);
+  border-radius: 999px;
+}
+.char-chip b {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  font-family: var(--font-numeral);
+  font-size: 0.85rem;
+  color: #1b1404;
+  background: var(--gilt);
+  border-radius: 50%;
+}
+.char-chip.is-acting {
+  background: var(--gilt);
+  color: #1b1404;
+}
+/* 自己还没亮明的角色：只有自己看得到 */
+.char-chip.is-secret {
+  background: none;
+  border-style: dashed;
+  color: var(--gilt-bright);
+}
+.char-chip.is-hidden {
+  padding: 0 7px;
+  color: var(--vellum-dim);
+  background: none;
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+.city-stats {
+  display: flex;
+  gap: 10px;
+  flex: none;
+}
+.stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.stat .coin,
+.stat-icon {
+  width: 20px;
+  height: 20px;
+}
+.stat b {
+  display: inline-block;
+  min-width: 0.9em;
+  font-family: var(--font-numeral);
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--gilt-bright);
+}
+.city-row {
+  display: grid;
+  /* 城区牌有上限宽度：面板再宽，牌也不会大到挤占别人的空间 */
+  grid-template-columns: repeat(8, minmax(0, 54px));
+  gap: 4px;
+  margin-top: 8px;
+}
+@container (max-width: 250px) {
+  .city-row {
+    grid-template-columns: repeat(4, minmax(0, 54px));
+  }
+  /* 窄面板：名字和数字占第一行，角色标签另起一行 */
+  .city-head {
+    flex-wrap: wrap;
+    gap: 4px 6px;
+  }
+  .city-who {
+    display: contents;
+  }
+  .city-name {
+    flex: 1;
+    min-width: 0;
+    order: 1;
+  }
+  .city-stats {
+    order: 2;
+    gap: 6px;
+  }
+  .city-chars {
+    order: 3;
+    flex-basis: 100%;
+    min-height: 0;
+  }
+  .stat b {
+    font-size: 1.1rem;
+  }
+  .stat .coin,
+  .stat-icon {
+    width: 16px;
+    height: 16px;
+  }
+}
+.tile {
+  position: relative;
+  display: block;
+  aspect-ratio: 200 / 214;
+  border-radius: 5px;
+  cursor: zoom-in;
+}
+.tile-empty {
+  cursor: default;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+}
+.tile.is-safe {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.tile.is-target {
+  cursor: crosshair;
+  outline: 2px dashed var(--ruby-soft);
+  outline-offset: 1px;
+}
+.tile.is-picked {
+  outline: 3px solid var(--ruby);
+  filter: drop-shadow(0 0 10px var(--ruby));
+}
+.tile-cost {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  min-width: 20px;
+  padding: 0 4px;
+  font-family: var(--font-numeral);
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+  color: #fff;
+  background: var(--ruby);
+  border: 1px solid var(--lead);
+  border-radius: 999px;
+}
+.city-done {
+  position: absolute;
+  right: 8px;
+  top: -9px;
+  padding: 0 8px;
+  font-size: 0.72rem;
+  line-height: 18px;
+  color: #1b1404;
+  background: var(--gilt);
+  border-radius: 999px;
+}
+
+/* 叫号轨与播报 */
+.ct-stage {
+  display: grid;
+  gap: 4px;
+  padding: 6px clamp(10px, 2.4vw, 24px) 4px;
+  border-top: 1px solid rgba(224, 176, 74, 0.18);
+  background: rgba(5, 8, 26, 0.55);
+}
+.track {
+  list-style: none;
+  margin: 0 auto;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: clamp(3px, 1vw, 12px);
+  width: min(100%, 640px);
+}
+.track-item {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  transition:
+    opacity 0.3s,
+    transform 0.3s var(--ease-out);
+}
+.track-card {
+  position: relative;
+  width: clamp(28px, 6vw, 46px);
+}
+.track-label {
+  max-width: 100%;
+  font-size: clamp(0.58rem, 1.4vw, 0.72rem);
+  line-height: 1.3;
+  color: var(--vellum-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.track-item.is-past {
+  opacity: 0.45;
+}
+.track-item.is-out {
+  opacity: 0.3;
+  filter: grayscale(1);
+}
+.track-item.is-current {
+  transform: translateY(-4px) scale(1.14);
+}
+.track-item.is-current .track-card {
+  filter: drop-shadow(0 0 10px rgba(246, 217, 138, 0.95));
+}
+.track-item.is-current .track-label {
+  color: var(--gilt-bright);
+}
+.track-mark {
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  pointer-events: none;
+}
+/* 被刺杀：一道斜划的血痕 */
+.track-mark-murder {
+  background: linear-gradient(to top right, transparent 44%, var(--ruby) 45%, var(--ruby) 55%, transparent 56%);
+  box-shadow: inset 0 0 0 2px var(--ruby);
+}
+/* 被偷：金色的框 */
+.track-mark-rob {
+  box-shadow:
+    inset 0 0 0 2px var(--gilt-bright),
+    0 0 8px var(--gilt);
+}
+.announcer {
+  min-height: 1.9em;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+.announce {
+  font-family: var(--font-display);
+  font-size: clamp(0.95rem, 2.2vw, 1.25rem);
+  line-height: 1.4;
+  color: var(--vellum);
+}
+.announce-gilt {
+  color: var(--gilt-bright);
+}
+.announce-danger {
+  color: var(--ruby-soft);
+}
+
+/* 我的城市、手牌与行动 */
+.ct-me {
+  display: grid;
+  gap: 8px;
+  /* 屏幕矮的时候自己这一块可以滚动，始终给对手的城市留出位置 */
+  max-height: 68dvh;
+  overflow-y: auto;
+  padding: 8px clamp(10px, 2.4vw, 24px) max(12px, env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(8, 12, 36, 0.4), rgba(5, 8, 26, 0.95));
+}
+.ct-me > .city-panel {
+  width: min(100%, 720px);
+  margin: 0 auto;
+}
+.ct-hand {
+  display: flex;
+  gap: 8px;
+  padding: 16px 4px 4px;
+  overflow-x: auto;
+  justify-content: safe center;
+  scrollbar-width: thin;
+}
+.hand-card {
+  position: relative;
+  flex: none;
+  width: clamp(64px, 11vw, 96px);
+  border-radius: 8px;
+  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.6)) brightness(0.82);
+  transition: filter 0.2s;
+}
+.hand-card.is-ready,
+.pick-row .hand-card,
+.ct-hand.is-picking .hand-card {
+  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.6));
+}
+.hand-card.is-ready::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 10px;
+  border: 2px solid rgba(246, 217, 138, 0.75);
+  pointer-events: none;
+}
+.hand-card.is-selected {
+  filter: drop-shadow(0 0 14px rgba(246, 217, 138, 0.95));
+}
+.hand-info {
+  position: absolute;
+  right: -6px;
+  top: -8px;
+  padding: 0 7px;
+  font-size: 0.72rem;
+  line-height: 20px;
+  color: #1b1404;
+  background: var(--gilt-bright);
+  border: 1px solid var(--lead);
+  border-radius: 999px;
+}
+.ct-hand-empty {
+  margin: 8px auto;
+  color: var(--vellum-dim);
+  font-size: 0.9rem;
+}
+.ct-actions {
+  width: min(100%, 940px);
+  margin: 0 auto;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  text-align: center;
+  min-height: 84px;
+  align-content: center;
+}
+.ct-actions:not(.is-mine) .dock-prompt {
+  color: #b9b29c;
+  font-size: clamp(1rem, 2vw, 1.25rem);
+}
+.ct-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.ct-buttons .btn {
+  min-height: 42px;
+  font-size: 1.02rem;
+  padding: 0 1.1em;
+}
+.pick-row {
+  display: flex;
+  justify-content: safe center;
+  gap: 10px;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 6px 4px;
+}
+.char-pick {
+  flex: none;
+  width: clamp(48px, 9vw, 74px);
+  border-radius: 6px;
+  transition:
+    transform 0.2s var(--ease-out),
+    filter 0.2s;
+}
+.char-pick:disabled {
+  opacity: 0.25;
+  filter: grayscale(1);
+  cursor: not-allowed;
+}
+.char-pick.is-selected {
+  transform: translateY(-6px);
+  filter: drop-shadow(0 0 12px var(--ruby-soft));
+}
+.inline-coin {
+  display: inline-block;
+  width: 1.1em;
+  height: 1.1em;
+  vertical-align: -0.2em;
+}
+
+/* 选角 */
+.draft {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  text-align: center;
+}
+.draft-cards {
+  display: flex;
+  gap: clamp(6px, 1.4vw, 14px);
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 18px 6px 8px;
+  justify-content: safe center;
+}
+.draft-card {
+  flex: none;
+  width: clamp(72px, 12vw, 116px);
+  border-radius: 10px;
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.65));
+}
+.draft-card.is-chosen {
+  filter: drop-shadow(0 0 18px rgba(246, 217, 138, 0.95));
+}
+.draft-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px 18px;
+}
+.draft-ability {
+  max-width: 32em;
+  color: #d8d2bd;
+  font-size: 0.95rem;
+}
+
+/* 大厅里的角色一览 */
+.ct-roster {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.ct-roster li {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 12px;
+  align-items: center;
+  font-size: 0.84rem;
+  color: var(--vellum-dim);
+  line-height: 1.5;
+}
+.ct-roster strong {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.1rem;
+  color: var(--vellum);
+}
+
+/* 对局记录 */
+.ct-log {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+  font-size: 0.9rem;
+  color: #c9c3ae;
+}
+.ct-log .is-round {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(224, 176, 74, 0.25);
+  color: var(--gilt-bright);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+}
+
+/* 结算 */
+.ct-end-title {
+  font-size: clamp(2.2rem, 7vw, 4.6rem);
+  color: var(--gilt-bright);
+  text-shadow: 0 0 50px rgba(224, 176, 74, 0.6);
+}
+.ct-ranking {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.ct-rank {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(0, 1.6fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 16px;
+  background: linear-gradient(180deg, rgba(20, 29, 76, 0.6), rgba(8, 12, 36, 0.7));
+  border: 1px solid rgba(224, 176, 74, 0.2);
+  border-radius: 6px;
+}
+.ct-rank.is-winner {
+  border-color: var(--gilt);
+  box-shadow: 0 0 30px rgba(224, 176, 74, 0.3);
+}
+.ct-rank-who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.ct-rank-crest {
+  position: relative;
+  width: 44px;
+  flex: none;
+}
+.ct-rank-name {
+  font-size: 1.05rem;
+}
+.ct-rank-parts {
+  font-size: 0.8rem;
+  color: var(--vellum-dim);
+}
+.ct-rank-city {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 4px;
+}
+.ct-rank-total {
+  font-family: var(--font-numeral);
+  font-size: 2.8rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--gilt-bright);
+  text-align: right;
+}
+.ct-rank-total small {
+  margin-left: 2px;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--vellum-dim);
+}
+
+@media (max-width: 640px) {
+  .ct-rivals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .ct-rivals[data-count='1'] {
+    grid-template-columns: 1fr;
+  }
+  .city-panel {
+    padding: 6px 7px 8px;
+  }
+  .city-crest {
+    width: 26px;
+  }
+  .ct-rank {
+    grid-template-columns: 1fr auto;
+  }
+  .ct-rank-city {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}

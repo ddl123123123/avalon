@@ -3,7 +3,7 @@ import { useState } from 'react';
 import type { RoomPlayer, RoomSnapshot } from '@tabletop/shared';
 import { getGame } from '@tabletop/shared';
 import { Crest } from '../art/Crest';
-import { TableSurface } from '../games/avalon/art';
+import { TableSurface } from '../art/glass';
 import type { GameClient } from '../games/registry';
 import { net } from '../net/client';
 import { roomUrl } from '../net/route';

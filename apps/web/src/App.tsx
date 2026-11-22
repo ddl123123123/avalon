@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect } from 'react';
 import { ClickSpark } from './fx/ClickSpark';
 import { Motes } from './fx/Motes';
+import { GAME_CLIENTS } from './games/registry';
 import { dismissNotice, useNet } from './net/client';
 import { navigate, roomPath, useRoute } from './net/route';
 import { Home } from './pages/Home';
@@ -16,6 +17,12 @@ export function App() {
   useEffect(() => {
     if (code) navigate(roomPath(code));
   }, [code]);
+
+  // 标签页标题跟着所在的房间走，开着几个标签页时好分辨
+  const gameName = room ? GAME_CLIENTS[room.gameId]?.name : undefined;
+  useEffect(() => {
+    document.title = code && route.page === 'room' ? `${gameName ?? '房间'} ${code} - 桌游厅` : '桌游厅';
+  }, [code, gameName, route.page]);
 
   useEffect(() => {
     if (!notice) return;

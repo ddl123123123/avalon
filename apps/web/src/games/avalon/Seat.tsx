@@ -1,7 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import type { RoomPlayer } from '@tabletop/shared';
 import { Crest } from '../../art/Crest';
-import { Crown, LadyToken, TeamMark, VoteToken } from './art';
+import { Crown } from '../../art/glass';
+import { LadyToken, TeamMark, VoteToken } from './art';
 
 export interface SeatProps {
   player: RoomPlayer;

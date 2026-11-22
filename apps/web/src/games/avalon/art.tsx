@@ -1,16 +1,12 @@
 import { useId } from 'react';
 import { Avalon } from '@tabletop/shared';
-import { polar, sector, wedge } from '../../art/geometry';
-import { seededRandom } from '../../fx/motion';
+import { polar, sector } from '../../art/geometry';
+import { ArchCard, EMBLEM, GILT, LEAD, type Glass } from '../../art/glass';
 
 type Role = Avalon.Role;
 
-const LEAD = '#05081a';
-const GILT = '#e0b04a';
-const EMBLEM = '#f7e6b0';
-
 /** 每个角色一组玻璃色：深 / 中 / 亮 */
-const GLASS: Record<Role, [string, string, string]> = {
+const GLASS: Record<Role, Glass> = {
   merlin: ['#1d3f94', '#3f6fd8', '#8fb8ff'],
   percival: ['#12606e', '#2a98a8', '#9fe0e0'],
   servant: ['#23408a', '#3b62bd', '#86a8ea'],
@@ -98,99 +94,20 @@ function Emblem({ role }: { role: Role }) {
   }
 }
 
-const ARCH = 'M24 198V100Q24 42 100 18Q176 42 176 100V198Z';
-const CX = 100;
-const CY = 118;
-
 /** 角色牌正面：哥特拱窗里的一扇彩色玻璃。 */
 export function RoleFace({ role }: { role: Role }) {
-  const id = useId();
   const info = Avalon.ROLES[role];
-  const [dark, mid, light] = GLASS[role];
-  const rand = seededRandom(`glass:${role}`);
-  const tones = [dark, dark, mid, mid, mid, light];
-  const tone = () => tones[Math.floor(rand() * tones.length)]!;
   const good = info.alignment === 'good';
-
   return (
-    <svg className="role-face" viewBox="0 0 200 280" role="img" aria-label={`${info.name}，${good ? '正义方' : '邪恶方'}`}>
-      <defs>
-        <clipPath id={`${id}a`}>
-          <path d={ARCH} />
-        </clipPath>
-        <radialGradient id={`${id}l`} cx="50%" cy="38%" r="62%">
-          <stop offset="0" stopColor="#fff" stopOpacity="0.42" />
-          <stop offset="0.55" stopColor="#fff" stopOpacity="0" />
-          <stop offset="1" stopColor="#000" stopOpacity="0.35" />
-        </radialGradient>
-      </defs>
-      <rect x="3" y="3" width="194" height="274" rx="13" fill="#0a0f2b" stroke={GILT} strokeWidth="2.5" />
-      <rect x="10" y="10" width="180" height="260" rx="8" fill="none" stroke={GILT} strokeOpacity="0.35" />
-
-      <g clipPath={`url(#${id}a)`} stroke={LEAD} strokeWidth="2.6" strokeLinejoin="round">
-        {Array.from({ length: 16 }, (_, i) => (
-          <path key={`w${i}`} d={wedge(CX, CY, 220, i * 22.5 - 90, (i + 1) * 22.5 - 90)} fill={tone()} />
-        ))}
-        {Array.from({ length: 12 }, (_, i) => (
-          <path key={`s${i}`} d={sector(CX, CY, 50, 80, i * 30 - 75, (i + 1) * 30 - 75)} fill={tone()} />
-        ))}
-        <circle cx={CX} cy={CY} r="50" fill={dark} />
-        <circle cx={CX} cy={CY} r="44" fill={mid} strokeWidth="1.6" />
-        <rect x="0" y="0" width="200" height="220" fill={`url(#${id}l)`} stroke="none" />
-      </g>
-      <path d={ARCH} fill="none" stroke={LEAD} strokeWidth="7" strokeLinejoin="round" />
-      <path d={ARCH} fill="none" stroke={GILT} strokeWidth="2" strokeLinejoin="round" />
-
-      <g
-        transform="translate(62 80) scale(0.76)"
-        fill={EMBLEM}
-        stroke={LEAD}
-        strokeWidth="3.4"
-        strokeLinejoin="round"
-        paintOrder="stroke"
-      >
-        <Emblem role={role} />
-      </g>
-
-      <text x="100" y="238" textAnchor="middle" className="role-face-name" fontSize={info.name.length > 5 ? 20 : 27}>
-        {info.name}
-      </text>
-      <g transform="translate(100 257)">
-        <path d="M-34 0h20M14 0h20" stroke={good ? '#4c86ea' : '#d2384f'} strokeWidth="1.5" />
-        <path d="M0 -6L6 0L0 6L-6 0Z" fill={good ? '#4c86ea' : '#d2384f'} />
-      </g>
-    </svg>
-  );
-}
-
-/** 牌背：圆桌与剑。 */
-export function CardBack() {
-  return (
-    <svg className="role-face" viewBox="0 0 200 280" aria-hidden="true">
-      <rect x="3" y="3" width="194" height="274" rx="13" fill="#0a0f2b" stroke={GILT} strokeWidth="2.5" />
-      <rect x="10" y="10" width="180" height="260" rx="8" fill="#101a4a" stroke={GILT} strokeOpacity="0.35" />
-      <g stroke={LEAD} strokeWidth="2.6" strokeLinejoin="round">
-        {Array.from({ length: 12 }, (_, i) => (
-          <path key={i} d={sector(100, 140, 30, 72, i * 30, (i + 1) * 30)} fill={i % 2 ? '#1d3f94' : '#16286a'} />
-        ))}
-        <circle cx="100" cy="140" r="30" fill={GILT} />
-        <circle cx="100" cy="140" r="78" fill="none" stroke={GILT} strokeWidth="2" />
-      </g>
-      <g fill="#0a0f2b">
-        <path d="M100 118L104 126V148H96V126Z" />
-        <path d="M88 148H112V152H88Z" />
-        <path d="M97.5 152H102.5V160H97.5Z" />
-        <circle cx="100" cy="163" r="3.4" />
-      </g>
-      {[
-        [34, 38],
-        [166, 38],
-        [34, 242],
-        [166, 242],
-      ].map(([x, y]) => (
-        <path key={`${x}-${y}`} d={`M${x} ${y! - 9}L${x! + 9} ${y}L${x} ${y! + 9}L${x! - 9} ${y}Z`} fill="none" stroke={GILT} strokeWidth="1.6" />
-      ))}
-    </svg>
+    <ArchCard
+      seed={role}
+      glass={GLASS[role]}
+      name={info.name}
+      accent={good ? '#4c86ea' : '#d2384f'}
+      label={`${info.name}，${good ? '正义方' : '邪恶方'}`}
+    >
+      <Emblem role={role} />
+    </ArchCard>
   );
 }
 
@@ -258,16 +175,6 @@ export function QuestCard({ success }: { success: boolean }) {
       <text x="60" y="148" textAnchor="middle" className="role-face-name" fontSize="22">
         {success ? '成功' : '失败'}
       </text>
-    </svg>
-  );
-}
-
-/** 队长的王冠 */
-export function Crown({ className = '' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 40 32" aria-hidden="true">
-      <path d="M5 27L2 8L12 17L20 3L28 17L38 8L35 27Z" fill={GILT} stroke={LEAD} strokeWidth="2.6" strokeLinejoin="round" />
-      <circle cx="20" cy="20" r="3" fill="#c7304a" stroke={LEAD} strokeWidth="1.4" />
     </svg>
   );
 }
@@ -341,37 +248,6 @@ export function QuestRoundel({
           ))}
         </g>
       )}
-    </svg>
-  );
-}
-
-/** 圆桌桌面。会被拉伸成椭圆，所以描边用 non-scaling-stroke。 */
-export function TableSurface({ seats }: { seats: number }) {
-  const n = Math.max(seats, 5) * 2;
-  return (
-    <svg className="table-surface" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
-      <defs>
-        <radialGradient id="table-glow" cx="50%" cy="42%" r="60%">
-          <stop offset="0" stopColor="#3558c0" stopOpacity="0.5" />
-          <stop offset="0.6" stopColor="#1a2a70" stopOpacity="0.2" />
-          <stop offset="1" stopColor="#000" stopOpacity="0.45" />
-        </radialGradient>
-      </defs>
-      <circle cx="500" cy="500" r="496" fill="#070b20" />
-      <g stroke={LEAD} strokeWidth="2.5" vectorEffect="non-scaling-stroke">
-        {Array.from({ length: n }, (_, i) => (
-          <path
-            key={i}
-            d={sector(500, 500, 330, 478, (i * 360) / n + 90 - 180 / n, ((i + 1) * 360) / n + 90 - 180 / n)}
-            fill={i % 2 ? '#141f5a' : '#0f1846'}
-            vectorEffect="non-scaling-stroke"
-          />
-        ))}
-        <circle cx="500" cy="500" r="330" fill="#0b1238" vectorEffect="non-scaling-stroke" />
-      </g>
-      <circle cx="500" cy="500" r="478" fill="url(#table-glow)" />
-      <circle cx="500" cy="500" r="486" fill="none" stroke={GILT} strokeWidth="2" vectorEffect="non-scaling-stroke" opacity="0.8" />
-      <circle cx="500" cy="500" r="330" fill="none" stroke={GILT} strokeWidth="1.2" vectorEffect="non-scaling-stroke" opacity="0.45" />
     </svg>
   );
 }

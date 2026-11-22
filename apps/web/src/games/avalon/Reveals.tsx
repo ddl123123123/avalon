@@ -3,7 +3,8 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Avalon, type RoomPlayer } from '@tabletop/shared';
 import { Crest } from '../../art/Crest';
 import { Tilt } from '../../fx/Tilt';
-import { CardBack, QuestCard, RoleFace } from './art';
+import { CardBack } from '../../art/glass';
+import { QuestCard, RoleFace } from './art';
 
 const { ROLES } = Avalon;
 

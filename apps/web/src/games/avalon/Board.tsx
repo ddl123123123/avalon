@@ -8,7 +8,8 @@ import { EndScreen } from './EndScreen';
 import { History } from './History';
 import { AssassinReveal, LadyReveal, QuestReveal, RoleReveal } from './Reveals';
 import { Seat, type SeatProps } from './Seat';
-import { QuestRoundel, TableSurface } from './art';
+import { TableSurface } from '../../art/glass';
+import { QuestRoundel } from './art';
 
 type View = Avalon.AvalonView;
 

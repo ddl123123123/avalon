@@ -1,18 +1,41 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { NAME_MAX_LENGTH } from '@tabletop/shared';
-import { RoseWindow } from '../art/RoseWindow';
 import { SplitText } from '../fx/SplitText';
-import { Tilt } from '../fx/Tilt';
 import { GAME_CLIENTS } from '../games/registry';
 import { getName, net, notify, setName, useNet } from '../net/client';
 import { navigate, roomPath } from '../net/route';
 
+const GAMES = Object.values(GAME_CLIENTS);
+const GAME_KEY = 'tabletop.game';
+
+function rememberedGame(): string {
+  try {
+    const id = localStorage.getItem(GAME_KEY);
+    if (id && GAME_CLIENTS[id]) return id;
+  } catch {
+    /* 读不到就用第一款 */
+  }
+  return GAMES[0]!.id;
+}
+
 export function Home() {
   const { room, lastRoomCode } = useNet();
+  const [gameId, setGameId] = useState(rememberedGame);
   const [name, setNameInput] = useState(getName);
   const [code, setCode] = useState('');
   const nameRef = useRef<HTMLInputElement>(null);
   const resumeCode = room?.code ?? lastRoomCode;
+  const game = GAME_CLIENTS[gameId]!;
+
+  const choose = (id: string) => {
+    setGameId(id);
+    try {
+      localStorage.setItem(GAME_KEY, id);
+    } catch {
+      /* 只是记不住上次的选择 */
+    }
+  };
 
   const requireName = (): string | null => {
     const trimmed = name.trim();
@@ -24,7 +47,7 @@ export function Home() {
 
   const create = () => {
     const who = requireName();
-    if (who) net.createRoom(who, 'avalon');
+    if (who) net.createRoom(who, game.id);
   };
 
   const join = (e: FormEvent) => {
@@ -40,12 +63,30 @@ export function Home() {
     <main className="home">
       <section className="hero">
         <div className="hero-copy">
-          <h1 className="hero-title">
-            <SplitText text="阿瓦隆" delay={0.15} stagger={0.14} />
+          <div className="game-tabs" role="group" aria-label="选择桌游">
+            {GAMES.map((g) => (
+              <button key={g.id} type="button" className="game-tab" aria-pressed={g.id === game.id} onClick={() => choose(g.id)}>
+                <span className="game-tab-icon">{g.icon}</span>
+                {g.name}
+              </button>
+            ))}
+          </div>
+
+          <h1 className="hero-title" style={{ '--chars': [...game.name].length } as CSSProperties}>
+            <SplitText key={game.id} text={game.name} delay={0.1} stagger={0.12} />
           </h1>
-          <p className="hero-lede">
-            亚瑟王的圆桌旁，混进了莫德雷德的爪牙。五次任务，三次定胜负。听每个人怎么说，看每一票怎么投，找出谁在说谎。
-          </p>
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={game.id}
+              className="hero-lede"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              {game.hero.lede}
+            </motion.p>
+          </AnimatePresence>
 
           <div className="entry">
             <label className="field">
@@ -62,7 +103,7 @@ export function Home() {
             </label>
             <div className="entry-actions">
               <button type="button" className="btn btn-primary" onClick={create}>
-                开一间房
+                开一间{game.name}的房
               </button>
               <div className="entry-or">已经有房间号</div>
               <form className="entry-join" onSubmit={join}>
@@ -89,54 +130,41 @@ export function Home() {
 
         <div className="hero-window">
           <div className="rays" aria-hidden="true" />
-          <RoseWindow />
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={game.id}
+              className="hero-art"
+              initial={{ opacity: 0, scale: 0.94, filter: 'blur(14px)' }}
+              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, scale: 1.04, filter: 'blur(14px)' }}
+              transition={{ duration: 0.45, ease: [0.2, 0.7, 0.2, 1] }}
+            >
+              <game.hero.Art />
+            </motion.div>
+          </AnimatePresence>
         </div>
       </section>
 
       <section className="howto">
         <div>
           <h2>一局怎么进行</h2>
-          <p className="howto-note">5 到 10 人，一局约半小时。身份由系统秘密发放，建议开着语音一起玩。</p>
+          <p className="howto-note">{game.hero.note}</p>
         </div>
         <ol className="steps">
-          <li>
-            <h3>组队</h3>
-            <p>队长挑选出任务的队员。人选可以商量，但决定权在队长手里。</p>
-          </li>
-          <li>
-            <h3>投票</h3>
-            <p>所有人同时表态，过半赞成才能出发。否决则换下一位队长，连续五次否决邪恶方直接获胜。</p>
-          </li>
-          <li>
-            <h3>做任务</h3>
-            <p>队员暗中出牌。正义方只能出成功，邪恶方可以出失败。只要混进一张失败，任务就毁了。</p>
-          </li>
+          {game.hero.steps.map((step) => (
+            <li key={step.title}>
+              <h3>{step.title}</h3>
+              <p>{step.text}</p>
+            </li>
+          ))}
         </ol>
         <div className="wins">
-          <div className="win win-good">
-            <strong>正义方</strong>
-            完成三次任务，并且不让刺客认出梅林。
-          </div>
-          <div className="win win-evil">
-            <strong>邪恶方</strong>
-            破坏三次任务，或在最后一刻刺中梅林。
-          </div>
-        </div>
-      </section>
-
-      <section className="shelf">
-        <h2>桌游柜</h2>
-        <div className="shelf-row">
-          {Object.values(GAME_CLIENTS).map((game) => (
-            <Tilt key={game.id} className="panel game-tile" max={6}>
-              <div className="game-tile-icon">{game.icon}</div>
-              <div>
-                <h3>{game.name}</h3>
-                <p>{game.tagline}</p>
-              </div>
-            </Tilt>
+          {game.hero.goals.map((goal) => (
+            <div key={goal.title} className={`win win-${goal.tone}`}>
+              <strong>{goal.title}</strong>
+              {goal.text}
+            </div>
           ))}
-          <div className="game-tile game-tile-empty">下一款桌游还在路上。这张桌子留给它。</div>
         </div>
       </section>
     </main>

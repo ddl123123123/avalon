@@ -20,7 +20,8 @@
   min-width: 0;
 }
 .hero-title {
-  font-size: clamp(5.5rem, 12.5vw, 13.5rem);
+  /* 按字数定字号：三个字和四个字的名字都正好占满这一栏 */
+  font-size: clamp(4.2rem, calc(40vw / var(--chars, 3)), 13.5rem);
   line-height: 0.95;
   white-space: nowrap;
   letter-spacing: 0.02em;
@@ -29,6 +30,47 @@
   text-shadow:
     0 0 60px rgba(76, 134, 234, 0.45),
     0 2px 0 var(--lead);
+}
+.game-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: clamp(18px, 3vw, 34px);
+}
+.game-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 16px 5px 6px;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--vellum-dim);
+  background: rgba(5, 8, 26, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  transition:
+    color 0.2s,
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+.game-tab-icon {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  filter: grayscale(0.7) brightness(0.8);
+  transition: filter 0.2s;
+}
+.game-tab:hover {
+  color: var(--vellum);
+  border-color: rgba(224, 176, 74, 0.5);
+}
+.game-tab[aria-pressed='true'] {
+  color: var(--gilt-bright);
+  border-color: var(--gilt);
+  box-shadow: 0 0 18px rgba(224, 176, 74, 0.35);
+}
+.game-tab[aria-pressed='true'] .game-tab-icon {
+  filter: none;
 }
 .hero-lede {
   max-width: 26em;
@@ -90,9 +132,13 @@
   width: min(100%, 620px);
   justify-self: end;
 }
-.rose {
+.hero-art {
   position: relative;
   z-index: 1;
+  width: 100%;
+  height: 100%;
+}
+.rose {
   width: 100%;
   height: 100%;
   display: block;
@@ -181,7 +227,7 @@
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 0;
   counter-reset: step;
 }
@@ -210,7 +256,7 @@
 .wins {
   grid-column: 2;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
   margin-top: 8px;
 }
@@ -241,41 +287,12 @@
 .win-evil strong {
   color: var(--ruby-soft);
 }
-
-/* 桌游柜 */
-.shelf {
-  margin-top: clamp(40px, 7vw, 88px);
+.win-gilt {
+  background: linear-gradient(135deg, rgba(224, 176, 74, 0.2), rgba(224, 176, 74, 0.04));
+  box-shadow: inset 3px 0 0 var(--gilt);
 }
-.shelf-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
-  margin-top: 20px;
-}
-.game-tile {
-  display: grid;
-  grid-template-columns: 72px 1fr;
-  gap: 16px;
-  align-items: center;
-  padding: 18px 20px;
-}
-.game-tile h3 {
-  font-size: 1.5rem;
-}
-.game-tile p {
-  color: var(--vellum-dim);
-  font-size: 0.9rem;
-}
-.game-tile-empty {
-  border: 1px dashed rgba(224, 176, 74, 0.3);
-  border-radius: 6px;
-  color: var(--vellum-dim);
-  grid-template-columns: 1fr;
-  background: none;
-}
-.game-tile-icon {
-  width: 72px;
-  height: 72px;
+.win-gilt strong {
+  color: var(--gilt-bright);
 }
 
 @media (max-width: 860px) {
@@ -292,7 +309,7 @@
     opacity: 0.95;
   }
   .hero-title {
-    font-size: clamp(5rem, 27vw, 9rem);
+    font-size: clamp(4rem, calc(82vw / var(--chars, 3)), 9rem);
   }
   .howto {
     grid-template-columns: 1fr;

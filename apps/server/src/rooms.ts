@@ -45,6 +45,8 @@ interface Room {
 /** 大厅里掉线后座位保留多久。要够房主切到聊天软件发完邀请链接再回来。 */
 const LOBBY_DROP_MS = 3 * 60_000;
 const EMPTY_ROOM_MS = 10 * 60_000;
+/** 机器人行动间隔的倍率。调试时设 BOT_PACE=0.1 可以让机器人快十倍。 */
+const BOT_PACE = Math.max(0, Number(process.env.BOT_PACE ?? 1) || 1);
 const BOT_NAMES = ['高文', '兰斯洛特', '加拉哈德', '特里斯坦', '凯', '贝狄威尔', '格尼薇儿', '伊莲', '鲍斯'];
 
 const newId = () => randomBytes(6).toString('base64url');
@@ -352,7 +354,7 @@ export class RoomManager {
     for (const bot of room.members.filter((m) => m.isBot)) {
       if (room.botTimers.has(bot.id)) continue;
       if (game.botAction(room.state, bot.id, Math.random) === null) continue;
-      const delay = 900 + Math.random() * 1600;
+      const delay = (900 + Math.random() * 1600) * BOT_PACE;
       room.botTimers.set(
         bot.id,
         setTimeout(() => {

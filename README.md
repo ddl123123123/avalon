@@ -1,28 +1,38 @@
 # 桌游厅
 
-在线桌游平台，网页即玩，凭房间号或链接联机。目前有三款：《阿瓦隆》《富饶之城》，以及本项目原创的《琉璃工坊》。架构为继续增加其他桌游预留了位置。
+用浏览器建房，分享房间号或邀请链接，和朋友在线玩桌游。房主也可以添加机器人，单人体验完整对局。
 
-## 运行
+| 桌游 | 人数 | 玩法 |
+| --- | --- | --- |
+| 阿瓦隆 | 5–10 | 隐藏身份、组队投票与任务 |
+| 富饶之城 | 2–7 | 秘密选角与城市建造 |
+| 琉璃工坊 | 2–4 | 取料、烧制彩窗与炉色折扣 |
 
-需要 Node 20+ 和 pnpm 9。
+## 本地运行
+
+使用 Node.js 22 和 pnpm 9.15.9。
 
 ```bash
-pnpm install
-pnpm dev        # 前端 http://localhost:5310 ，房间服务 :8790（/ws 由 Vite 代理）
-pnpm test       # 规则引擎的单元测试
+git clone https://github.com/ddl123123123/avalon.git
+cd avalon
+corepack enable
+pnpm install --frozen-lockfile
+pnpm dev
+```
+
+打开 [http://localhost:5310](http://localhost:5310)，选择桌游并建房。Vite 将 `/ws` 代理到本地房间服务（端口 8790）。
+
+## 检查与构建
+
+```bash
+pnpm test
 pnpm typecheck
+pnpm build
 ```
 
-同一局域网内的手机可以直接访问 `http://<电脑的 IP>:5310`。
+GitHub Actions 会在推送到 `main` 或提交拉取请求时执行这些检查。
 
-生产部署只需要一个端口：
-
-```bash
-pnpm build                 # 构建前端到 apps/web/dist
-PORT=8080 pnpm start       # 同一个端口提供页面和 WebSocket（/ws）
-```
-
-放到反向代理后面时，记得为 `/ws` 开启 WebSocket 转发；用 HTTPS 时前端会自动改用 `wss`。
+构建完成后，运行 `PORT=8080 pnpm start` 即可从同一端口提供网页和 WebSocket。通过反向代理对外提供服务时，请配置 HTTPS 和 `/ws` 的 WebSocket 转发。房间保存在服务端内存中，重启会清空正在进行的对局。
 
 ### 一个人调试多人局
 
@@ -65,8 +75,7 @@ apps/web             React 前端
 
 房间、座位、断线重连、机器人调度都是现成的，不需要改服务器。
 
-新增的桌游应当是原创设计：可以借鉴一类玩法的思路，但名字、卡牌数据和美术要是自己的，
-不照搬某一款现有的商业桌游。规则书写在该游戏 `rules.ts` 的开头，数值用机器人自对战来调。
+规则数据放在各游戏的 `rules.ts`，状态机放在 `engine.ts`。
 
 ## 阿瓦隆规则实现范围
 

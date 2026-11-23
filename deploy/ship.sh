@@ -62,11 +62,15 @@ remote)
   $SSH "$SERVER" bash -s <<REMOTE
 set -euo pipefail
 mkdir -p ${REMOTE_DIR}
-[ -d ${SRC_DIR}/.git ] || git clone -q --filter=blob:none ${REPO_URL} ${SRC_DIR}
+# 服务器到 GitHub 只有十几 KB/s，连接偶尔会断：每步失败重试，并且只检出构建要用的 apps/、packages/
+# 和根目录文件（稀疏检出 + 按需下载文件内容），design/、docs/ 里的大图不下载
+retry() { for i in 1 2 3; do "\$@" && return 0; echo "失败（第 \$i 次），10 秒后重试：\$*" >&2; sleep 10; done; return 1; }
+[ -d ${SRC_DIR}/.git ] || retry git clone -q --filter=blob:none --no-checkout ${REPO_URL} ${SRC_DIR}
 cd ${SRC_DIR}
-git fetch -q --prune origin
+git sparse-checkout set --cone apps packages
+retry git fetch -q --prune origin
 git cat-file -e ${REF}^{commit} 2>/dev/null || { echo "GitHub 上没有提交 ${REF}，先推送" >&2; exit 1; }
-git checkout -q --force --detach ${REF}
+retry git checkout -q --force --detach ${REF}
 git clean -qfdx
 docker build -q --build-arg NPM_REGISTRY=https://registry.npmmirror.com -t tabletop:${TAG} . < /dev/null
 # 多阶段构建留下的中间镜像（带 project=tabletop 标签、无 tag），只清自己的

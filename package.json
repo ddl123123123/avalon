@@ -1,6 +1,12 @@
 {
   "name": "tabletop",
   "private": true,
+  "description": "在浏览器里和朋友玩桌游：阿瓦隆、富饶之城、琉璃工坊",
+  "homepage": "https://games.anois.site",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ddl123123123/avalon.git"
+  },
   "packageManager": "pnpm@9.15.9",
   "engines": {
     "node": ">=22",

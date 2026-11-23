@@ -21,7 +21,7 @@ export function CitadelsBoard({ room }: { room: RoomSnapshot }) {
   const me = view.me;
   const byId = new Map(room.players.map((p) => [p.id, p]));
   const nameOf = (id: string) => byId.get(id)?.name ?? '？';
-  const playerOf = (id: string) => byId.get(id) ?? { id, name: '？', connected: false, isBot: false };
+  const playerOf = (id: string) => byId.get(id) ?? { id, name: '？', connected: false, isBot: false, seatIndex: -1 };
   const act = (action: Citadels.CitadelsAction) => net.act(action);
 
   const [mode, setMode] = useState<Mode>(null);

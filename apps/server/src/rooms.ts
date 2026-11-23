@@ -20,6 +20,7 @@ export interface Connection {
 
 interface Member {
   id: PlayerId;
+  seatIndex: number;
   /** 机器人没有 clientId */
   clientId: string | null;
   name: string;
@@ -36,6 +37,7 @@ interface Room {
   members: Member[];
   status: RoomStatus;
   options: unknown;
+  targetPlayers: number | null;
   state: unknown | null;
   gameSeq: number;
   botTimers: Map<PlayerId, NodeJS.Timeout>;
@@ -126,23 +128,66 @@ export class RoomManager {
     switch (msg.type) {
       case 'leave_room':
         return this.leave(room, member);
-      case 'set_options':
+      case 'choose_seat': {
+        lobbyOnly();
+        const capacity = room.targetPlayers ?? room.game.maxPlayers;
+        if (!Number.isInteger(msg.seatIndex) || msg.seatIndex < 0 || msg.seatIndex >= capacity) {
+          throw new GameError('请选择有效座位');
+        }
+        const occupant = room.members.find((candidate) => candidate.seatIndex === msg.seatIndex);
+        if (occupant && occupant !== member) throw new GameError('这个座位已经有人了');
+        member.seatIndex = msg.seatIndex;
+        return this.broadcast(room);
+      }
+      case 'set_options': {
         hostOnly();
         lobbyOnly();
         // 客户端只发改动的那几项，合并到现有选项上；这样连续快速切换两项不会互相覆盖
-        room.options = room.game.normalizeOptions({
+        const options = room.game.normalizeOptions({
           ...(room.options as object),
           ...(msg.options && typeof msg.options === 'object' ? msg.options : {}),
         });
+        if (room.targetPlayers !== null) {
+          const blocker = room.game.validateOptions(options, room.targetPlayers);
+          if (blocker) throw new GameError(blocker);
+        }
+        room.options = options;
         return this.broadcast(room);
+      }
+      case 'set_player_count': {
+        hostOnly();
+        lobbyOnly();
+        const config = room.game.playerCountOptions;
+        const count = msg.playerCount;
+        if (!config) throw new GameError('这款桌游不能设置固定人数');
+        if (!Number.isInteger(count) || count < room.game.minPlayers || count > room.game.maxPlayers) {
+          throw new GameError(`请选择 ${room.game.minPlayers}–${room.game.maxPlayers} 人`);
+        }
+        if (count === room.targetPlayers) return;
+        const humans = room.members.filter((m) => !m.isBot).length;
+        if (count < humans) throw new GameError(`已有 ${humans} 位真人入座，人数不能设得更少`);
+        const options = room.game.normalizeOptions({
+          ...(room.options as object),
+          ...config.recommendedOptions(count),
+        });
+        const excess = Math.max(0, room.members.length - count);
+        // 缩小房间时先移除座位号最大的机器人，保留真人玩家。
+        const bots = room.members.filter((m) => m.isBot).sort((a, b) => b.seatIndex - a.seatIndex).slice(0, excess);
+        for (const bot of bots) this.remove(room, bot, null);
+        room.targetPlayers = count;
+        // 缩小人数后保持座位顺序，并把现有玩家排进新的座位范围。
+        [...room.members].sort((a, b) => a.seatIndex - b.seatIndex).forEach((m, index) => { m.seatIndex = index; });
+        room.options = options;
+        return this.broadcast(room);
+      }
       case 'add_bot': {
         hostOnly();
         lobbyOnly();
         if (!room.game.botAction) throw new GameError('这款桌游还不支持机器人');
-        if (room.members.length >= room.game.maxPlayers) throw new GameError('房间已满');
+        if (room.members.length >= (room.targetPlayers ?? room.game.maxPlayers)) throw new GameError('房间已满');
         const used = new Set(room.members.map((m) => m.name));
         const name = BOT_NAMES.find((n) => !used.has(n)) ?? `骑士${room.members.length + 1}`;
-        room.members.push({ id: newId(), clientId: null, name, isBot: true, connection: null, dropTimer: null });
+        room.members.push({ id: newId(), seatIndex: this.firstFreeSeat(room), clientId: null, name, isBot: true, connection: null, dropTimer: null });
         return this.broadcast(room);
       }
       case 'kick': {
@@ -156,10 +201,10 @@ export class RoomManager {
       case 'start_game': {
         hostOnly();
         lobbyOnly();
-        const blocker = room.game.validateOptions(room.options, room.members.length);
+        const blocker = this.startBlocker(room);
         if (blocker) throw new GameError(blocker);
         room.state = room.game.setup(
-          room.members.map((m) => m.id),
+          [...room.members].sort((a, b) => a.seatIndex - b.seatIndex).map((m) => m.id),
           room.options,
           Math.random,
         );
@@ -202,13 +247,17 @@ export class RoomManager {
       }
     }
     const id = this.publicId(conn.clientId!);
+    const config = game.playerCountOptions;
     const room: Room = {
       code,
       game,
       hostId: id,
-      members: [{ id, clientId: conn.clientId, name, isBot: false, connection: conn, dropTimer: null }],
+      members: [{ id, seatIndex: 0, clientId: conn.clientId, name, isBot: false, connection: conn, dropTimer: null }],
       status: 'lobby',
-      options: game.defaultOptions(),
+      options: config
+        ? game.normalizeOptions({ ...game.defaultOptions(), ...config.recommendedOptions(config.defaultCount) })
+        : game.defaultOptions(),
+      targetPlayers: config?.defaultCount ?? null,
       state: null,
       gameSeq: 0,
       botTimers: new Map(),
@@ -231,12 +280,13 @@ export class RoomManager {
     }
     const name = cleanName(rawName);
     if (room.status !== 'lobby') throw new GameError('这个房间的对局已经开始，等下一局再加入');
-    if (room.members.length >= room.game.maxPlayers) throw new GameError('房间已满');
+    if (room.members.length >= (room.targetPlayers ?? room.game.maxPlayers)) throw new GameError('房间已满');
 
     const elsewhere = this.find(conn);
     if (elsewhere) this.leave(elsewhere.room, elsewhere.member);
     room.members.push({
       id: this.publicId(conn.clientId!),
+      seatIndex: this.firstFreeSeat(room),
       clientId: conn.clientId,
       name,
       isBot: false,
@@ -258,6 +308,15 @@ export class RoomManager {
     member.dropTimer = null;
     this.touch(room);
     this.broadcast(room);
+  }
+
+  private firstFreeSeat(room: Room): number {
+    const occupied = new Set(room.members.map((member) => member.seatIndex));
+    const capacity = room.targetPlayers ?? room.game.maxPlayers;
+    for (let seatIndex = 0; seatIndex < capacity; seatIndex++) {
+      if (!occupied.has(seatIndex)) return seatIndex;
+    }
+    throw new GameError('房间已满');
   }
 
   /** 连接断开（关页面、断网）。座位先保留，方便重连。 */
@@ -372,20 +431,33 @@ export class RoomManager {
     }
   }
 
+  private startBlocker(room: Room): string | null {
+    const count = room.members.length;
+    if (room.targetPlayers !== null && count < room.targetPlayers) {
+      return `还差 ${room.targetPlayers - count} 人才能开局`;
+    }
+    if (room.targetPlayers !== null && count > room.targetPlayers) {
+      return `本局设置为 ${room.targetPlayers} 人，请先调整人数`;
+    }
+    return room.game.validateOptions(room.options, count);
+  }
+
   private snapshot(room: Room, viewer: Member): RoomSnapshot {
     return {
       code: room.code,
       gameId: room.game.id,
       hostId: room.hostId,
-      players: room.members.map((m) => ({
+      players: [...room.members].sort((a, b) => a.seatIndex - b.seatIndex).map((m) => ({
         id: m.id,
         name: m.name,
         connected: m.isBot || m.connection !== null,
         isBot: m.isBot,
+        seatIndex: m.seatIndex,
       })),
       status: room.status,
       options: room.options,
-      startBlocker: room.status === 'lobby' ? room.game.validateOptions(room.options, room.members.length) : null,
+      targetPlayers: room.targetPlayers,
+      startBlocker: room.status === 'lobby' ? this.startBlocker(room) : null,
       gameSeq: room.gameSeq,
       view: room.state === null ? null : room.game.view(room.state, viewer.id),
       you: viewer.id,

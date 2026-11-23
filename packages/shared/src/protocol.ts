@@ -9,6 +9,8 @@ export interface RoomPlayer {
   name: string;
   connected: boolean;
   isBot: boolean;
+  /** 从 0 开始的固定座位号；大厅中的空座不会压缩编号。 */
+  seatIndex: number;
 }
 
 export interface RoomSnapshot {
@@ -19,6 +21,8 @@ export interface RoomSnapshot {
   players: RoomPlayer[];
   status: RoomStatus;
   options: unknown;
+  /** 房主指定的开局人数；未使用固定人数的桌游为 null。 */
+  targetPlayers: number | null;
   /** 当前人数和选项下不能开局的原因；可以开局时为 null */
   startBlocker: string | null;
   /** 每开一局加一，客户端用它区分不同的对局 */
@@ -33,8 +37,10 @@ export type ClientMessage =
   | { type: 'create_room'; name: string; gameId: string }
   | { type: 'join_room'; code: string; name: string }
   | { type: 'leave_room' }
+  | { type: 'choose_seat'; seatIndex: number }
   /** options 是增量：只包含要修改的那几项 */
   | { type: 'set_options'; options: unknown }
+  | { type: 'set_player_count'; playerCount: number }
   | { type: 'add_bot' }
   | { type: 'kick'; playerId: PlayerId }
   | { type: 'start_game' }

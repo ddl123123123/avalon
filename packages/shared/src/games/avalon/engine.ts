@@ -11,6 +11,7 @@ import {
   defaultOptions,
   failsRequired,
   normalizeOptions,
+  recommendedOptions,
   validateOptions,
   type Alignment,
   type AvalonOptions,
@@ -129,6 +130,8 @@ export interface AvalonView {
     role: Role;
     alignment: Alignment;
     sightings: Record<PlayerId, Sighting>;
+    /** 邪恶方已知同伴的具体角色；只下发给认识邪恶队友的玩家。 */
+    knownRoles: Record<PlayerId, Role>;
     myVote: boolean | null;
     myQuestCard: boolean | null;
     /** 我用湖中仙女查验到的阵营 */
@@ -153,6 +156,16 @@ function sightingsFor(state: AvalonState, viewer: PlayerId): Record<PlayerId, Si
     }
   }
   return seen;
+}
+
+function knownRolesFor(state: AvalonState, viewer: PlayerId): Record<PlayerId, Role> {
+  const role = state.roles[viewer]!;
+  const known: Record<PlayerId, Role> = {};
+  if (alignmentOf(role) !== 'evil' || role === 'oberon') return known;
+  for (const [id, sighting] of Object.entries(sightingsFor(state, viewer))) {
+    if (sighting === 'evil') known[id] = state.roles[id]!;
+  }
+  return known;
 }
 
 function setup(players: PlayerId[], options: AvalonOptions, rng: Rng): AvalonState {
@@ -364,6 +377,7 @@ function view(state: AvalonState, viewer: PlayerId | null): AvalonView {
       role,
       alignment: alignmentOf(role),
       sightings: sightingsFor(state, viewer),
+      knownRoles: knownRolesFor(state, viewer),
       myVote: viewer in state.votes ? state.votes[viewer]! : null,
       myQuestCard: viewer in state.questCards ? state.questCards[viewer]! : null,
       ladyResults,
@@ -447,6 +461,7 @@ export const avalon: GameDefinition<AvalonState, AvalonAction, AvalonView, Avalo
   tagline: '圆桌之上，忠奸难辨。5–10 人的阵营推理。',
   minPlayers: MIN_PLAYERS,
   maxPlayers: MAX_PLAYERS,
+  playerCountOptions: { defaultCount: MIN_PLAYERS, recommendedOptions },
   defaultOptions,
   normalizeOptions,
   validateOptions,

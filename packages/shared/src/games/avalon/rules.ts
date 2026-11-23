@@ -122,6 +122,16 @@ export interface AvalonOptions {
 export const OPTIONAL_ROLES = ['percival', 'morgana', 'mordred', 'oberon'] as const;
 export type OptionalRole = (typeof OPTIONAL_ROLES)[number];
 
+/** 大厅推荐阵容，普通角色由对应阵营的剩余名额补齐。 */
+export function recommendedOptions(playerCount: number): Pick<AvalonOptions, OptionalRole> {
+  return {
+    percival: true,
+    morgana: true,
+    mordred: playerCount >= 7,
+    oberon: playerCount === 10,
+  };
+}
+
 export function defaultOptions(): AvalonOptions {
   return { percival: false, morgana: false, mordred: false, oberon: false, ladyOfTheLake: false };
 }

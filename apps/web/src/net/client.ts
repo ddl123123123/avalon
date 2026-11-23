@@ -29,7 +29,10 @@ function store(key: string, value: string) {
 function loadClientId(): string {
   let id = stored('tabletop.clientId');
   if (!id) {
-    id = crypto.randomUUID();
+    // 手机通过局域网 HTTP 打开时，仍可用安全随机数生成重连标识。
+    id = crypto.randomUUID?.() ?? Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
+      byte.toString(16).padStart(2, '0'),
+    ).join('');
     store('tabletop.clientId', id);
   }
   return id;
@@ -166,7 +169,9 @@ export const net = {
     intent = null;
     raw({ type: 'leave_room' });
   },
+  chooseSeat: (seatIndex: number) => raw({ type: 'choose_seat', seatIndex }),
   setOptions: (options: unknown) => raw({ type: 'set_options', options }),
+  setPlayerCount: (playerCount: number) => raw({ type: 'set_player_count', playerCount }),
   addBot: () => raw({ type: 'add_bot' }),
   kick: (playerId: string) => raw({ type: 'kick', playerId }),
   startGame: () => raw({ type: 'start_game' }),

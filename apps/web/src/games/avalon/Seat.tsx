@@ -6,6 +6,7 @@ import { LadyToken, TeamMark, VoteToken } from './art';
 
 export interface SeatProps {
   player: RoomPlayer;
+  seatNumber: number;
   isMe: boolean;
   isLeader: boolean;
   onTeam: boolean;
@@ -40,6 +41,7 @@ export function Seat(p: SeatProps) {
     <>
       <div className="seat-crest">
         <Crest seed={p.player.id} />
+        <span className="seat-number" aria-label={`座位 ${p.seatNumber}`}>{p.seatNumber}</span>
         <AnimatePresence>
           {p.isLeader && (
             <motion.span

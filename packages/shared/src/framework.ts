@@ -27,6 +27,11 @@ export interface GameDefinition<State = any, Action = any, View = any, Options =
   minPlayers: number;
   maxPlayers: number;
 
+  /** 支持房主指定本局人数的桌游，可在切换人数时应用推荐选项。 */
+  playerCountOptions?: {
+    defaultCount: number;
+    recommendedOptions(playerCount: number): Partial<Options>;
+  };
   defaultOptions(): Options;
   /** 把不可信的输入整理成合法结构的选项（不校验人数相关的约束）。 */
   normalizeOptions(raw: unknown): Options;

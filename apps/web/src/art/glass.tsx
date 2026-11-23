@@ -140,31 +140,43 @@ export function Crown({ className = '' }: { className?: string }) {
 
 /** 圆桌桌面。会被拉伸成椭圆，所以描边用 non-scaling-stroke。 */
 export function TableSurface({ seats }: { seats: number }) {
+  const id = useId();
   const n = Math.max(seats, 5) * 2;
   return (
     <svg className="table-surface" viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
       <defs>
-        <radialGradient id="table-glow" cx="50%" cy="42%" r="60%">
-          <stop offset="0" stopColor="#3558c0" stopOpacity="0.5" />
-          <stop offset="0.6" stopColor="#1a2a70" stopOpacity="0.2" />
-          <stop offset="1" stopColor="#000" stopOpacity="0.45" />
+        <radialGradient id={`${id}-table-glow`} cx="50%" cy="42%" r="60%">
+          <stop offset="0" stopColor="#607287" stopOpacity="0.3" />
+          <stop offset="0.6" stopColor="#293744" stopOpacity="0.2" />
+          <stop offset="1" stopColor="#000" stopOpacity="0.5" />
         </radialGradient>
+        <clipPath id={`${id}-table-clip`}>
+          <circle cx="500" cy="500" r="478" />
+        </clipPath>
       </defs>
-      <circle cx="500" cy="500" r="496" fill="#070b20" />
+      <circle cx="500" cy="500" r="496" fill="#090d12" />
       <g stroke={LEAD} strokeWidth="2.5" vectorEffect="non-scaling-stroke">
         {Array.from({ length: n }, (_, i) => (
           <path
             key={i}
             d={sector(500, 500, 330, 478, (i * 360) / n + 90 - 180 / n, ((i + 1) * 360) / n + 90 - 180 / n)}
-            fill={i % 2 ? '#141f5a' : '#0f1846'}
+            fill={i % 2 ? '#141d26' : '#101820'}
             vectorEffect="non-scaling-stroke"
           />
         ))}
-        <circle cx="500" cy="500" r="330" fill="#0b1238" vectorEffect="non-scaling-stroke" />
+        <circle cx="500" cy="500" r="330" fill="#0d141b" vectorEffect="non-scaling-stroke" />
       </g>
-      <circle cx="500" cy="500" r="478" fill="url(#table-glow)" />
-      <circle cx="500" cy="500" r="486" fill="none" stroke={GILT} strokeWidth="2" vectorEffect="non-scaling-stroke" opacity="0.8" />
-      <circle cx="500" cy="500" r="330" fill="none" stroke={GILT} strokeWidth="1.2" vectorEffect="non-scaling-stroke" opacity="0.45" />
+      <circle cx="500" cy="500" r="478" fill={`url(#${id}-table-glow)`} />
+      <g clipPath={`url(#${id}-table-clip)`} fill="none" stroke="#aeb7bb" strokeWidth="1.35" vectorEffect="non-scaling-stroke" opacity="0.12">
+        <path d="M4 310C96 333 128 282 214 292S330 343 408 306 514 253 594 286 702 343 789 302 906 263 1000 286" />
+        <path d="M0 347C94 370 143 324 225 332S340 383 423 346 520 292 610 325 717 380 802 342 916 301 1000 326" />
+        <path d="M-5 664C79 636 136 676 216 661S338 606 418 635 533 697 609 665 723 612 812 638 928 698 1005 664" />
+        <path d="M-8 706C76 676 139 720 223 703S344 649 425 678 539 739 617 706 728 654 817 679 929 739 1008 705" />
+        <path d="M270 4C297 87 257 129 276 208S331 319 298 396 249 503 280 581 337 694 308 775 264 909 294 1004" />
+        <path d="M704 0C674 83 715 129 695 211S640 323 672 401 720 507 690 585 633 698 663 779 709 910 678 1003" />
+      </g>
+      <circle cx="500" cy="500" r="486" fill="none" stroke="#a49a83" strokeWidth="2" vectorEffect="non-scaling-stroke" opacity="0.56" />
+      <circle cx="500" cy="500" r="330" fill="none" stroke="#a49a83" strokeWidth="1.2" vectorEffect="non-scaling-stroke" opacity="0.34" />
     </svg>
   );
 }

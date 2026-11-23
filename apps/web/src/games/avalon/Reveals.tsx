@@ -50,9 +50,13 @@ function Overlay({ children, tone = 'plain', onClose }: { children: ReactNode; t
 }
 
 /** 我在夜晚得知的信息，写成一句话。 */
-export function sightingText(me: NonNullable<Avalon.AvalonView['me']>, nameOf: (id: string) => string): string | null {
+export function sightingText(
+  me: NonNullable<Avalon.AvalonView['me']>,
+  nameOf: (id: string) => string,
+  seatOf: (id: string) => number | null = () => null,
+): string | null {
   const ids = Object.keys(me.sightings);
-  const names = ids.map(nameOf).join('、');
+  const names = ids.map((id) => `${seatOf(id) === null ? '' : `座位 ${seatOf(id)} · `}${nameOf(id)}`).join('、');
   if (me.role === 'merlin') return ids.length ? `你看到的邪恶方：${names}` : '这一局你没有看到任何邪恶方';
   if (me.role === 'percival') return ids.length > 1 ? `梅林就在这两人之中：${names}` : `梅林是 ${names}`;
   if (me.alignment === 'evil' && me.role !== 'oberon') return ids.length ? `你的同伴：${names}` : '这一局你没有认识的同伴';
@@ -62,11 +66,13 @@ export function sightingText(me: NonNullable<Avalon.AvalonView['me']>, nameOf: (
 /** 身份牌：开局时自动翻开，之后可以随时再看。 */
 export function RoleReveal({
   me,
+  players,
   nameOf,
   intro,
   onClose,
 }: {
   me: NonNullable<Avalon.AvalonView['me']>;
+  players: RoomPlayer[];
   nameOf: (id: string) => string;
   intro: boolean;
   onClose: () => void;
@@ -77,7 +83,16 @@ export function RoleReveal({
     return () => clearTimeout(t);
   }, [intro]);
   const info = ROLES[me.role];
-  const seen = sightingText(me, nameOf);
+  const playerOf = (id: string) => players.find((player) => player.id === id);
+  const seatOf = (id: string) => {
+    const player = playerOf(id);
+    return player ? player.seatIndex + 1 : null;
+  };
+  const seen = sightingText(me, nameOf, seatOf);
+  const knownCompanions = Object.entries(me.knownRoles)
+    .map(([id, role]) => ({ id, role, player: playerOf(id) }))
+    .filter((entry): entry is { id: string; role: Avalon.Role; player: RoomPlayer } => entry.player !== undefined)
+    .sort((a, b) => a.player.seatIndex - b.player.seatIndex);
 
   return (
     <Overlay tone={flipped ? me.alignment : 'plain'} onClose={onClose}>
@@ -97,6 +112,20 @@ export function RoleReveal({
         </p>
         <p>{info.ability}</p>
         {seen && <p className="overlay-seen">{seen}</p>}
+        {knownCompanions.length > 0 && (
+          <section className="overlay-companions" aria-label="已知邪恶队友的身份">
+            <p>你认识的邪恶方队友</p>
+            <ul>
+              {knownCompanions.map(({ id, role, player }) => (
+                <li key={id}>
+                  <span className="overlay-companion-seat">座位 {player.seatIndex + 1}</span>
+                  <strong>{player.name}</strong>
+                  <small>{ROLES[role].name}</small>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         <button type="button" className="btn btn-primary" onClick={onClose}>
           {intro ? '记住了' : '收起'}
         </button>

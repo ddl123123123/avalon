@@ -1,6 +1,6 @@
 /*
- * 视觉基调：深夜的礼拜堂，彩色玻璃窗透下来的光。
- * 靛蓝的夜、羊皮纸色的字、铅条勾边的宝石色玻璃，金色只用来指示「可以点」和「正在发生」。
+ * 视觉基调：风暴地图上的旧圆桌。
+ * 石墨黑与蓝灰做底，羊皮纸文字、旧银和哑金用于信息层级；红方使用灰紫与暗酒红。
  */
 /*
  * 站酷小薇体的「回」字内框是实心的，小字号下看起来像一个黑方块。
@@ -14,21 +14,21 @@
 }
 
 :root {
-  --abyss: #060a1e;
-  --night: #0c1232;
-  --night-2: #141d4c;
-  --lead: #05081a;
-  --vellum: #efe6cf;
-  --vellum-dim: #aaa58e;
-  --gilt: #e0b04a;
-  --gilt-bright: #f6d98a;
-  --gilt-deep: #9c6f1e;
-  --sapphire: #4c86ea;
-  --sapphire-soft: #9dbcf6;
-  --sapphire-deep: #1d3f94;
-  --ruby: #d2384f;
-  --ruby-soft: #f08d9a;
-  --ruby-deep: #7c1429;
+  --abyss: #090b10;
+  --night: #111722;
+  --night-2: #1b2634;
+  --lead: #07090d;
+  --vellum: #e8e1d3;
+  --vellum-dim: #a49f96;
+  --gilt: #b89e72;
+  --gilt-bright: #d6c49b;
+  --gilt-deep: #705a38;
+  --sapphire: #6883aa;
+  --sapphire-soft: #a9bdd4;
+  --sapphire-deep: #314866;
+  --ruby: #8f5863;
+  --ruby-soft: #c18e95;
+  --ruby-deep: #512d39;
 
   --font-display: 'Display Patch', 'ZCOOL XiaoWei', 'Cormorant Garamond', 'Songti SC', 'STSong', 'SimSun', serif;
   --font-numeral: 'Cormorant Garamond', 'ZCOOL XiaoWei', 'Songti SC', serif;
@@ -53,8 +53,9 @@ body,
 body {
   margin: 0;
   background:
-    radial-gradient(120% 80% at 70% -10%, #1b2a6e 0%, transparent 55%),
-    radial-gradient(90% 70% at 0% 100%, #2a1038 0%, transparent 60%),
+    radial-gradient(90% 78% at 83% -12%, rgba(65, 82, 106, 0.34) 0%, transparent 62%),
+    radial-gradient(78% 68% at -8% 95%, rgba(83, 52, 65, 0.2) 0%, transparent 68%),
+    repeating-radial-gradient(ellipse at 50% 110%, transparent 0 46px, rgba(205, 203, 190, 0.018) 47px 48px, transparent 49px 94px),
     linear-gradient(180deg, var(--night) 0%, var(--abyss) 100%);
   background-attachment: fixed;
   color: var(--vellum);
@@ -165,8 +166,8 @@ button {
   opacity: 0.4;
 }
 .btn-primary {
-  --btn-fg: #1b1404;
-  --btn-bg: linear-gradient(180deg, var(--gilt-bright) 0%, var(--gilt) 55%, #c08f2e 100%);
+  --btn-fg: #171614;
+  --btn-bg: linear-gradient(180deg, #ddcda9 0%, var(--gilt) 55%, #8a724d 100%);
   overflow: hidden;
 }
 /* 主按钮上周期性划过的一道光 */
@@ -174,20 +175,20 @@ button {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.65) 50%, transparent 65%);
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.38) 50%, transparent 65%);
   transform: translateX(-120%);
   animation: sheen 4.5s ease-in-out infinite;
 }
 .btn-ghost {
-  --btn-bg: rgba(224, 176, 74, 0.1);
+  --btn-bg: rgba(184, 158, 114, 0.1);
   --btn-fg: var(--gilt-bright);
-  box-shadow: inset 0 0 0 1px rgba(224, 176, 74, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(184, 158, 114, 0.42);
   clip-path: none;
   border-radius: 4px;
 }
 .btn-danger {
   --btn-fg: #fff1f1;
-  --btn-bg: linear-gradient(180deg, #e3566a 0%, var(--ruby) 55%, #9a1c33 100%);
+  --btn-bg: linear-gradient(180deg, #ad747d 0%, var(--ruby) 55%, #552e3a 100%);
 }
 .btn-small {
   min-height: 36px;
@@ -199,7 +200,7 @@ button {
   color: var(--gilt-bright);
   text-decoration: underline;
   text-underline-offset: 3px;
-  text-decoration-color: rgba(246, 217, 138, 0.4);
+  text-decoration-color: rgba(214, 196, 155, 0.4);
 }
 .link:hover {
   text-decoration-color: currentColor;
@@ -225,7 +226,7 @@ button {
   min-height: 48px;
   padding: 0 14px;
   background: rgba(5, 8, 26, 0.6);
-  border: 1px solid rgba(224, 176, 74, 0.35);
+  border: 1px solid rgba(184, 158, 114, 0.32);
   border-radius: 4px;
   color: var(--vellum);
   font-size: 1.05rem;
@@ -240,18 +241,21 @@ button {
 .input:focus {
   outline: none;
   border-color: var(--gilt);
-  box-shadow: 0 0 0 3px rgba(224, 176, 74, 0.2);
+  box-shadow: 0 0 0 3px rgba(184, 158, 114, 0.17);
 }
 
 /* 铅条镶边的面板 */
 .panel {
-  background: linear-gradient(180deg, rgba(20, 29, 76, 0.72), rgba(8, 12, 36, 0.82));
-  border: 1px solid rgba(224, 176, 74, 0.28);
-  border-radius: 6px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.035), transparent 34%),
+    linear-gradient(180deg, rgba(30, 39, 51, 0.92), rgba(11, 15, 21, 0.96));
+  border: 1px solid rgba(184, 158, 114, 0.3);
+  border-radius: 3px;
   box-shadow:
-    0 0 0 4px rgba(5, 8, 26, 0.7),
-    0 24px 60px -20px rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(8px);
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 4px rgba(7, 9, 13, 0.62),
+    0 24px 60px -20px rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(10px);
 }
 
 /* 立体倾斜 + 跟随高光（配合 fx/Tilt） */
@@ -308,7 +312,7 @@ button {
   padding: 6px 16px;
   font-size: 0.85rem;
   background: rgba(5, 8, 26, 0.92);
-  border: 1px solid rgba(224, 176, 74, 0.4);
+  border: 1px solid rgba(143, 88, 99, 0.48);
   border-radius: 999px;
   color: var(--gilt-bright);
 }

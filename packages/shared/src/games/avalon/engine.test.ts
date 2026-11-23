@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { GameError, type PlayerId } from '../../framework';
 import { avalon, type AvalonAction, type AvalonState } from './engine';
-import { EVIL_COUNT, ROLES, TEAM_SIZES, buildRoleDeck, defaultOptions, validateOptions, type AvalonOptions } from './rules';
+import { EVIL_COUNT, ROLES, TEAM_SIZES, buildRoleDeck, defaultOptions, recommendedOptions, validateOptions, type AvalonOptions } from './rules';
 
 function seeded(seed: number) {
   let s = seed >>> 0;
@@ -43,6 +43,20 @@ function teamWithEvil(s: AvalonState, evilCount = 1) {
 }
 
 describe('牌堆', () => {
+  it.each([
+    [5, 1, ['assassin', 'morgana']],
+    [6, 2, ['assassin', 'morgana']],
+    [7, 2, ['assassin', 'morgana', 'mordred']],
+    [8, 3, ['assassin', 'morgana', 'mordred']],
+    [9, 4, ['assassin', 'morgana', 'mordred']],
+    [10, 4, ['assassin', 'morgana', 'mordred', 'oberon']],
+  ] as const)('%i 人局按推荐阵容发牌', (n, servants, evilRoles) => {
+    const state = avalon.setup(ids(n), opts(recommendedOptions(n)), seeded(n));
+    expect(Object.values(state.roles).sort()).toEqual(
+      ['merlin', 'percival', ...Array(servants).fill('servant'), ...evilRoles].sort(),
+    );
+  });
+
   it('各人数的阵营分配符合规则书', () => {
     for (let n = 5; n <= 10; n++) {
       const deck = buildRoleDeck(n, opts());

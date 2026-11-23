@@ -2,6 +2,7 @@ import { useId } from 'react';
 import { Avalon } from '@tabletop/shared';
 import { polar, sector } from '../../art/geometry';
 import { ArchCard, EMBLEM, GILT, LEAD, type Glass } from '../../art/glass';
+import { getAvalonCardAsset, useAvalonCardStyle, type AvalonCardStyle } from './cardLibrary';
 
 type Role = Avalon.Role;
 
@@ -95,9 +96,27 @@ function Emblem({ role }: { role: Role }) {
 }
 
 /** 角色牌正面：哥特拱窗里的一扇彩色玻璃。 */
-export function RoleFace({ role }: { role: Role }) {
+export function RoleFace({ role, style }: { role: Role; style?: AvalonCardStyle }) {
+  const activeStyle = useAvalonCardStyle();
+  const cardStyle = style ?? activeStyle;
+  const asset = getAvalonCardAsset(cardStyle, role);
   const info = Avalon.ROLES[role];
   const good = info.alignment === 'good';
+  if (asset) {
+    return (
+      <div
+        className="role-face role-face-raster"
+        role="img"
+        aria-label={`${info.name}，${good ? '正义方' : '邪恶方'}`}
+        data-card-style={cardStyle}
+        style={{
+          backgroundImage: `url("${asset.src}")`,
+          backgroundSize: asset.side ? '200% 100%' : 'cover',
+          backgroundPosition: asset.side === 'right' ? '100% 50%' : '0% 50%',
+        }}
+      />
+    );
+  }
   return (
     <ArchCard
       seed={role}

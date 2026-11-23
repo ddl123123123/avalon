@@ -61,8 +61,28 @@ export function Home() {
 
   return (
     <main className="home">
+      <header className="home-masthead">
+        <div className="home-brand">
+          <span className="home-brand-mark" aria-hidden="true">✦</span>
+          <span className="home-brand-copy">
+            <small>THE ROUND TABLE</small>
+            <strong>桌游厅</strong>
+          </span>
+        </div>
+        <div className="home-masthead-note">
+          <span>多人联机</span>
+          <i aria-hidden="true" />
+          <span>策略 · 合作 · 推理</span>
+        </div>
+      </header>
+
       <section className="hero">
         <div className="hero-copy">
+          <div className="hero-kicker">
+            <span className="hero-kicker-mark" aria-hidden="true" />
+            <span>选一款桌游，开一张新桌</span>
+            <span className="hero-kicker-index">GAME ROOM / 01</span>
+          </div>
           <div className="game-tabs" role="group" aria-label="选择桌游">
             {GAMES.map((g) => (
               <button key={g.id} type="button" className="game-tab" aria-pressed={g.id === game.id} onClick={() => choose(g.id)}>
@@ -130,6 +150,10 @@ export function Home() {
 
         <div className="hero-window">
           <div className="rays" aria-hidden="true" />
+          <div className="hero-window-stamp" aria-hidden="true">
+            <span>TABLETOP ARCHIVE</span>
+            <strong>{String(GAMES.indexOf(game) + 1).padStart(2, '0')}</strong>
+          </div>
           <AnimatePresence mode="wait">
             <motion.div
               key={game.id}

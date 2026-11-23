@@ -64,7 +64,7 @@ function Palette({ seat, onPiece, chosen }: { seat: Seat; onPiece?: (piece: Piec
 export function GlassworksBoard({ room }: { room: RoomSnapshot }) {
   const view = room.view as View;
   const byId = new Map(room.players.map((p) => [p.id, p]));
-  const playerOf = (id: string): RoomPlayer => byId.get(id) ?? { id, name: '？', connected: false, isBot: false };
+  const playerOf = (id: string): RoomPlayer => byId.get(id) ?? { id, name: '？', connected: false, isBot: false, seatIndex: -1 };
   const nameOf = (id: string) => playerOf(id).name;
   const act = (action: Glassworks.GlassworksAction) => net.act(action);
   const meId = view.me?.id ?? null;

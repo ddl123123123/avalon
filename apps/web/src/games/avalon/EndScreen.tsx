@@ -58,6 +58,7 @@ export function EndScreen({
                 <RoleFace role={role} />
               </Tilt>
               <div className="end-name">
+                <span className="end-seat-number">{p.seatIndex + 1} 号</span>
                 <span className="end-crest">
                   <Crest seed={p.id} />
                 </span>

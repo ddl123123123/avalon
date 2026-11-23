@@ -10,6 +10,7 @@ import { AssassinReveal, LadyReveal, QuestReveal, RoleReveal } from './Reveals';
 import { Seat, type SeatProps } from './Seat';
 import { TableSurface } from '../../art/glass';
 import { QuestRoundel } from './art';
+import { CardLibrarySettings } from './CardLibrarySettings';
 
 type View = Avalon.AvalonView;
 
@@ -154,7 +155,7 @@ export function AvalonBoard({ room }: { room: RoomSnapshot }) {
   const approvals = voteReveal ? Object.values(voteReveal.votes).filter(Boolean).length : 0;
 
   return (
-    <main className={`board ${ended && !reveal ? 'board-ended' : ''}`}>
+    <main className={`board av-board ${ended && !reveal ? 'board-ended' : ''}`}>
       <header className="room-bar">
         <button type="button" className="link" onClick={net.leaveRoom}>
           离开
@@ -164,6 +165,10 @@ export function AvalonBoard({ room }: { room: RoomSnapshot }) {
           <strong>{room.code}</strong>
         </div>
         <div className="room-bar-actions">
+          <details className="role-card-settings">
+            <summary className="btn btn-ghost btn-small" aria-label="角色卡牌库设置" title="角色卡牌库设置">卡牌</summary>
+            <CardLibrarySettings compact />
+          </details>
           <button type="button" className="btn btn-ghost btn-small" onClick={() => setShowHistory(true)}>
             任务记录
           </button>
@@ -235,7 +240,8 @@ export function AvalonBoard({ room }: { room: RoomSnapshot }) {
                 }
                 renderSeat={(id, i) => (
                   <Seat
-                    player={byId.get(id) ?? { id, name: '？', connected: false, isBot: false }}
+                    player={byId.get(id) ?? { id, name: '？', connected: false, isBot: false, seatIndex: i }}
+                    seatNumber={(byId.get(id)?.seatIndex ?? i) + 1}
                     isMe={id === me?.id}
                     isLeader={id === shownLeader}
                     onTeam={shownTeam.includes(id)}
@@ -270,8 +276,8 @@ export function AvalonBoard({ room }: { room: RoomSnapshot }) {
       )}
 
       <AnimatePresence>
-        {intro && me && <RoleReveal key="intro" me={me} nameOf={nameOf} intro onClose={closeIntro} />}
-        {!intro && showRole && me && <RoleReveal key="role" me={me} nameOf={nameOf} intro={false} onClose={() => setShowRole(false)} />}
+        {intro && me && <RoleReveal key="intro" me={me} players={room.players} nameOf={nameOf} intro onClose={closeIntro} />}
+        {!intro && showRole && me && <RoleReveal key="role" me={me} players={room.players} nameOf={nameOf} intro={false} onClose={() => setShowRole(false)} />}
         {!intro && reveal?.kind === 'quest' && (
           <QuestReveal
             key={`quest-${reveal.quest.questIndex}`}

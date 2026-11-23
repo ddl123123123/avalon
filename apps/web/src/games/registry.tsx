@@ -28,6 +28,7 @@ export interface GameClient {
   /** 大厅里的开局选项面板 */
   Options: ComponentType<{
     options: any;
+    /** 已设置的开局人数，或未限定人数时的当前入座人数。 */
     playerCount: number;
     editable: boolean;
     /** 提交选项的改动（增量），由服务器合并后广播回来 */

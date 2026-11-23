@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { Avalon } from '@tabletop/shared';
 
 type RoleId = Avalon.Role;
@@ -63,11 +63,47 @@ const ROLE_GUIDE: Record<RoleId, RoleGuideContent> = {
   },
 };
 
+const ROLE_INDEX_LABEL: Record<RoleId, string> = {
+  merlin: '梅林',
+  percival: '派西维尔',
+  servant: '忠臣',
+  assassin: '刺客',
+  morgana: '莫甘娜',
+  mordred: '莫德雷德',
+  oberon: '奥伯伦',
+  minion: '爪牙',
+};
+
 export function AvalonRoleGuide() {
   const [selected, setSelected] = useState<RoleId>('merlin');
+  const swipeStartX = useRef<number | null>(null);
   const role = Avalon.ROLES[selected];
   const guide = ROLE_GUIDE[selected];
   const side = role.alignment === 'good' ? 'good' : 'evil';
+
+  const startSwipe = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.target instanceof Element && event.target.closest('.avalon-guide-index')) {
+      swipeStartX.current = null;
+      return;
+    }
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    swipeStartX.current = event.clientX;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const endSwipe = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const startX = swipeStartX.current;
+    swipeStartX.current = null;
+    if (startX === null) return;
+    const distance = event.clientX - startX;
+    if (Math.abs(distance) < 52) return;
+
+    setSelected((current) => {
+      const index = ROLE_ORDER.indexOf(current);
+      const next = (index + (distance < 0 ? 1 : -1) + ROLE_ORDER.length) % ROLE_ORDER.length;
+      return ROLE_ORDER[next]!;
+    });
+  };
 
   return (
     <section className="avalon-guide" aria-labelledby="avalon-guide-title">
@@ -80,22 +116,55 @@ export function AvalonRoleGuide() {
         <span className="avalon-guide-count">5—10 人 · 隐藏身份</span>
       </header>
 
-      <div className={`avalon-guide-feature is-${side}`}>
-        <figure className={`avalon-guide-portrait is-${side}`}>
-          <img
-            key={selected}
-            src={`${import.meta.env.BASE_URL}avalon-roles/${selected}.jpg`}
-            width={768}
-            height={1024}
-            alt={`${role.name}角色立绘`}
-            loading="lazy"
-            decoding="async"
-          />
-          <figcaption>
-            <span>{guide.englishName}</span>
-          </figcaption>
-        </figure>
-
+      <div
+        className={`avalon-guide-feature is-${side}`}
+        role="group"
+        aria-label={`${role.name}角色介绍，左右滑动切换角色`}
+        onPointerDown={startSwipe}
+        onPointerUp={endSwipe}
+        onPointerCancel={() => { swipeStartX.current = null; }}
+      >
+        <div className="avalon-guide-visual">
+          <figure className={`avalon-guide-portrait is-${side}`}>
+            <img
+              key={selected}
+              src={`${import.meta.env.BASE_URL}avalon-roles/${selected}.jpg`}
+              width={768}
+              height={1024}
+              alt={`${role.name}角色立绘`}
+              draggable={false}
+              loading="lazy"
+              decoding="async"
+            />
+            <figcaption>{guide.englishName}</figcaption>
+          </figure>
+          <div className="avalon-guide-index" role="group" aria-label="选择要查看的角色">
+            <div className="avalon-guide-index-heading">
+              <strong>选择一张身份牌</strong>
+              <span>左右滑动图文切换</span>
+            </div>
+            <div className="avalon-guide-index-track">
+              {ROLE_ORDER.map((id, index) => {
+                const item = Avalon.ROLES[id];
+                const itemSide = item.alignment === 'good' ? 'good' : 'evil';
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    className={`avalon-guide-option is-${itemSide}`}
+                    aria-pressed={id === selected}
+                    title={item.name}
+                    aria-label={`查看${item.name}`}
+                    onClick={() => setSelected(id)}
+                  >
+                    <small>{String(index + 1).padStart(2, '0')}</small>
+                    <span>{ROLE_INDEX_LABEL[id]}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
         <article className="avalon-guide-detail" aria-live="polite">
           <span className={`avalon-guide-faction is-${side}`}>
             <i aria-hidden="true" />
@@ -115,43 +184,6 @@ export function AvalonRoleGuide() {
             </ol>
           </div>
         </article>
-      </div>
-
-      <div className="avalon-guide-roster" role="group" aria-label="选择要查看的角色">
-        <div className="avalon-guide-roster-heading">
-          <h3>选择一张身份牌</h3>
-          <span>点击角色查看职责与建议</span>
-        </div>
-        <div className="avalon-guide-roster-grid">
-          {ROLE_ORDER.map((id) => {
-            const item = Avalon.ROLES[id];
-            const itemSide = item.alignment === 'good' ? 'good' : 'evil';
-            return (
-              <button
-                key={id}
-                type="button"
-                className={`avalon-guide-option is-${itemSide}`}
-                aria-pressed={id === selected}
-                onClick={() => setSelected(id)}
-              >
-                <span className="avalon-guide-option-portrait">
-                  <img
-                    src={`${import.meta.env.BASE_URL}avalon-roles/${id}.jpg`}
-                    width={768}
-                    height={1024}
-                    alt=""
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </span>
-                <span className="avalon-guide-option-copy">
-                  <strong>{item.name}</strong>
-                  <small>{itemSide === 'good' ? '正义方' : '邪恶方'}</small>
-                </span>
-              </button>
-            );
-          })}
-        </div>
       </div>
 
       <details className="avalon-guide-lore">

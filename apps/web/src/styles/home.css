@@ -676,6 +676,361 @@
   background: linear-gradient(135deg, rgba(143, 88, 99, 0.17), rgba(143, 88, 99, 0.035));
 }
 
+/* 阿瓦隆角色图鉴 */
+.avalon-guide {
+  margin-top: clamp(44px, 7vw, 88px);
+  padding-top: clamp(26px, 4vw, 42px);
+  border-top: 1px solid rgba(179, 185, 187, 0.16);
+}
+.avalon-guide-header,
+.avalon-guide-roster-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+}
+.avalon-guide-eyebrow {
+  color: #9a9c98;
+  font-family: var(--font-numeral);
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+}
+.avalon-guide-header h2 {
+  margin-top: 8px;
+  color: #e4dcc9;
+  font-size: clamp(2rem, 3.5vw, 2.9rem);
+  font-weight: 400;
+}
+.avalon-guide-summary {
+  margin-top: 8px;
+  color: #a9adae;
+  font-size: 0.95rem;
+}
+.avalon-guide-count {
+  flex: none;
+  padding: 8px 11px;
+  border: 1px solid rgba(184, 158, 114, 0.24);
+  color: #c3b697;
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+}
+.avalon-guide-feature {
+  display: grid;
+  grid-template-columns: minmax(250px, 0.82fr) minmax(0, 1.18fr);
+  align-items: stretch;
+  gap: clamp(24px, 5vw, 64px);
+  margin-top: 30px;
+  padding: clamp(18px, 3vw, 34px);
+  border: 1px solid rgba(188, 190, 186, 0.14);
+  background:
+    radial-gradient(ellipse at 14% 38%, rgba(69, 108, 159, 0.12), transparent 42%),
+    linear-gradient(115deg, rgba(24, 30, 38, 0.94), rgba(9, 12, 17, 0.88));
+  box-shadow: 0 24px 58px rgba(0, 0, 0, 0.2), inset 0 1px rgba(255, 255, 255, 0.035);
+}
+.avalon-guide-feature.is-evil {
+  background:
+    radial-gradient(ellipse at 14% 38%, rgba(132, 76, 90, 0.12), transparent 42%),
+    linear-gradient(115deg, rgba(27, 27, 34, 0.94), rgba(11, 11, 16, 0.9));
+}
+.avalon-guide-portrait {
+  position: relative;
+  width: min(100%, 430px);
+  aspect-ratio: 3 / 4;
+  justify-self: center;
+  overflow: hidden;
+  margin: 0;
+  border: 1px solid rgba(135, 173, 225, 0.64);
+  background: #10192a;
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.38), 0 0 30px rgba(63, 111, 216, 0.1);
+}
+.avalon-guide-portrait.is-evil {
+  border-color: rgba(189, 123, 139, 0.6);
+  background: #21141b;
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.38), 0 0 30px rgba(151, 79, 101, 0.1);
+}
+.avalon-guide-portrait::after {
+  content: '';
+  position: absolute;
+  inset: 48% 0 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgba(5, 7, 12, 0.82));
+}
+.avalon-guide-portrait img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 35%;
+}
+.avalon-guide-portrait figcaption {
+  position: absolute;
+  inset: auto 18px 15px;
+  z-index: 1;
+  color: #e7dfcc;
+  font-family: var(--font-numeral);
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  text-align: center;
+  text-shadow: 0 2px 10px #000;
+}
+.avalon-guide-detail {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: 8px 0;
+}
+.avalon-guide-faction {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  color: #9fc7ff;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+}
+.avalon-guide-faction.is-evil {
+  color: #d39aa5;
+}
+.avalon-guide-faction i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #74aaf4;
+  box-shadow: 0 0 12px rgba(116, 170, 244, 0.6);
+}
+.avalon-guide-faction.is-evil i {
+  background: #bd7b8b;
+  box-shadow: 0 0 12px rgba(189, 123, 139, 0.5);
+}
+.avalon-guide-roleline {
+  max-width: 39em;
+  margin-top: 20px;
+  color: #bcbab5;
+  font-size: 1rem;
+  line-height: 1.8;
+}
+.avalon-guide-detail h3 {
+  margin-top: 5px;
+  color: #eee7d8;
+  font-size: clamp(2.2rem, 4vw, 3.4rem);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+}
+.avalon-guide-block {
+  margin-top: 22px;
+  padding-top: 17px;
+  border-top: 1px solid rgba(190, 190, 184, 0.14);
+}
+.avalon-guide-block h4 {
+  margin-bottom: 8px;
+  color: #d3c5a4;
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+}
+.avalon-guide-block p,
+.avalon-guide-block li {
+  color: #aeb1b0;
+  font-size: 0.9rem;
+  line-height: 1.75;
+}
+.avalon-guide-block ol {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 1.35rem;
+}
+.avalon-guide-block li::marker {
+  color: #91b5e6;
+  font-family: var(--font-numeral);
+}
+.is-evil .avalon-guide-block li::marker {
+  color: #c78b99;
+}
+.avalon-guide-roster {
+  margin-top: clamp(26px, 4vw, 42px);
+}
+.avalon-guide-roster-heading h3 {
+  color: #d7d0c1;
+  font-size: 1.28rem;
+  font-weight: 400;
+}
+.avalon-guide-roster-heading span {
+  color: #858d91;
+  font-size: 0.76rem;
+}
+.avalon-guide-roster-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.avalon-guide-option {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid rgba(190, 190, 184, 0.14);
+  background: rgba(15, 19, 25, 0.72);
+  text-align: left;
+  transition: border-color 0.18s, background 0.18s, transform 0.18s;
+}
+.avalon-guide-option:hover,
+.avalon-guide-option:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(187, 194, 195, 0.48);
+}
+.avalon-guide-option[aria-pressed='true'] {
+  border-color: rgba(125, 170, 234, 0.72);
+  background: linear-gradient(110deg, rgba(48, 80, 126, 0.35), rgba(16, 20, 27, 0.8));
+}
+.avalon-guide-option.is-evil[aria-pressed='true'] {
+  border-color: rgba(189, 123, 139, 0.72);
+  background: linear-gradient(110deg, rgba(105, 50, 67, 0.32), rgba(20, 17, 22, 0.82));
+}
+.avalon-guide-option-portrait {
+  display: block;
+  width: 48px;
+  height: 64px;
+  flex: none;
+  overflow: hidden;
+  border: 1px solid rgba(135, 173, 225, 0.44);
+  background: #10192a;
+}
+.avalon-guide-option.is-evil .avalon-guide-option-portrait {
+  border-color: rgba(189, 123, 139, 0.42);
+  background: #21141b;
+}
+.avalon-guide-option-portrait img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 25%;
+}
+.avalon-guide-option-copy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+.avalon-guide-option-copy strong {
+  overflow: hidden;
+  color: #d7d4ca;
+  font-size: 0.86rem;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.avalon-guide-option-copy small {
+  color: #8fb7ed;
+  font-size: 0.7rem;
+}
+.avalon-guide-option.is-evil .avalon-guide-option-copy small {
+  color: #c68b99;
+}
+.avalon-guide-lore {
+  margin-top: 24px;
+  border: 1px solid rgba(190, 190, 184, 0.12);
+  background: rgba(13, 16, 21, 0.55);
+}
+.avalon-guide-lore summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 15px 18px;
+  color: #c7b995;
+  cursor: pointer;
+  list-style: none;
+}
+.avalon-guide-lore summary::-webkit-details-marker {
+  display: none;
+}
+.avalon-guide-lore summary::after {
+  content: '+';
+  color: #c7b995;
+  font-family: var(--font-numeral);
+  font-size: 1.1rem;
+}
+.avalon-guide-lore[open] summary::after {
+  content: '−';
+}
+.avalon-guide-lore summary small {
+  margin-left: auto;
+  color: #81888b;
+  font-size: 0.72rem;
+}
+.avalon-guide-lore > p {
+  max-width: 70em;
+  padding: 0 18px 17px;
+  color: #a8acab;
+  font-size: 0.88rem;
+  line-height: 1.8;
+}
+
+@media (max-width: 900px) {
+  .avalon-guide-feature {
+    grid-template-columns: minmax(220px, 0.75fr) minmax(0, 1.25fr);
+    gap: clamp(20px, 4vw, 36px);
+  }
+  .avalon-guide-option {
+    gap: 8px;
+    padding: 7px;
+  }
+  .avalon-guide-option-portrait {
+    width: 42px;
+    height: 56px;
+  }
+}
+@media (max-width: 680px) {
+  .avalon-guide-header,
+  .avalon-guide-roster-heading {
+    align-items: flex-start;
+  }
+  .avalon-guide-count {
+    display: none;
+  }
+  .avalon-guide-feature {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 16px;
+  }
+  .avalon-guide-portrait {
+    width: min(100%, 340px);
+  }
+  .avalon-guide-detail {
+    padding: 4px 2px 8px;
+  }
+  .avalon-guide-roleline {
+    margin-top: 13px;
+  }
+  .avalon-guide-block {
+    margin-top: 17px;
+    padding-top: 14px;
+  }
+  .avalon-guide-roster-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+}
+@media (max-width: 420px) {
+  .avalon-guide-roster-heading {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .avalon-guide-lore summary {
+    flex-wrap: wrap;
+    padding-inline: 12px;
+  }
+  .avalon-guide-lore summary small {
+    margin-left: 0;
+  }
+  .avalon-guide-lore > p {
+    padding-inline: 12px;
+  }
+}
+
 @media (max-width: 860px) {
   .home-masthead {
     min-height: 64px;

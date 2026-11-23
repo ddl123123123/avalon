@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { Avalon, NAME_MAX_LENGTH } from '@tabletop/shared';
 import { SplitText } from '../fx/SplitText';
+import { AvalonRoleGuide } from '../games/avalon/RoleGuide';
 import { GAME_CLIENTS } from '../games/registry';
 import { forgetRecentRoom, getName, net, notify, setName, useNet } from '../net/client';
 import { navigate, roomPath } from '../net/route';
@@ -237,6 +238,8 @@ export function Home() {
           ))}
         </div>
       </section>
+
+      {isAvalon && <AvalonRoleGuide />}
     </main>
   );
 }

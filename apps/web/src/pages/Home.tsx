@@ -178,7 +178,6 @@ export function Home() {
         </div>
 
         <div className={isAvalon ? 'hero-window hero-window-avalon' : 'hero-window'}>
-          <div className="rays" aria-hidden="true" />
           {!isAvalon && (
             <div className="hero-window-stamp" aria-hidden="true">
               <span>TABLETOP ARCHIVE</span>
@@ -197,9 +196,9 @@ export function Home() {
               {isAvalon ? (
                 <div className="avalon-hero-portrait">
                   <img
-                    src={`${import.meta.env.BASE_URL}avalon-cards/home-duel.png`}
-                    width={612}
-                    height={603}
+                    src={`${import.meta.env.BASE_URL}avalon-cards/home-duel-v2.png`}
+                    width={1254}
+                    height={1254}
                     alt="蓝袍与红袍的两位角色隔着金框相对"
                   />
                 </div>

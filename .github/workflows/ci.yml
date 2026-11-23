@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -22,3 +23,37 @@ jobs:
       - run: pnpm test
       - run: pnpm typecheck
       - run: pnpm build
+
+  # 推到 main 且检查通过后自动发版；也可以在 Actions 页手动 Run workflow 重发。
+  # secrets 放在 production 环境里，该环境只允许 main 分支使用（仓库是公开的）。
+  deploy:
+    needs: verify
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://games.anois.site
+    # 同一时间只发一个版本；排队中的旧版本会被新的取代
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: 配置 SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # 固定服务器指纹，不用 StrictHostKeyChecking=no
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: 发版
+        env:
+          SSH_KEY: /home/runner/.ssh/deploy_key
+        run: TAG="$(date +%Y%m%d-%H%M%S)-${GITHUB_SHA::7}" ./deploy/ship.sh
+      - name: 清理私钥
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

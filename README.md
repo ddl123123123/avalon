@@ -32,7 +32,45 @@ pnpm build
 
 GitHub Actions 会在推送到 `main` 或提交拉取请求时执行这些检查。
 
-构建完成后，运行 `PORT=8080 pnpm start` 即可从同一端口提供网页和 WebSocket。通过反向代理对外提供服务时，请配置 HTTPS 和 `/ws` 的 WebSocket 转发。房间保存在服务端内存中，重启会清空正在进行的对局。
+构建完成后，运行 `PORT=8080 pnpm start` 即可从同一端口提供网页和 WebSocket。
+
+## 部署
+
+线上地址 **https://games.anois.site**，和塔罗（ORAE）共用腾讯云主机 `43.138.210.136`：
+
+- 桌游是单独的 compose 项目 `/srv/tabletop`，一个容器，不发布端口，加入塔罗的 `wenpai_default` 网络。
+- 80/443 由塔罗的 Nginx 容器（`/srv/wenpai`）提供，按域名反代到 `tabletop:8080`，
+  配置是本仓库的 [deploy/nginx/tabletop.conf](deploy/nginx/tabletop.conf)，发版时放进 `/srv/wenpai/nginx/`。
+- 镜像在本机构建（`linux/amd64`），服务器只负责运行。
+
+> **这台机器是多个项目共用的。** 服务器上的 `/srv/README.md` 记录了现状（谁占哪个目录、哪些 Nginx 配置和证书归谁、
+> 证书到期日、内存预算）和共用规范。改服务器之前先读它，改完同步更新它的变更记录：
+> `ssh -i avalon.pem root@43.138.210.136 cat /srv/README.md`
+
+```bash
+./deploy/ship.sh
+```
+
+需要仓库根目录的 `avalon.pem`（SSH 私钥，已 gitignore，权限 600）。脚本依次：构建镜像 → 传到服务器 →
+重启容器并等它 healthy →（证书已就位时）放入 Nginx 配置、`nginx -t` 通过后 reload，失败就还原 → 验证。
+
+**自动发版**：推到 `main` 后，GitHub Actions 在检查通过后自动跑同一个 `ship.sh`（`.github/workflows/ci.yml` 的 `deploy` 任务），
+也可以在 Actions 页手动 Run workflow。需要在仓库 Settings → Environments 建 `production` 环境
+（Deployment branches 只允许 `main`），放两个 secret：
+
+- `SSH_PRIVATE_KEY`：专给 CI 用的部署私钥（不要复用 `avalon.pem`，泄露时可以单独吊销）
+- `SSH_KNOWN_HOSTS`：`ssh-keyscan -t ed25519 43.138.210.136` 的输出，固定服务器指纹
+
+CI 里没有证书目录，上传/更换证书仍在本机跑 `./deploy/ship.sh`。
+
+**证书**：腾讯云免费 DV 证书，SAN 须含 `games.anois.site`，下载「Nginx」格式，解压到仓库根目录的
+`games.anois.site/`（已 gitignore），重跑 `./deploy/ship.sh` 就会上传到 `/srv/wenpai/certs/` 并接入。换证同样如此。
+
+几条注意：
+
+- 引用的证书不存在时 Nginx 校验会失败，**塔罗那边也会因此发不了版**，所以不要手工把 `tabletop.conf` 先放上去。
+- 房间在内存里，每次发版都会清空正在进行的对局。
+- 回滚：`ssh` 上去改 `/srv/tabletop/.env` 里的 `TAG`（`docker images tabletop` 看保留的 3 个版本），再 `docker compose up -d`。
 
 ### 一个人调试多人局
 

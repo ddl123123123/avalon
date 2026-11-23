@@ -1,0 +1,34 @@
+# 桌游厅的生产编排。服务器上的位置：/srv/tabletop/compose.yml（与 .env 同级）。
+#
+# 这台机器的 80/443 由塔罗（ORAE）项目的 Nginx 容器占着（/srv/wenpai，project 名 wenpai）。
+# 桌游不发布任何端口，而是加入它的网络 wenpai_default，由那个 Nginx 按域名反代过来，
+# 配置见 deploy/nginx/tabletop.conf。
+#
+#   docker compose up -d       启动/更新（镜像标签取 .env 里的 TAG）
+#   docker compose logs -f     日志
+name: tabletop
+
+services:
+  tabletop:
+    image: tabletop:${TAG:-latest}
+    restart: unless-stopped
+    # 进程不处理 SIGTERM；没有 init 的话 PID 1 会忽略它，docker stop 要等满 10 秒
+    init: true
+    environment:
+      NODE_ENV: production
+      PORT: '8080'
+      NODE_OPTIONS: --max-old-space-size=256
+    mem_limit: 384m
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    networks:
+      wenpai:
+        aliases: [tabletop]
+
+networks:
+  wenpai:
+    name: wenpai_default
+    external: true

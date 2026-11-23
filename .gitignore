@@ -6,3 +6,10 @@ coverage
 .env
 .env.*
 !.env.example
+
+# SSH 私钥与证书，绝不入库
+avalon.pem
+/games.anois.site/
+*.pem
+*.key
+*.csr

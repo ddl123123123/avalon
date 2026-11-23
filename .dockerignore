@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/coverage
+.git
+.github
+.claude
+*.pem
+*.key
+.env
+.env.*
+games.anois.site
+deploy

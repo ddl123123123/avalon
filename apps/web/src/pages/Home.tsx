@@ -95,11 +95,9 @@ export function Home() {
             ))}
           </div>
 
-          {!isAvalon && (
-            <h1 className="hero-title" style={{ '--chars': [...game.name].length } as CSSProperties}>
-              <SplitText key={game.id} text={game.name} delay={0.1} stagger={0.12} />
-            </h1>
-          )}
+          <h1 className="hero-title" style={{ '--chars': [...game.name].length } as CSSProperties}>
+            <SplitText key={game.id} text={game.name} delay={0.1} stagger={0.12} />
+          </h1>
           <AnimatePresence mode="wait">
             <motion.p
               key={game.id}
@@ -208,11 +206,6 @@ export function Home() {
               ) : <game.hero.Art />}
             </motion.div>
           </AnimatePresence>
-          {isAvalon && (
-            <h1 className="hero-title avalon-hero-title" style={{ '--chars': [...game.name].length } as CSSProperties}>
-              <SplitText key={game.id} text={game.name} delay={0.1} stagger={0.12} />
-            </h1>
-          )}
         </div>
       </section>
 

@@ -30,6 +30,7 @@ jobs:
     needs: verify
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     environment:
       name: production
       url: https://games.anois.site
@@ -39,7 +40,6 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
       - name: 配置 SSH
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -50,9 +50,12 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           # 固定服务器指纹，不用 StrictHostKeyChecking=no
           printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      # 镜像在服务器上构建：runner 到国内服务器只有十几 KB/s，传整个镜像要一小时
       - name: 发版
         env:
           SSH_KEY: /home/runner/.ssh/deploy_key
+          BUILD: remote
+          REF: ${{ github.sha }}
         run: TAG="$(date +%Y%m%d-%H%M%S)-${GITHUB_SHA::7}" ./deploy/ship.sh
       - name: 清理私钥
         if: always()

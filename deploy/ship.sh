@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
-# 发版：本机构建 linux/amd64 镜像 → 传到服务器 → 重启容器 → （证书就位时）接上 Nginx → 验证。
+# 发版：构建 linux/amd64 镜像 → 重启容器 → （证书就位时）接上 Nginx → 验证。
 #
-#   ./deploy/ship.sh
+#   ./deploy/ship.sh                 本机构建，镜像整个传上去（发的是工作区里的代码）
+#   BUILD=remote ./deploy/ship.sh    服务器从 GitHub 拉 REF 对应的提交，在服务器上构建
+#
+# 两种构建方式：
+#   local   本机 docker buildx 构建，docker save | ssh 传约 66 MB。本机在国内时快，可以发未提交的改动。
+#   remote  GitHub Actions 用这个。美国的 runner 到这台国内服务器只有十几 KB/s，传镜像要一小时；
+#           反过来服务器从 GitHub 增量 git fetch 只要几秒，依赖走 npmmirror，冷构建约 70 秒。
+#           代码目录 /srv/tabletop/src，只发已推送到 GitHub 的提交。
 #
 # 可覆盖的环境变量：
 #   SERVER    默认 root@43.138.210.136（与塔罗共用的腾讯云主机）
@@ -10,6 +17,8 @@
 #   CERT_DIR  默认 ./${DOMAIN}/ —— 腾讯云证书「Nginx」格式解压出来的目录；
 #             有它就顺带把证书传上去（换证也是重跑这个脚本）
 #   TAG       镜像标签，默认当前时间（须以时间开头：服务器按标签排序只留最近 3 个）
+#   BUILD     local（默认）或 remote
+#   REF       BUILD=remote 时要发的提交，默认当前 HEAD
 #
 # GitHub Actions 推到 main 时也跑这个脚本（.github/workflows/ci.yml 的 deploy 任务），
 # 私钥和服务器指纹来自 production 环境的 secrets。CI 里没有证书目录，证书仍从本机上传。
@@ -24,23 +33,50 @@ REMOTE_DIR=/srv/tabletop
 NGINX_DIR=/srv/wenpai          # 塔罗项目的 Nginx（compose project: wenpai）
 SSH="ssh -i ${SSH_KEY} -o BatchMode=yes"
 TAG=${TAG:-$(date +%Y%m%d-%H%M%S)}
+BUILD=${BUILD:-local}
+REF=${REF:-$(git rev-parse HEAD)}
+REPO_URL=${REPO_URL:-https://github.com/ddl123123123/avalon.git}
+SRC_DIR=${REMOTE_DIR}/src
 
 say() { printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }
 
 [ -f "${SSH_KEY}" ] || { echo "找不到 SSH 私钥 ${SSH_KEY}" >&2; exit 1; }
 chmod 600 "${SSH_KEY}"
-if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
-  echo "提示：工作区有未提交的改动，发出去的是工作区里的代码。" >&2
-fi
 
-say "构建镜像 tabletop:${TAG}（linux/amd64）"
-docker buildx build --platform linux/amd64 -t "tabletop:${TAG}" --load .
+case "$BUILD" in
+local)
+  if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+    echo "提示：工作区有未提交的改动，发出去的是工作区里的代码。" >&2
+  fi
 
-say "传输镜像"
-docker save "tabletop:${TAG}" | gzip | $SSH "$SERVER" 'gunzip | docker load'
+  say "本机构建镜像 tabletop:${TAG}（linux/amd64）"
+  docker buildx build --platform linux/amd64 -t "tabletop:${TAG}" --load .
+
+  say "传输镜像"
+  docker save "tabletop:${TAG}" | gzip | $SSH "$SERVER" 'gunzip | docker load'
+  $SSH "$SERVER" "mkdir -p ${REMOTE_DIR}"
+  ;;
+remote)
+  REF=$(git rev-parse "${REF}^{commit}")
+  say "服务器上构建镜像 tabletop:${TAG}（提交 ${REF:0:7}）"
+  $SSH "$SERVER" bash -s <<REMOTE
+set -euo pipefail
+mkdir -p ${REMOTE_DIR}
+[ -d ${SRC_DIR}/.git ] || git clone -q --filter=blob:none ${REPO_URL} ${SRC_DIR}
+cd ${SRC_DIR}
+git fetch -q --prune origin
+git cat-file -e ${REF}^{commit} 2>/dev/null || { echo "GitHub 上没有提交 ${REF}，先推送" >&2; exit 1; }
+git checkout -q --force --detach ${REF}
+git clean -qfdx
+docker build -q --build-arg NPM_REGISTRY=https://registry.npmmirror.com -t tabletop:${TAG} . < /dev/null
+# 多阶段构建留下的中间镜像（带 project=tabletop 标签、无 tag），只清自己的
+docker image prune -f --filter label=project=tabletop > /dev/null
+REMOTE
+  ;;
+*) echo "BUILD 只能是 local 或 remote" >&2; exit 1 ;;
+esac
 
 say "同步编排文件"
-$SSH "$SERVER" "mkdir -p ${REMOTE_DIR}"
 rsync -az -e "$SSH" deploy/compose.yml "$SERVER:${REMOTE_DIR}/"
 
 if [ -d "${CERT_DIR}" ]; then

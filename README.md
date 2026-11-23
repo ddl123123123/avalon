@@ -41,7 +41,7 @@ GitHub Actions 会在推送到 `main` 或提交拉取请求时执行这些检查
 - 桌游是单独的 compose 项目 `/srv/tabletop`，一个容器，不发布端口，加入塔罗的 `wenpai_default` 网络。
 - 80/443 由塔罗的 Nginx 容器（`/srv/wenpai`）提供，按域名反代到 `tabletop:8080`，
   配置是本仓库的 [deploy/nginx/tabletop.conf](deploy/nginx/tabletop.conf)，发版时放进 `/srv/wenpai/nginx/`。
-- 镜像在本机构建（`linux/amd64`），服务器只负责运行。
+- 本机发版时镜像在本机构建（`linux/amd64`）再传上去；GitHub Actions 自动发版时在服务器上构建（见下）。
 
 > **这台机器是多个项目共用的。** 服务器上的 `/srv/README.md` 记录了现状（谁占哪个目录、哪些 Nginx 配置和证书归谁、
 > 证书到期日、内存预算）和共用规范。改服务器之前先读它，改完同步更新它的变更记录：
@@ -54,12 +54,15 @@ GitHub Actions 会在推送到 `main` 或提交拉取请求时执行这些检查
 需要仓库根目录的 `avalon.pem`（SSH 私钥，已 gitignore，权限 600）。脚本依次：构建镜像 → 传到服务器 →
 重启容器并等它 healthy →（证书已就位时）放入 Nginx 配置、`nginx -t` 通过后 reload，失败就还原 → 验证。
 
-**自动发版**：推到 `main` 后，GitHub Actions 在检查通过后自动跑同一个 `ship.sh`（`.github/workflows/ci.yml` 的 `deploy` 任务），
+**自动发版**：推到 `main` 后，GitHub Actions 在检查通过后自动跑 `BUILD=remote ./deploy/ship.sh`（`.github/workflows/ci.yml` 的 `deploy` 任务），
 也可以在 Actions 页手动 Run workflow。需要在仓库 Settings → Environments 建 `production` 环境
 （Deployment branches 只允许 `main`），放两个 secret：
 
 - `SSH_PRIVATE_KEY`：专给 CI 用的部署私钥（不要复用 `avalon.pem`，泄露时可以单独吊销）
 - `SSH_KNOWN_HOSTS`：`ssh-keyscan -t ed25519 43.138.210.136` 的输出，固定服务器指纹
+
+`BUILD=remote` 时服务器从 GitHub 增量拉取这次提交（代码在 `/srv/tabletop/src`），依赖走 npmmirror，在服务器上构建镜像。
+原因是 GitHub 的 runner 在美国，到这台国内服务器只有十几 KB/s，传整个镜像要一小时；反方向的 `git fetch` 只要几秒。
 
 CI 里没有证书目录，上传/更换证书仍在本机跑 `./deploy/ship.sh`。
 

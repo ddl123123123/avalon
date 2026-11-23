@@ -1,8 +1,15 @@
 # 桌游厅生产镜像：一个 Node 进程在同一端口提供网页和 /ws。
-# 在本机构建（deploy/ship.sh 带 --platform linux/amd64），服务器只负责运行。
+# 由 deploy/ship.sh 构建：默认在本机构建（--platform linux/amd64）再传上去；
+# BUILD=remote（GitHub Actions 用）时在服务器上从 GitHub 拉代码构建，依赖走 npmmirror。
 
 FROM node:22-alpine AS base
-ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+# 国内服务器上构建时传 https://registry.npmmirror.com；corepack 下载 pnpm 本身也走它
+ARG NPM_REGISTRY=https://registry.npmjs.org
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
+    COREPACK_NPM_REGISTRY=${NPM_REGISTRY} \
+    npm_config_registry=${NPM_REGISTRY}
+# 服务器上清理构建残留时只清自己项目的：docker image prune --filter label=project=tabletop
+LABEL project=tabletop
 RUN corepack enable
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./

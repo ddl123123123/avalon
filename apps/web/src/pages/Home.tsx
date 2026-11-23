@@ -3,7 +3,7 @@ import { useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { NAME_MAX_LENGTH } from '@tabletop/shared';
 import { SplitText } from '../fx/SplitText';
 import { GAME_CLIENTS } from '../games/registry';
-import { getName, net, notify, setName, useNet } from '../net/client';
+import { forgetRecentRoom, getName, net, notify, setName, useNet } from '../net/client';
 import { navigate, roomPath } from '../net/route';
 
 const GAMES = Object.values(GAME_CLIENTS);
@@ -20,13 +20,14 @@ function rememberedGame(): string {
 }
 
 export function Home() {
-  const { room, lastRoomCode } = useNet();
+  const { room, lastRoomCode, recentRooms } = useNet();
   const [gameId, setGameId] = useState(rememberedGame);
   const [name, setNameInput] = useState(getName);
   const [code, setCode] = useState('');
   const nameRef = useRef<HTMLInputElement>(null);
   const resumeCode = room?.code ?? lastRoomCode;
   const game = GAME_CLIENTS[gameId]!;
+  const resume = (roomCode: string) => navigate(roomPath(roomCode));
 
   const choose = (id: string) => {
     setGameId(id);
@@ -141,10 +142,37 @@ export function Home() {
               </form>
             </div>
           </div>
-          {resumeCode && (
+          {resumeCode && !recentRooms.some((recent) => recent.code === resumeCode) && (
             <button type="button" className="link resume" onClick={() => navigate(roomPath(resumeCode))}>
               回到房间 {resumeCode}
             </button>
+          )}
+          {recentRooms.length > 0 && (
+            <section className="recent-rooms" aria-label="最近进入的房间">
+              <header>
+                <div>
+                  <p>ROOM HISTORY</p>
+                  <h2>最近进入的房间</h2>
+                </div>
+                <span>保存在本机</span>
+              </header>
+              <ul>
+                {recentRooms.map((recent) => (
+                  <li key={recent.code}>
+                    <button type="button" className="recent-room-entry" onClick={() => resume(recent.code)}>
+                      <span className="recent-room-main">
+                        <strong>{recent.code}</strong>
+                        <small>{GAME_CLIENTS[recent.gameId]?.name ?? '桌游房间'} · {new Date(recent.lastJoinedAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</small>
+                      </span>
+                      <span className="recent-room-rejoin">重新加入 <span aria-hidden="true">↗</span></span>
+                    </button>
+                    <button type="button" className="recent-room-remove" onClick={() => forgetRecentRoom(recent.code)} aria-label={`从历史中移除房间 ${recent.code}`} title="移除记录">
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
         </div>
 

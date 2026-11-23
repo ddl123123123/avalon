@@ -124,6 +124,94 @@
 .resume {
   margin-top: 18px;
 }
+.recent-rooms {
+  width: min(100%, 440px);
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(179, 185, 187, 0.16);
+}
+.recent-rooms > header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 9px;
+}
+.recent-rooms > header p {
+  color: #9ca4a6;
+  font-family: var(--font-numeral);
+  font-size: 0.65rem;
+  letter-spacing: 0.16em;
+}
+.recent-rooms h2 {
+  margin-top: 2px;
+  color: #d2c5a7;
+  font-size: 1.18rem;
+}
+.recent-rooms > header > span {
+  color: #858c8f;
+  font-size: 0.7rem;
+}
+.recent-rooms ul {
+  display: grid;
+  gap: 6px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.recent-rooms li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  border: 1px solid rgba(190, 190, 184, 0.12);
+  background: linear-gradient(100deg, rgba(26, 35, 45, 0.68), rgba(11, 14, 19, 0.58));
+}
+.recent-room-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 9px 11px;
+  text-align: left;
+}
+.recent-room-entry:hover .recent-room-main strong,
+.recent-room-entry:focus-visible .recent-room-main strong {
+  color: var(--gilt-bright);
+}
+.recent-room-main {
+  display: grid;
+  min-width: 0;
+}
+.recent-room-main strong {
+  color: #e2d3ac;
+  font-family: var(--font-numeral);
+  font-size: 1.15rem;
+  letter-spacing: 0.12em;
+  line-height: 1.25;
+}
+.recent-room-main small {
+  overflow: hidden;
+  color: #a5a8a5;
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recent-room-rejoin {
+  flex: none;
+  color: #b6a783;
+  font-size: 0.76rem;
+}
+.recent-room-remove {
+  width: 36px;
+  border-left: 1px solid rgba(190, 190, 184, 0.1);
+  color: #8a8e8e;
+  font-size: 1.2rem;
+}
+.recent-room-remove:hover {
+  color: var(--ruby-soft);
+  background: rgba(143, 88, 99, 0.12);
+}
 
 /* 玫瑰窗 */
 .hero-window {

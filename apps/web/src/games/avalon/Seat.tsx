@@ -19,6 +19,8 @@ export interface SeatProps {
   order: number;
   /** 座位下方的小字：我知道的关于这个人的信息 */
   note: { text: string; tone: 'good' | 'evil' | 'plain' } | null;
+  /** 玩家自己的身份预判，不会同步给其他人 */
+  guess: string | null;
   pickable: boolean;
   picked: boolean;
   onPick?: () => void;
@@ -94,7 +96,11 @@ export function Seat(p: SeatProps) {
         {p.player.name}
         {p.isMe && <span className="seat-you">你</span>}
       </div>
-      <div className="seat-note">{!p.player.connected ? '掉线了' : (p.note?.text ?? '')}</div>
+      <div className="seat-note">
+        {!p.player.connected && <span>掉线了</span>}
+        {p.guess && <span className="seat-guess">疑似 {p.guess}</span>}
+        {p.player.connected && p.note && <span>{p.note.text}</span>}
+      </div>
     </>
   );
 

@@ -11,6 +11,8 @@ import { Seat, type SeatProps } from './Seat';
 import { TableSurface } from '../../art/glass';
 import { QuestRoundel } from './art';
 import { CardLibrarySettings } from './CardLibrarySettings';
+import { Notebook } from './Notebook';
+import { notebookStorageKey, readNotebook, saveNotebook } from './notebookData';
 
 type View = Avalon.AvalonView;
 
@@ -66,16 +68,25 @@ function useReveals(room: RoomSnapshot, view: View) {
 }
 
 export function AvalonBoard({ room }: { room: RoomSnapshot }) {
+  return <AvalonBoardSession key={`${room.code}.${room.gameSeq}.${room.you}`} room={room} />;
+}
+
+function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
   const view = room.view as View;
   const me = view.me;
   const byId = new Map(room.players.map((p) => [p.id, p]));
   const nameOf = (id: string) => byId.get(id)?.name ?? '？';
+  const dossierKey = notebookStorageKey(room);
+  const [notebook, setNotebook] = useState(() => readNotebook(dossierKey));
+  const [showNotebook, setShowNotebook] = useState(false);
 
   const { current: reveal, next, sealedFrom } = useReveals(room, view);
   const [intro, setIntro] = useState(() => me !== null && view.proposals.length === 0 && sessionStorage.getItem(introKey(room)) === null);
   const [showRole, setShowRole] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
+
+  useEffect(() => saveNotebook(dossierKey, notebook), [dossierKey, notebook]);
 
   useEffect(() => setPicked(null), [view.phase, view.questIndex]);
   useEffect(() => {
@@ -169,6 +180,9 @@ export function AvalonBoard({ room }: { room: RoomSnapshot }) {
             <summary className="btn btn-ghost btn-small" aria-label="角色卡牌库设置" title="角色卡牌库设置">卡牌</summary>
             <CardLibrarySettings compact />
           </details>
+          <button type="button" className="btn btn-ghost btn-small" onClick={() => setShowNotebook(true)}>
+            笔记
+          </button>
           <button type="button" className="btn btn-ghost btn-small" onClick={() => setShowHistory(true)}>
             任务记录
           </button>
@@ -242,6 +256,7 @@ export function AvalonBoard({ room }: { room: RoomSnapshot }) {
                   <Seat
                     player={byId.get(id) ?? { id, name: '？', connected: false, isBot: false, seatIndex: i }}
                     seatNumber={(byId.get(id)?.seatIndex ?? i) + 1}
+                    guess={notebook.guesses[id] ? Avalon.ROLES[notebook.guesses[id]!].name : null}
                     isMe={id === me?.id}
                     isLeader={id === shownLeader}
                     onTeam={shownTeam.includes(id)}
@@ -299,6 +314,17 @@ export function AvalonBoard({ room }: { room: RoomSnapshot }) {
           />
         )}
         {showHistory && <History key="history" view={view} nameOf={nameOf} onClose={() => setShowHistory(false)} />}
+        {showNotebook && (
+          <Notebook
+            key="notebook"
+            players={room.players}
+            you={room.you}
+            roleSet={view.roleSet}
+            notebook={notebook}
+            onChange={setNotebook}
+            onClose={() => setShowNotebook(false)}
+          />
+        )}
       </AnimatePresence>
     </main>
   );

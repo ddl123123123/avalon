@@ -45,11 +45,45 @@ export interface Notice {
   text: string;
 }
 
+export interface RecentRoom {
+  code: string;
+  gameId: string;
+  lastJoinedAt: number;
+}
+
+const RECENT_ROOM_KEY = 'tabletop.recentRooms';
+
+function loadRecentRooms(): RecentRoom[] {
+  try {
+    const raw = stored(RECENT_ROOM_KEY);
+    if (!raw) return [];
+    const value: unknown = JSON.parse(raw);
+    if (!Array.isArray(value)) return [];
+    return value
+      .filter(
+        (room): room is RecentRoom =>
+          room !== null &&
+          typeof room === 'object' &&
+          typeof room.code === 'string' &&
+          /^\d{4,8}$/.test(room.code) &&
+          typeof room.gameId === 'string' &&
+          room.gameId.length > 0 &&
+          typeof room.lastJoinedAt === 'number' &&
+          Number.isFinite(room.lastJoinedAt),
+      )
+      .slice(0, 8);
+  } catch {
+    return [];
+  }
+}
+
 export interface NetState {
   link: 'connecting' | 'online' | 'offline';
   playerId: string | null;
   /** 服务器记得我上次所在的房间（还没回去） */
   lastRoomCode: string | null;
+  /** 本机最近进入过的房间，用于从首页重新加入 */
+  recentRooms: RecentRoom[];
   room: RoomSnapshot | null;
   /** 正在尝试进入的房间 */
   joining: string | null;
@@ -60,6 +94,7 @@ let state: NetState = {
   link: 'connecting',
   playerId: null,
   lastRoomCode: null,
+  recentRooms: loadRecentRooms(),
   room: null,
   joining: null,
   notice: null,
@@ -68,6 +103,18 @@ const listeners = new Set<() => void>();
 function set(patch: Partial<NetState>) {
   state = { ...state, ...patch };
   listeners.forEach((fn) => fn());
+}
+
+function rememberRoom(code: string, gameId: string): RecentRoom[] {
+  const recentRooms = [{ code, gameId, lastJoinedAt: Date.now() }, ...state.recentRooms.filter((room) => room.code !== code)].slice(0, 8);
+  store(RECENT_ROOM_KEY, JSON.stringify(recentRooms));
+  return recentRooms;
+}
+
+export function forgetRecentRoom(code: string) {
+  const recentRooms = state.recentRooms.filter((room) => room.code !== code);
+  store(RECENT_ROOM_KEY, JSON.stringify(recentRooms));
+  set({ recentRooms });
 }
 
 let socket: WebSocket | null = null;
@@ -110,7 +157,12 @@ function connect() {
         break;
       case 'room':
         intent = { code: msg.room.code, name: getName() };
-        set({ room: msg.room, joining: null, lastRoomCode: msg.room.code });
+        set({
+          room: msg.room,
+          joining: null,
+          lastRoomCode: msg.room.code,
+          recentRooms: state.room?.code === msg.room.code ? state.recentRooms : rememberRoom(msg.room.code, msg.room.gameId),
+        });
         break;
       case 'left':
         intent = null;

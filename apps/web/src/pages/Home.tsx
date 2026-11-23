@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRef, useState, type CSSProperties, type FormEvent } from 'react';
-import { NAME_MAX_LENGTH } from '@tabletop/shared';
+import { Avalon, NAME_MAX_LENGTH } from '@tabletop/shared';
 import { SplitText } from '../fx/SplitText';
 import { GAME_CLIENTS } from '../games/registry';
 import { forgetRecentRoom, getName, net, notify, setName, useNet } from '../net/client';
@@ -27,6 +27,7 @@ export function Home() {
   const nameRef = useRef<HTMLInputElement>(null);
   const resumeCode = room?.code ?? lastRoomCode;
   const game = GAME_CLIENTS[gameId]!;
+  const isAvalon = game.id === Avalon.avalon.id;
   const resume = (roomCode: string) => navigate(roomPath(roomCode));
 
   const choose = (id: string) => {
@@ -176,12 +177,14 @@ export function Home() {
           )}
         </div>
 
-        <div className="hero-window">
+        <div className={isAvalon ? 'hero-window hero-window-avalon' : 'hero-window'}>
           <div className="rays" aria-hidden="true" />
-          <div className="hero-window-stamp" aria-hidden="true">
-            <span>TABLETOP ARCHIVE</span>
-            <strong>{String(GAMES.indexOf(game) + 1).padStart(2, '0')}</strong>
-          </div>
+          {!isAvalon && (
+            <div className="hero-window-stamp" aria-hidden="true">
+              <span>TABLETOP ARCHIVE</span>
+              <strong>{String(GAMES.indexOf(game) + 1).padStart(2, '0')}</strong>
+            </div>
+          )}
           <AnimatePresence mode="wait">
             <motion.div
               key={game.id}
@@ -191,7 +194,16 @@ export function Home() {
               exit={{ opacity: 0, scale: 1.04, filter: 'blur(14px)' }}
               transition={{ duration: 0.45, ease: [0.2, 0.7, 0.2, 1] }}
             >
-              <game.hero.Art />
+              {isAvalon ? (
+                <div className="avalon-hero-portrait">
+                  <img
+                    src={`${import.meta.env.BASE_URL}avalon-cards/home-duel.png`}
+                    width={612}
+                    height={603}
+                    alt="蓝袍与红袍的两位角色隔着金框相对"
+                  />
+                </div>
+              ) : <game.hero.Art />}
             </motion.div>
           </AnimatePresence>
         </div>

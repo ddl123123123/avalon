@@ -76,6 +76,10 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
   const me = view.me;
   const byId = new Map(room.players.map((p) => [p.id, p]));
   const nameOf = (id: string) => byId.get(id)?.name ?? '？';
+  const seatNameOf = (id: string) => {
+    const player = byId.get(id);
+    return player ? `${player.seatIndex + 1} 号 · ${player.name}` : '未知玩家';
+  };
   const dossierKey = notebookStorageKey(room);
   const [notebook, setNotebook] = useState(() => readNotebook(dossierKey));
   const [showNotebook, setShowNotebook] = useState(false);
@@ -101,7 +105,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
   // 亮票停留几秒后自动继续
   useEffect(() => {
     if (reveal?.kind !== 'vote') return;
-    const t = setTimeout(next, 2600 + view.players.length * 110 + 1400);
+    const t = setTimeout(next, 2200 + view.players.length * 110);
     return () => clearTimeout(t);
   }, [reveal, next, view.players.length]);
 
@@ -237,6 +241,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
                           <span>
                             赞成 {approvals}，反对 {view.players.length - approvals}
                           </span>
+                          <span>{voteReveal.team.map(seatNameOf).join('、')}</span>
                         </motion.div>
                       ) : (
                         <motion.div key="status" className="center-info" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -278,13 +283,11 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
             {busy ? (
               <div className="dock-inner dock-waiting">
                 {voteReveal && (
-                  <button type="button" className="btn btn-ghost btn-small" onClick={next}>
-                    继续
-                  </button>
+                  <p className="dock-hint">亮票结束后自动继续</p>
                 )}
               </div>
             ) : (
-              <Dock view={view} nameOf={nameOf} picked={picked} />
+              <Dock view={view} nameOf={seatNameOf} picked={picked} />
             )}
           </footer>
         </>
@@ -313,7 +316,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
             onDone={next}
           />
         )}
-        {showHistory && <History key="history" view={view} nameOf={nameOf} onClose={() => setShowHistory(false)} />}
+        {showHistory && <History key="history" view={view} nameOf={seatNameOf} onClose={() => setShowHistory(false)} />}
         {showNotebook && (
           <Notebook
             key="notebook"

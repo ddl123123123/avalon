@@ -147,15 +147,17 @@ export function QuestReveal({
   const total = quest.team.length;
   const cards = Array.from({ length: total }, (_, i) => i < total - quest.fails);
   const [flipped, setFlipped] = useState(0);
-  const done = flipped >= total;
+  const [done, setDone] = useState(false);
 
   useEffect(() => {
-    if (done) return;
-    // 最后一张多等一会儿
+    if (flipped === total) {
+      const t = setTimeout(() => setDone(true), 750);
+      return () => clearTimeout(t);
+    }
     const wait = flipped === 0 ? 1300 : flipped === total - 1 ? 1250 : 700;
     const t = setTimeout(() => setFlipped((n) => n + 1), wait);
     return () => clearTimeout(t);
-  }, [flipped, done, total]);
+  }, [flipped, total]);
 
   useEffect(() => {
     if (!done) return;
@@ -171,7 +173,7 @@ export function QuestReveal({
         : `出现了 ${quest.fails} 张失败`;
 
   return (
-    <Overlay tone={done ? (quest.success ? 'good' : 'evil') : 'plain'} onClose={onDone}>
+    <Overlay tone={done ? (quest.success ? 'good' : 'evil') : 'plain'} onClose={done ? onDone : undefined}>
       <p className="overlay-kicker">第 {quest.questIndex + 1} 次任务，翻牌</p>
       <div className="quest-reveal-cards">
         {cards.map((success, i) => (

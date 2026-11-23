@@ -30,14 +30,15 @@ export function Dock({
 
   switch (view.phase) {
     case 'team': {
+      const selected = `已选 ${view.team.length} / ${size}${view.team.length ? ` · ${names(view.team)}` : ''}`;
       if (view.leader !== me.id) {
-        return <DockShell prompt={`${nameOf(view.leader)} 是队长，正在为第 ${questNo} 次任务挑选 ${size} 名队员`} waiting />;
+        return <DockShell prompt={`${nameOf(view.leader)} 是队长，正在为第 ${questNo} 次任务挑选 ${size} 名队员`} hint={selected} waiting />;
       }
       const ready = view.team.length === size;
       return (
         <DockShell
           prompt={`你是队长。在桌上点选 ${size} 名队员出第 ${questNo} 次任务`}
-          hint={`已选 ${view.team.length} / ${size}${view.rejectCount === 4 ? '。这是本轮最后一次组队，再被否决邪恶方直接获胜' : ''}`}
+          hint={`${selected}${view.rejectCount === 4 ? '。这是本轮最后一次组队，再被否决邪恶方直接获胜' : ''}`}
         >
           <button type="button" className="btn btn-primary" disabled={!ready} onClick={() => send({ type: 'propose_team', team: view.team })}>
             就这支队伍
@@ -50,7 +51,7 @@ export function Dock({
       const last = view.rejectCount === 4 ? '这是本轮最后一次组队，再被否决邪恶方直接获胜。' : '';
       if (me.myVote !== null) {
         return (
-          <DockShell prompt={`你投了${me.myVote ? '赞成' : '反对'}。等其他人表态`} hint={`${view.voted.length} / ${n} 人已投票`} waiting>
+          <DockShell prompt={`你投了${me.myVote ? '赞成' : '反对'}。等其他人表态`} hint={`${view.voted.length} / ${n} 人已投票 · 队伍：${names(view.team)}`} waiting>
             <div className="dock-mine">
               <VoteToken approve={me.myVote} />
             </div>
@@ -72,7 +73,7 @@ export function Dock({
     }
 
     case 'quest': {
-      const progress = `${view.played.length} / ${view.team.length} 人已出牌`;
+      const progress = `${view.played.length} / ${view.team.length} 人已出牌 · 出齐后自动翻牌`;
       if (!view.team.includes(me.id)) {
         return <DockShell prompt={`${names(view.team)} 正在执行第 ${questNo} 次任务`} hint={progress} waiting />;
       }

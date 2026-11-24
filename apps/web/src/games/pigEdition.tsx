@@ -80,7 +80,7 @@ export function PigEditionSwitch({ active, gameName, onChange }: {
   }
   return (
     <details className="ct-edition-unlock">
-      <summary>切换版本 · 解锁小猪版</summary>
+      <summary>解锁小猪版</summary>
       <form onSubmit={unlock} className="ct-edition-form">
         <label className="ct-edition-question" htmlFor="pig-edition-answer">小猪小猪</label>
         <input

@@ -86,11 +86,20 @@ export function Home() {
             <strong>桌游厅</strong>
           </span>
         </div>
-        <div className="home-masthead-note">
-          <span>多人联机</span>
-          <i aria-hidden="true" />
-          <span>策略 · 合作 · 推理</span>
-        </div>
+        {isAvalon || isCitadels ? (
+          <PigEditionSwitch
+            key={game.id}
+            gameName={game.name}
+            active={pigTheme}
+            onChange={isAvalon ? setAvalonPigEdition : setCitadelsPigEdition}
+          />
+        ) : (
+          <div className="home-masthead-note">
+            <span>多人联机</span>
+            <i aria-hidden="true" />
+            <span>策略 · 合作 · 推理</span>
+          </div>
+        )}
       </header>
 
       <section className={isAvalon ? 'hero hero-avalon' : 'hero'}>
@@ -113,14 +122,6 @@ export function Home() {
             <SplitText key={game.id} text={game.name} delay={0.1} stagger={0.12} />
           </h1>
           <p className="hero-lede">{game.hero.lede}</p>
-          {(isAvalon || isCitadels) && (
-            <PigEditionSwitch
-              key={game.id}
-              gameName={game.name}
-              active={pigTheme}
-              onChange={isAvalon ? setAvalonPigEdition : setCitadelsPigEdition}
-            />
-          )}
 
           <div className="entry">
             <label className="field">

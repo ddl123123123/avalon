@@ -1,7 +1,8 @@
 import { GameError, shuffle, type GameDefinition, type PlayerId } from '../../framework';
-import { prompts } from './prompts';
+import { promptBank, type PromptKind } from './promptBank';
 
-export type PromptKind = keyof typeof prompts;
+export { promptBank, promptPresets, type PromptKind, type PromptPreset } from './promptBank';
+
 export type TruthOptions = { laps: 1 | 2 };
 
 interface TruthState {
@@ -36,7 +37,7 @@ export const truthOrDare: GameDefinition<TruthState, Action, TruthView, TruthOpt
   validateOptions: (_, count) => count >= 2 && count <= 10 ? null : '需要 2 到 10 人才能开局',
   setup: (players, options, rng) => ({
     players,
-    decks: { truth: shuffle(prompts.truth, rng), dare: shuffle(prompts.dare, rng) },
+    decks: { truth: shuffle(promptBank['13+'].truth, rng), dare: shuffle(promptBank['13+'].dare, rng) },
     turn: 0,
     totalTurns: players.length * options.laps,
     prompt: null,

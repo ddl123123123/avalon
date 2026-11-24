@@ -7,9 +7,9 @@ import { Tilt } from '../fx/Tilt';
 import { useReducedMotion } from '../fx/motion';
 import { SplitText } from '../fx/SplitText';
 import { AvalonRoleGuide } from '../games/avalon/RoleGuide';
-import { avalonPigArt, setAvalonPigEdition, useAvalonCardStyle } from '../games/avalon/cardLibrary';
-import { setCitadelsPigEdition, useCitadelsPigTheme } from '../games/citadels/cardStyle';
-import { PigEditionSwitch } from '../games/pigEdition';
+import { avalonPigArt, useAvalonCardStyle } from '../games/avalon/cardLibrary';
+import { useCitadelsPigTheme } from '../games/citadels/cardStyle';
+import { TruthQuickPlay } from '../games/party/TruthQuickPlay';
 import { GAME_CLIENTS } from '../games/registry';
 import { forgetRecentRoom, getName, net, notify, setName, useNet } from '../net/client';
 import { navigate, roomPath } from '../net/route';
@@ -40,6 +40,7 @@ export function Home() {
   const game = GAME_CLIENTS[gameId]!;
   const isAvalon = game.id === Avalon.avalon.id;
   const isCitadels = game.id === Citadels.citadels.id;
+  const isTruth = game.id === 'truth-or-dare';
   const citadelsPig = useCitadelsPigTheme();
   const avalonPig = useAvalonCardStyle() === 'pig';
   const pigTheme = isAvalon ? avalonPig : isCitadels && citadelsPig;
@@ -86,20 +87,9 @@ export function Home() {
             <strong>桌游厅</strong>
           </span>
         </div>
-        {isAvalon || isCitadels ? (
-          <PigEditionSwitch
-            key={game.id}
-            gameName={game.name}
-            active={pigTheme}
-            onChange={isAvalon ? setAvalonPigEdition : setCitadelsPigEdition}
-          />
-        ) : (
-          <div className="home-masthead-note">
-            <span>多人联机</span>
-            <i aria-hidden="true" />
-            <span>策略 · 合作 · 推理</span>
-          </div>
-        )}
+        <div className="home-masthead-note">
+          <span>桌游与聚会游戏</span>
+        </div>
       </header>
 
       <section className={isAvalon ? 'hero hero-avalon' : 'hero'} data-game={game.id}>
@@ -123,7 +113,7 @@ export function Home() {
           </h1>
           <p className="hero-lede">{game.hero.lede}</p>
 
-          <div className="entry">
+          {isTruth ? <TruthQuickPlay /> : <div className="entry">
             <label className="field">
               你的名字
               <input
@@ -155,7 +145,7 @@ export function Home() {
                 </button>
               </form>
             </div>
-          </div>
+          </div>}
           {resumeCode && !recentRooms.some((recent) => recent.code === resumeCode) && (
             <button type="button" className="link resume" onClick={() => navigate(roomPath(resumeCode))}>
               回到房间 {resumeCode}

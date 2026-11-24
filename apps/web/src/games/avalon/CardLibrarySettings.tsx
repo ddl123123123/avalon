@@ -1,10 +1,9 @@
 import { AvalonCardBack, RoleFace } from './art';
-import { usePigUnlocked } from '../pigEdition';
 import { AVALON_CARD_STYLES, setAvalonCardStyle, useAvalonCardStyle } from './cardLibrary';
 
 export function CardLibrarySettings({ compact = false }: { compact?: boolean }) {
   const selected = useAvalonCardStyle();
-  const unlocked = usePigUnlocked();
+  if (selected === 'pig') return null;
 
   return (
     <section className={`av-card-library${compact ? ' av-card-library-compact' : ''}`} aria-label="角色卡牌库设置">
@@ -15,7 +14,7 @@ export function CardLibrarySettings({ compact = false }: { compact?: boolean }) 
         </div>
       )}
       <div className="av-card-style-options">
-        {AVALON_CARD_STYLES.filter(({ id }) => unlocked || id !== 'pig').map((style) => (
+        {AVALON_CARD_STYLES.map((style) => (
           <button
             key={style.id}
             type="button"

@@ -88,13 +88,13 @@ export const truthOrDareClient: GameClient = {
   tagline: truthOrDare.tagline,
   icon: <span className="party-tab-mark" aria-hidden="true">✦</span>,
   hero: {
-    lede: '轮到你时，选一个问题聊聊自己，或抽一个小挑战给同桌的人看看。有不想做的题，随时跳过。',
+    lede: '选一个难度，抽一道真心话或大冒险。遇到不想回答或挑战的题，直接换一张。',
     Art: () => <div className="party-art party-art-truth" aria-hidden="true"><span>?</span><i>✦</i></div>,
-    note: '2 到 10 人。内置 20 道真心话和 20 道大冒险，同一局内抽到的题不会重复。',
+    note: '适合朋友聚会，也可以自己抽。同一档的题在重新洗牌前不会重复。',
     steps: [
-      { title: '入座', text: '通过邀请链接或房间号加入。房主选玩一圈或两圈。' },
-      { title: '轮流抽题', text: '按座位顺序发题。当前玩家选择一类，抽到的题会显示给全桌。' },
-      { title: '交给下一位', text: '完成或跳过后由下一位抽题。约定的圈数玩完即结束。' },
+      { title: '选题库', text: '从 13+、16+、18+ 和走心版里选一档。' },
+      { title: '抽一张', text: '选真心话或大冒险，也可以随机抽。' },
+      { title: '想换就换', text: '直接再按一次，抽出另一张。一起玩时可以把手机递给下一位。' },
     ],
     goals: [],
   },

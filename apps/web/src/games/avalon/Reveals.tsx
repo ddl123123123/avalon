@@ -4,14 +4,9 @@ import { Avalon, type RoomPlayer } from '@tabletop/shared';
 import { Crest } from '../../art/Crest';
 import { Tilt } from '../../fx/Tilt';
 import { CardBack } from '../../art/glass';
-import { QuestCard, RoleFace } from './art';
+import { AvalonCardBack, QuestCard, RoleFace } from './art';
 
 const { ROLES } = Avalon;
-const AVALON_ROLE_BACK = `${import.meta.env.BASE_URL}avalon-card-back.png`;
-
-function AvalonCardBack() {
-  return <img className="role-face avalon-card-back" src={AVALON_ROLE_BACK} alt="" draggable={false} />;
-}
 
 /** 可翻转的牌：背面朝上入场，flipped 后翻到正面。 */
 export function FlipCard({ flipped, front, back = <CardBack />, className = '' }: { flipped: boolean; front: ReactNode; back?: ReactNode; className?: string }) {
@@ -84,7 +79,7 @@ export function RoleReveal({
 }) {
   const [flipped, setFlipped] = useState(false);
   useEffect(() => {
-    const t = setTimeout(() => setFlipped(true), intro ? 1100 : 250);
+    const t = setTimeout(() => setFlipped(true), intro ? 1100 : 900);
     return () => clearTimeout(t);
   }, [intro]);
   const info = ROLES[me.role];

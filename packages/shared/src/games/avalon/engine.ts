@@ -19,7 +19,7 @@ import {
   type SpeechSeconds,
 } from './rules';
 
-export type AvalonPhase = 'team' | 'discussion' | 'vote' | 'quest' | 'lady' | 'assassin' | 'ended';
+export type AvalonPhase = 'identity' | 'team' | 'discussion' | 'vote' | 'quest' | 'lady' | 'assassin' | 'ended';
 
 export type WinReason =
   /** 三次任务失败 */
@@ -62,6 +62,8 @@ export interface AvalonState {
   phase: AvalonPhase;
   questIndex: number;
   leaderIndex: number;
+  confirmedRoles: PlayerId[];
+  leaderOrder: PlayerId[];
   /** 队长本轮已完成讨论，正在提交最终队伍。 */
   discussionComplete: boolean;
   discussion: null | {
@@ -92,6 +94,7 @@ export interface AvalonState {
 }
 
 export type AvalonAction =
+  | { type: 'confirm_role' }
   /** 队长调整候选队员，所有人实时可见 */
   | { type: 'draft_team'; team: PlayerId[] }
   /** 队长设置预选队伍和发言顺序，开始本轮讨论 */
@@ -121,7 +124,8 @@ export interface AvalonView {
   roleSet: Role[];
   phase: AvalonPhase;
   questIndex: number;
-  leader: PlayerId;
+  leader: PlayerId | null;
+  confirmedRoles: PlayerId[];
   discussionComplete: boolean;
   discussion: null | {
     order: PlayerId[];
@@ -201,16 +205,15 @@ function setup(players: PlayerId[], options: AvalonOptions, rng: Rng): AvalonSta
   const deck = shuffle(buildRoleDeck(players.length, options), rng);
   const roles: Record<PlayerId, Role> = {};
   players.forEach((id, i) => (roles[id] = deck[i]!));
-  const leaderIndex = Math.floor(rng() * players.length);
-  // 湖中仙女从首任队长右手边的玩家开始（队长顺时针传递，即向左）
-  const ladyStart = players[(leaderIndex - 1 + players.length) % players.length]!;
   return {
     players: players.slice(),
     roles,
     options: { ...options },
-    phase: 'team',
+    phase: 'identity',
     questIndex: 0,
-    leaderIndex,
+    leaderIndex: -1,
+    confirmedRoles: [],
+    leaderOrder: [],
     discussionComplete: false,
     discussion: null,
     rejectCount: 0,
@@ -219,7 +222,7 @@ function setup(players: PlayerId[], options: AvalonOptions, rng: Rng): AvalonSta
     questCards: {},
     proposals: [],
     quests: [],
-    lady: options.ladyOfTheLake ? { holder: ladyStart, pastHolders: [ladyStart], inspections: [] } : null,
+    lady: null,
     assassinTarget: null,
     winner: null,
     winReason: null,
@@ -238,7 +241,9 @@ function checkTeam(state: AvalonState, team: unknown, requireFull: boolean): Pla
 }
 
 function nextLeader(state: AvalonState) {
-  state.leaderIndex = (state.leaderIndex + 1) % state.players.length;
+  const order = state.leaderOrder ?? state.players;
+  const current = order.indexOf(state.players[state.leaderIndex]!);
+  state.leaderIndex = state.players.indexOf(order[(current + 1) % order.length]!);
 }
 
 function finish(state: AvalonState, winner: Alignment, reason: WinReason) {
@@ -336,9 +341,26 @@ function ladyTargets(state: AvalonState): PlayerId[] {
   return state.players.filter((id) => !past.includes(id));
 }
 
-function reduce(prev: AvalonState, player: PlayerId, action: AvalonAction, _rng: Rng): AvalonState {
+function reduce(prev: AvalonState, player: PlayerId, action: AvalonAction, rng: Rng): AvalonState {
   if (!prev.players.includes(player)) throw new GameError('你不在这局游戏中');
   if (!action || typeof action !== 'object') throw new GameError('无效的操作');
+  if (action.type === 'confirm_role') {
+    if (prev.phase !== 'identity' || prev.confirmedRoles.includes(player)) return prev;
+    const state = structuredClone(prev);
+    state.confirmedRoles.push(player);
+    if (state.confirmedRoles.length === state.players.length) {
+      state.leaderOrder = shuffle(state.players, rng);
+      state.leaderIndex = state.players.indexOf(state.leaderOrder[0]!);
+      if (state.options.ladyOfTheLake) {
+        // 湖中仙女仍按实际座位发给首任队长右手边的玩家。
+        const holder = state.players[(state.leaderIndex - 1 + state.players.length) % state.players.length]!;
+        state.lady = { holder, pastHolders: [holder], inspections: [] };
+      }
+      startTeamPhase(state);
+    }
+    return state;
+  }
+  if (prev.phase === 'identity') throw new GameError('请等待所有玩家确认身份');
   const state: AvalonState = structuredClone(prev);
   const leader = state.players[state.leaderIndex]!;
 
@@ -485,7 +507,8 @@ function view(state: AvalonState, viewer: PlayerId | null): AvalonView {
     roleSet: Object.values(state.roles).sort(),
     phase: state.phase,
     questIndex: state.questIndex,
-    leader: state.players[state.leaderIndex]!,
+    leader: state.players[state.leaderIndex] ?? null,
+    confirmedRoles: state.confirmedRoles ?? [],
     discussionComplete: state.discussionComplete,
     discussion: state.discussion
       ? {
@@ -519,6 +542,8 @@ function botAction(state: AvalonState, player: PlayerId, rng: Rng): AvalonAction
   const known = sightingsFor(state, player);
 
   switch (state.phase) {
+    case 'identity':
+      return state.confirmedRoles.includes(player) ? null : { type: 'confirm_role' };
     case 'team': {
       if (state.players[state.leaderIndex] !== player) return null;
       if (state.discussionComplete) return { type: 'propose_team', team: state.team };

@@ -8,6 +8,7 @@ import './styles/avalon.css';
 import './styles/citadels.css';
 import './styles/glassworks.css';
 import './styles/party.css';
+import './styles/grey-tide.css';
 import './styles/citadels-pig.css';
 
 createRoot(document.getElementById('root')!).render(

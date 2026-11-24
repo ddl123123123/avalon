@@ -5,6 +5,7 @@ import { citadelsClient } from './citadels';
 import { glassworksClient } from './glassworks';
 import { ninjaNightClient } from './party/NinjaNight';
 import { truthOrDareClient } from './party/TruthOrDare';
+import { greyTideClient } from './party/GreyTide';
 
 /**
  * 每款桌游在前端要提供的东西。大厅和房间外壳是通用的，
@@ -48,4 +49,5 @@ export const GAME_CLIENTS: Record<string, GameClient> = {
   [glassworksClient.id]: glassworksClient,
   [ninjaNightClient.id]: ninjaNightClient,
   [truthOrDareClient.id]: truthOrDareClient,
+  [greyTideClient.id]: greyTideClient,
 };

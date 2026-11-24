@@ -6,3 +6,4 @@ export * as Citadels from './games/citadels';
 export * as Glassworks from './games/glassworks';
 export * as NinjaNight from './games/ninja-night';
 export * as TruthOrDare from './games/truth-or-dare';
+export * as GreyTide from './games/grey-tide';

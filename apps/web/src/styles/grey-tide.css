@@ -1,0 +1,145 @@
+.grey-tab-mark {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: #9bd7d3;
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.grey-hero-art {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border: 1px solid #8fa2a680;
+}
+
+.party-lighthouse {
+  --party-accent: #a5d9d3;
+  background: radial-gradient(ellipse at 45% 0%, #193b44, #111d26 45%, #0b141b 80%);
+}
+
+.party-lighthouse .party-content {
+  max-width: 940px;
+}
+
+.party-lighthouse .party-panel {
+  border-color: #7ab5b546;
+  background: #102029ed;
+}
+
+.party-lighthouse .grey-forecast {
+  border-top: 2px solid #a4d4d5;
+  background: linear-gradient(145deg, #1c3a43, #102029 65%);
+}
+
+.grey-closure {
+  color: #ffe0a2;
+}
+
+.grey-mission,
+.grey-crew,
+.grey-layout,
+.grey-crew-map,
+.grey-stations,
+.grey-orders {
+  display: grid;
+  gap: 10px;
+}
+
+.grey-mission,
+.party-panel.grey-crew,
+.grey-layout:has(.grey-action),
+.grey-stations {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.grey-layout {
+  gap: 14px;
+  align-items: start;
+}
+
+.grey-mission > div,
+.grey-crew > div,
+.grey-station,
+.grey-wait {
+  padding: 10px;
+  border: 1px solid #9ad7d329;
+  border-radius: 6px;
+  background: #83c7cd0a;
+}
+
+.grey-mission h3,
+.grey-station h3 {
+  font-family: inherit;
+  font-size: 1rem;
+  letter-spacing: normal;
+}
+
+.grey-mission ul,
+.grey-log > ul {
+  margin: 6px 0 0;
+  padding-left: 1.15em;
+  line-height: 1.55;
+}
+
+.grey-crew p,
+.grey-station p,
+.grey-map-note {
+  font-size: 0.9rem;
+  color: var(--vellum-dim);
+}
+
+.grey-crew small,
+.grey-occupants {
+  color: var(--party-accent);
+}
+
+.grey-station {
+  min-width: 0;
+}
+
+.grey-station[data-current='true'] {
+  border-color: #9ad7d394;
+}
+
+.grey-occupants {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 0.8rem;
+}
+
+.grey-occupants span {
+  padding: 2px 4px;
+  border-radius: 3px;
+  background: #a4d4d520;
+}
+
+.grey-order {
+  display: grid;
+  gap: 3px;
+  min-height: 54px;
+  padding: 8px 12px;
+  border: 1px solid #9ad7d344;
+  border-radius: 6px;
+  background: #13262f;
+  color: var(--vellum);
+  text-align: left;
+}
+
+.grey-order small {
+  color: var(--vellum-dim);
+}
+
+.grey-order[aria-pressed='true'] {
+  border-color: var(--party-accent);
+  background: #284653;
+}
+
+@media (max-width: 680px) {
+  .grey-layout:has(.grey-action) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

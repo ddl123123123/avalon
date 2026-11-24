@@ -4,6 +4,7 @@ import { citadels } from './citadels';
 import { glassworks } from './glassworks';
 import { ninjaNight } from './ninja-night';
 import { truthOrDare } from './truth-or-dare';
+import { greyTide } from './grey-tide';
 
 /** 已上线的桌游。新增桌游时在这里注册。 */
 export const GAMES: Record<string, GameDefinition> = {
@@ -12,6 +13,7 @@ export const GAMES: Record<string, GameDefinition> = {
   [glassworks.id]: glassworks,
   [ninjaNight.id]: ninjaNight,
   [truthOrDare.id]: truthOrDare,
+  [greyTide.id]: greyTide,
 };
 
 export function getGame(id: string): GameDefinition | undefined {

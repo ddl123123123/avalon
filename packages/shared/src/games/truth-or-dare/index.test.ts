@@ -3,14 +3,14 @@ import { truthOrDare } from './index';
 
 const rng = () => 0;
 
-it('supports a full two-lap game without repeating a prompt when everyone chooses the same category', () => {
+it('supports a full two-lap game without repeating a truth prompt', () => {
   const players = Array.from({ length: 10 }, (_, index) => `player-${index}`);
   let state = truthOrDare.setup(players, { laps: 2 }, rng);
   const drawn = new Set<string>();
   for (let turn = 0; turn < 20; turn++) {
     const player = players[turn % players.length];
     expect(truthOrDare.view(state, null).current).toBe(player);
-    state = truthOrDare.reduce(state, player, { type: 'draw', kind: 'dare', turn }, rng);
+    state = truthOrDare.reduce(state, player, { type: 'draw', turn }, rng);
     drawn.add(truthOrDare.view(state, null).prompt!.text);
     state = truthOrDare.reduce(state, player, { type: 'done', turn }, rng);
   }

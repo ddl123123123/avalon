@@ -1,16 +1,16 @@
 import { GameError, shuffle, type GameDefinition, type PlayerId } from '../../framework';
-import { promptBank, type PromptKind } from './promptBank';
+import { promptBank } from './promptBank';
 
-export { promptBank, promptPresets, type PromptKind, type PromptPreset } from './promptBank';
+export { promptBank, promptPresets, type PromptPreset } from './promptBank';
 
 export type TruthOptions = { laps: 1 | 2 };
 
 interface TruthState {
   players: PlayerId[];
-  decks: Record<PromptKind, string[]>;
+  deck: string[];
   turn: number;
   totalTurns: number;
-  prompt: { kind: PromptKind; text: string } | null;
+  prompt: { kind: 'truth'; text: string } | null;
 }
 
 export interface TruthView {
@@ -21,12 +21,12 @@ export interface TruthView {
 }
 
 type Action =
-  | { type: 'draw'; turn: number; kind: PromptKind }
+  | { type: 'draw'; turn: number; kind?: 'truth' }
   | { type: 'done' | 'skip' | 'end'; turn: number };
 
 export const truthOrDare: GameDefinition<TruthState, Action, TruthView, TruthOptions> = {
   id: 'truth-or-dare',
-  name: '真心话大冒险',
+  name: '真心话',
   tagline: '轮流抽题，随时可以跳过',
   minPlayers: 2,
   maxPlayers: 10,
@@ -37,7 +37,7 @@ export const truthOrDare: GameDefinition<TruthState, Action, TruthView, TruthOpt
   validateOptions: (_, count) => count >= 2 && count <= 10 ? null : '需要 2 到 10 人才能开局',
   setup: (players, options, rng) => ({
     players,
-    decks: { truth: shuffle(promptBank['13+'].truth, rng), dare: shuffle(promptBank['13+'].dare, rng) },
+    deck: shuffle(promptBank['13+'].truth, rng),
     turn: 0,
     totalTurns: players.length * options.laps,
     prompt: null,
@@ -55,12 +55,11 @@ export const truthOrDare: GameDefinition<TruthState, Action, TruthView, TruthOpt
     if (player !== current) throw new GameError('还没轮到你');
     switch (action.type) {
       case 'draw': {
-        const { kind } = action;
-        if (kind !== 'truth' && kind !== 'dare') throw new GameError('请选择一种题目');
+        if (action.kind !== undefined && action.kind !== 'truth') throw new GameError('本房间只抽真心话');
         if (state.prompt) throw new GameError('本回合已经抽题');
-        const [text, ...remaining] = state.decks[kind];
-        if (!text) throw new GameError('这类题目已经抽完，请选择另一类');
-        return { ...state, decks: { ...state.decks, [kind]: remaining }, prompt: { kind, text } };
+        const [text, ...remaining] = state.deck;
+        if (!text) throw new GameError('这局的题目已经抽完');
+        return { ...state, deck: remaining, prompt: { kind: 'truth', text } };
       }
       case 'done':
         if (!state.prompt) throw new GameError('请先抽题');

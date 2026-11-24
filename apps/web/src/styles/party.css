@@ -331,11 +331,6 @@
   font-size: clamp(1.15rem, 4vw, 1.6rem);
 }
 
-.truth-prompt[data-kind='dare'] {
-  border-color: #f0bdc066;
-  background: linear-gradient(135deg, #4b3043, #2c2232);
-}
-
 .truth-quick {
   --party-accent: #f0bdc0;
   gap: 14px;
@@ -356,18 +351,10 @@
   color: var(--vellum);
 }
 
-.truth-presets,
-.truth-draw-actions {
+.truth-presets {
   display: grid;
   gap: 8px;
-}
-
-.truth-presets {
   grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.truth-draw-actions {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .truth-quick .btn {

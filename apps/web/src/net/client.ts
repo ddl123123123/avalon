@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import type { AvalonAssistantFeature, ClientMessage, RoomSnapshot, ServerMessage } from '@tabletop/shared';
+import type { ClientMessage, RoomSnapshot, ServerMessage } from '@tabletop/shared';
 import { navigate } from './route';
 
 /**
@@ -242,12 +242,7 @@ export const net = {
   kick: (playerId: string) => raw({ type: 'kick', playerId }),
   startGame: () => raw({ type: 'start_game' }),
   act: (action: unknown) => raw({ type: 'game_action', action }),
-  askAvalonAssistant(input: {
-    requestId: string;
-    feature: AvalonAssistantFeature;
-    question?: string;
-    privateNotes?: string;
-  }) {
+  askAvalonAssistant(input: Omit<Extract<ClientMessage, { type: 'avalon_assistant' }>, 'type'>) {
     set({ assistantResult: null, assistantError: null });
     return raw({ type: 'avalon_assistant', ...input });
   },

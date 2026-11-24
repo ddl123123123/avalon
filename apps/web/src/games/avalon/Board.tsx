@@ -405,18 +405,17 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
             onClose={() => setShowAssistant(false)}
           />
         )}
-        {showNotebook && (
-          <Notebook
-            key="notebook"
-            players={room.players}
-            you={room.you}
-            roleSet={view.roleSet}
-            notebook={notebook}
-            onChange={setNotebook}
-            onClose={() => setShowNotebook(false)}
-          />
-        )}
       </AnimatePresence>
+      <Notebook
+        open={showNotebook}
+        currentRound={view.questIndex + 1}
+        players={room.players}
+        you={room.you}
+        roleSet={view.roleSet}
+        notebook={notebook}
+        onChange={setNotebook}
+        onClose={() => setShowNotebook(false)}
+      />
     </main>
   );
 }

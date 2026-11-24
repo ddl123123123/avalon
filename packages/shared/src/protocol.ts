@@ -36,6 +36,7 @@ export type AvalonAssistantFeature =
   | 'team-comparison'
   | 'role-coach'
   | 'speech-prep'
+  | 'speech-summary'
   | 'rules-qa'
   | 'post-game-review';
 
@@ -58,6 +59,7 @@ export type ClientMessage =
       feature: AvalonAssistantFeature;
       question?: string;
       privateNotes?: string;
+      speech?: { round: number; text: string };
     }
   | { type: 'back_to_lobby' };
 

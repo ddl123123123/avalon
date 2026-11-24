@@ -2,102 +2,18 @@ import { useId } from 'react';
 import { motion } from 'framer-motion';
 import { Avalon } from '@tabletop/shared';
 import { polar, sector } from '../../art/geometry';
-import { DecodedImage } from '../../art/DecodedImage';
-import { ArchCard, EMBLEM, GILT, LEAD, type Glass } from '../../art/glass';
+import { EMBLEM, GILT, LEAD, type Glass } from '../../art/glass';
 import { getAvalonCardAsset, useAvalonCardStyle, type AvalonCardStyle } from './cardLibrary';
 
 type Role = Avalon.Role;
 
-/** 每个角色一组玻璃色：深 / 中 / 亮 */
-const GLASS: Record<Role, Glass> = {
+/** 成功牌和失败牌使用的玻璃色：深 / 中 / 亮。 */
+const GLASS: Record<'merlin' | 'assassin', Glass> = {
   merlin: ['#1d3f94', '#3f6fd8', '#8fb8ff'],
-  percival: ['#12606e', '#2a98a8', '#9fe0e0'],
-  servant: ['#23408a', '#3b62bd', '#86a8ea'],
   assassin: ['#6e1226', '#b8263b', '#ec6a78'],
-  morgana: ['#4d1760', '#8a2e9e', '#d07adc'],
-  mordred: ['#4a0c14', '#8f1d26', '#d4513f'],
-  oberon: ['#33314f', '#59558a', '#a59fd0'],
-  minion: ['#5f1616', '#9c2e2e', '#dd6a55'],
 };
 
-/** 角色徽记，画在 100×100 的格子里。 */
-function Emblem({ role }: { role: Role }) {
-  switch (role) {
-    case 'merlin':
-      // 尖顶法师帽与星
-      return (
-        <>
-          <path d="M52 8L72 62H28Z" />
-          <path d="M12 68Q50 52 88 68Q50 86 12 68Z" />
-          <path d="M50 30l3 7 7 3-7 3-3 7-3-7-7-3 7-3z" fill="#3f6fd8" stroke="none" />
-        </>
-      );
-    case 'percival':
-      // 圣杯
-      return (
-        <>
-          <path d="M26 22H74C74 50 64 60 50 60C36 60 26 50 26 22Z" />
-          <path d="M45 60H55V76H45Z" />
-          <path d="M32 86C32 79 41 76 50 76C59 76 68 79 68 86Z" />
-          <path d="M50 4v8M34 8l3 7M66 8l-3 7" fill="none" stroke={EMBLEM} strokeWidth="3" strokeLinecap="round" />
-        </>
-      );
-    case 'servant':
-      // 十字盾
-      return (
-        <>
-          <path d="M22 14H78V46C78 70 62 84 50 90C38 84 22 70 22 46Z" />
-          <path d="M45 14h10v24h23v10H55v38l-5 4-5-4V48H22V38h23z" fill="#3b62bd" stroke="none" />
-        </>
-      );
-    case 'assassin':
-      // 匕首
-      return (
-        <>
-          <path d="M50 94L41 44H59Z" />
-          <path d="M28 36H72V46H28Z" />
-          <path d="M45 16H55V36H45Z" />
-          <circle cx="50" cy="12" r="7" />
-        </>
-      );
-    case 'morgana':
-      // 弦月与星
-      return (
-        <>
-          <path d="M60 10A40 40 0 1 0 60 90A31 31 0 1 1 60 10Z" />
-          <path d="M70 38l4 9 9 4-9 4-4 9-4-9-9-4 9-4z" />
-        </>
-      );
-    case 'mordred':
-      // 裂开的王冠
-      return (
-        <>
-          <path d="M16 68L12 28L32 46L50 18L68 46L88 28L84 68Z" />
-          <path d="M16 74H84V86H16Z" />
-          <path d="M50 18L45 38L55 50L48 68" fill="none" stroke={LEAD} strokeWidth="4" strokeLinejoin="round" />
-        </>
-      );
-    case 'oberon':
-      // 面具
-      return (
-        <>
-          <path d="M8 38C24 26 40 30 50 40C60 30 76 26 92 38C92 58 80 70 66 68C58 67 54 60 50 54C46 60 42 67 34 68C20 70 8 58 8 38Z" />
-          <path d="M20 46q11-9 22 2q-11 7-22-2zM80 46q-11-9-22 2q11 7 22-2z" fill={LEAD} stroke="none" />
-        </>
-      );
-    case 'minion':
-      // 三道爪痕
-      return (
-        <g transform="rotate(14 50 50)">
-          <path d="M26 12Q40 50 28 90Q18 50 26 12Z" />
-          <path d="M50 8Q64 50 52 94Q42 50 50 8Z" />
-          <path d="M74 12Q88 50 76 90Q66 50 74 12Z" />
-        </g>
-      );
-  }
-}
-
-/** 角色牌正面：哥特拱窗里的一扇彩色玻璃。 */
+/** 角色牌正面使用当前牌库的图片。 */
 export function RoleFace({ role, style }: { role: Role; style?: AvalonCardStyle }) {
   const activeStyle = useAvalonCardStyle();
   const cardStyle = style ?? activeStyle;
@@ -115,12 +31,7 @@ export function RoleFace({ role, style }: { role: Role; style?: AvalonCardStyle 
       whileHover={{ y: -2, scale: 1.025 }}
       whileTap={{ scale: 0.99 }}
     >
-      <div className="role-face-fallback" aria-hidden="true">
-        <ArchCard seed={role} glass={GLASS[role]} name={info.name} accent={good ? '#4c86ea' : '#d2384f'} label={label}>
-          <Emblem role={role} />
-        </ArchCard>
-      </div>
-      <DecodedImage className="role-face-art" src={asset.src} alt="" />
+      <img className="role-face-art" src={asset.src} alt="" decoding="async" draggable={false} />
       <span className="role-face-frame" aria-hidden="true" />
       <span className="role-face-nameplate" aria-hidden="true">
         <strong>{info.name}</strong>

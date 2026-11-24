@@ -38,6 +38,16 @@ DEEPSEEK_BASE_URL=https://api.deepseek.com
 DEEPSEEK_MODEL=deepseek-flash
 ```
 
+阿瓦隆机器人默认复用这套 DeepSeek 配置。要给不同机器人接不同的 OpenAI 兼容模型，可在同一份服务端 `.env` 追加：
+
+```dotenv
+AVALON_BOT_MODELS='[{"id":"alt","label":"备用模型","baseUrl":"https://provider.example/v1","model":"model-id","apiKeyEnv":"ALT_BOT_KEY"}]'
+AVALON_BOT_API_KEYS='{"ALT_BOT_KEY":"填该提供商的密钥"}'
+AVALON_BOT_ROLE_MODELS='{"merlin":"deepseek","assassin":"alt","servant":"local"}'
+```
+
+房主在大厅选择某个机器人座位的模型时，该选择优先于按职业的默认模型。角色默认路由只保存在服务器，避免通过模型推测随机身份。模型请求使用单个座位的可见信息；发言和战报是公开数据，个人任务牌与记忆只在该机器人的请求中使用。服务无响应时，机器人跳过文字发言，其余动作由本地规则接管。
+
 保存后重新发布（推送到 `main` 会自动发版），Compose 会把这些变量传入桌游服务。`.env` 中已有的 `TAG` 和其他项目配置要保留。之后可以在 DeepSeek 开放平台查看用量与余额；模型按输入和输出 token 计费，具体价格以[官方说明](https://api-docs.deepseek.com/quick_start/pricing/)为准。
 
 如果 Key 没有在创建时保存，平台列表里的遮罩内容和 Tracking ID 都不能用于调用；请在 DeepSeek 平台新建一个 Key 并安全保存完整值。

@@ -118,6 +118,7 @@ export interface AvalonOptions {
   oberon: boolean;
   ladyOfTheLake: boolean;
   speechSeconds: SpeechSeconds;
+  botDifficulty: 'standard' | 'advanced';
 }
 
 export const SPEECH_TIMERS = [60, 90, 120] as const;
@@ -137,7 +138,7 @@ export function recommendedOptions(playerCount: number): Pick<AvalonOptions, Opt
 }
 
 export function defaultOptions(): AvalonOptions {
-  return { percival: false, morgana: false, mordred: false, oberon: false, ladyOfTheLake: false, speechSeconds: 90 };
+  return { percival: false, morgana: false, mordred: false, oberon: false, ladyOfTheLake: false, speechSeconds: 90, botDifficulty: 'standard' };
 }
 
 export function normalizeOptions(raw: unknown): AvalonOptions {
@@ -149,6 +150,7 @@ export function normalizeOptions(raw: unknown): AvalonOptions {
     oberon: src.oberon === true,
     ladyOfTheLake: src.ladyOfTheLake === true,
     speechSeconds: SPEECH_TIMERS.includes(src.speechSeconds as SpeechSeconds) ? (src.speechSeconds as SpeechSeconds) : 90,
+    botDifficulty: src.botDifficulty === 'advanced' ? 'advanced' : 'standard',
   };
 }
 

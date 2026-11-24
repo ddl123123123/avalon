@@ -4,6 +4,7 @@ import type { RoomPlayer, RoomSnapshot } from '@tabletop/shared';
 import { Avalon, Citadels, getGame } from '@tabletop/shared';
 import { TableSurface } from '../art/glass';
 import { useAvalonCardStyle } from '../games/avalon/cardLibrary';
+import { AvalonBotSettings } from '../games/avalon/BotSettings';
 import { useCitadelsPigTheme } from '../games/citadels/cardStyle';
 import type { GameClient } from '../games/registry';
 import { net } from '../net/client';
@@ -168,6 +169,7 @@ export function Lobby({ room, game }: { room: RoomSnapshot; game: GameClient }) 
             </fieldset>
           )}
           <game.Options options={room.options} playerCount={target ?? count} editable={isHost} onChange={net.setOptions} />
+          {room.gameId === Avalon.avalon.id && <AvalonBotSettings room={room} />}
           <div className="lobby-actions">
             {isHost ? (
               <>

@@ -55,6 +55,14 @@ export interface LadyInspection {
   afterQuest: number;
 }
 
+export interface SpeechRecord {
+  questIndex: number;
+  attempt: number;
+  player: PlayerId;
+  text: string;
+  result: 'spoken' | 'passed' | 'timed_out' | 'unavailable';
+}
+
 export interface AvalonState {
   players: PlayerId[];
   roles: Record<PlayerId, Role>;
@@ -66,6 +74,8 @@ export interface AvalonState {
   leaderOrder: PlayerId[];
   /** 队长本轮已完成讨论，正在提交最终队伍。 */
   discussionComplete: boolean;
+  speechMode: 'voice' | 'text';
+  speeches: SpeechRecord[];
   discussion: null | {
     order: PlayerId[];
     currentIndex: number;
@@ -101,6 +111,7 @@ export type AvalonAction =
   | { type: 'start_discussion'; preselectedTeam: boolean; leaderFirst: boolean; direction: 'left' | 'right'; now?: number }
   /** 当前发言者提前结束自己的发言 */
   | { type: 'finish_speech'; now?: number }
+  | { type: 'submit_speech'; turn: string; text: string; now?: number }
   /** 倒计时结束后自动进入下一位；任何玩家都可触发 */
   | { type: 'timeout_speech'; now?: number }
   /** 队长确定队伍，进入投票 */
@@ -127,10 +138,13 @@ export interface AvalonView {
   leader: PlayerId | null;
   confirmedRoles: PlayerId[];
   discussionComplete: boolean;
+  speechMode: AvalonState['speechMode'];
+  speeches: SpeechRecord[];
   discussion: null | {
     order: PlayerId[];
     currentIndex: number;
     currentSpeaker: PlayerId;
+    turn: string;
     deadline: number;
     preselectedTeam: boolean;
     leaderFirst: boolean;
@@ -215,6 +229,8 @@ function setup(players: PlayerId[], options: AvalonOptions, rng: Rng): AvalonSta
     confirmedRoles: [],
     leaderOrder: [],
     discussionComplete: false,
+    speechMode: 'voice',
+    speeches: [],
     discussion: null,
     rejectCount: 0,
     team: [],
@@ -275,6 +291,28 @@ function advanceDiscussion(state: AvalonState, now: number) {
     currentIndex: nextIndex,
     deadline: now + discussion.timerSeconds * 1000,
   };
+}
+
+export function speechTurn(state: Pick<AvalonState, 'questIndex' | 'rejectCount' | 'discussion'>) {
+  return `${state.questIndex}:${state.rejectCount}:${state.discussion?.currentIndex ?? -1}`;
+}
+
+function recordSpeech(state: AvalonState, result: SpeechRecord['result'], text = '') {
+  if (state.speechMode !== 'text' || !state.discussion) return;
+  state.speeches = [...state.speeches, {
+    questIndex: state.questIndex, attempt: state.rejectCount + 1,
+    player: state.discussion.order[state.discussion.currentIndex], result, text,
+  }];
+}
+
+/** 由房间后台在模型不可用时结束该机器人当前的文字轮次。 */
+export function skipUnavailableSpeech(prev: AvalonState, player: PlayerId, turn: string, now: number): AvalonState {
+  if (prev.speechMode !== 'text' || prev.phase !== 'discussion' || !prev.discussion ||
+      prev.discussion.order[prev.discussion.currentIndex] !== player || speechTurn(prev) !== turn) return prev;
+  const next = { ...prev };
+  recordSpeech(next, 'unavailable');
+  advanceDiscussion(next, now);
+  return next;
 }
 
 function resolveVote(state: AvalonState) {
@@ -361,7 +399,8 @@ function reduce(prev: AvalonState, player: PlayerId, action: AvalonAction, rng: 
     return state;
   }
   if (prev.phase === 'identity') throw new GameError('请等待所有玩家确认身份');
-  const state: AvalonState = structuredClone(prev);
+  const state: AvalonState = structuredClone({ ...prev, speeches: [] });
+  state.speeches = prev.speeches;
   const leader = state.players[state.leaderIndex]!;
 
   switch (action.type) {
@@ -407,19 +446,35 @@ function reduce(prev: AvalonState, player: PlayerId, action: AvalonAction, rng: 
         throw new GameError('现在还没轮到你发言');
       }
       const now = typeof action.now === 'number' && Number.isFinite(action.now) ? action.now : Date.now();
+      recordSpeech(state, now >= state.discussion.deadline ? 'timed_out' : 'passed');
+      advanceDiscussion(state, now);
+      return state;
+    }
+    case 'submit_speech': {
+      if (state.speechMode !== 'text' || state.phase !== 'discussion' || !state.discussion ||
+          state.discussion.order[state.discussion.currentIndex] !== player || action.turn !== speechTurn(state)) {
+        throw new GameError('当前文字发言轮次已更新');
+      }
+      const text = typeof action.text === 'string' ? action.text.trim() : '';
+      if (!text) throw new GameError('请先输入发言，或选择跳过');
+      const now = typeof action.now === 'number' && Number.isFinite(action.now) ? action.now : Date.now();
+      if (now >= state.discussion.deadline) throw new GameError('你的发言时间已结束');
+      recordSpeech(state, 'spoken', text);
       advanceDiscussion(state, now);
       return state;
     }
     case 'timeout_speech': {
       if (state.phase !== 'discussion' || !state.discussion) return state;
       const now = typeof action.now === 'number' && Number.isFinite(action.now) ? action.now : Date.now();
-      if (now < state.discussion.deadline) return state;
+      if (now < state.discussion.deadline) return prev;
+      recordSpeech(state, 'timed_out');
       advanceDiscussion(state, now);
       return state;
     }
     case 'propose_team': {
       if (state.phase !== 'team') throw new GameError('现在不是组队阶段');
       if (player !== leader) throw new GameError('只有队长可以提交队伍');
+      if (state.speechMode === 'text' && !state.discussionComplete) throw new GameError('请先完成本轮文字讨论');
       state.team = checkTeam(state, action.team, true);
       state.votes = {};
       state.phase = 'vote';
@@ -510,10 +565,13 @@ function view(state: AvalonState, viewer: PlayerId | null): AvalonView {
     leader: state.players[state.leaderIndex] ?? null,
     confirmedRoles: state.confirmedRoles ?? [],
     discussionComplete: state.discussionComplete,
+    speechMode: state.speechMode,
+    speeches: state.speeches,
     discussion: state.discussion
       ? {
           ...state.discussion,
           currentSpeaker: state.discussion.order[state.discussion.currentIndex]!,
+          turn: speechTurn(state),
         }
       : null,
     rejectCount: state.rejectCount,

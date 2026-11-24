@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import type { ClientMessage, RoomSnapshot, ServerMessage } from '@tabletop/shared';
+import { GAME_MESSAGE_BYTES, type ClientMessage, type RoomSnapshot, type ServerMessage } from '@tabletop/shared';
 import { navigate } from './route';
 
 /**
@@ -136,7 +136,12 @@ export function dismissNotice() {
 
 function raw(msg: ClientMessage): boolean {
   if (socket?.readyState === WebSocket.OPEN) {
-    socket.send(JSON.stringify(msg));
+    const data = JSON.stringify(msg);
+    if (new TextEncoder().encode(data).byteLength > GAME_MESSAGE_BYTES) {
+      notify('这段内容超出单次传输容量，请缩短后重试');
+      return false;
+    }
+    socket.send(data);
     return true;
   }
   notify('还没连上服务器，稍等一下');
@@ -239,6 +244,7 @@ export const net = {
   setOptions: (options: unknown) => raw({ type: 'set_options', options }),
   setPlayerCount: (playerCount: number) => raw({ type: 'set_player_count', playerCount }),
   addBot: () => raw({ type: 'add_bot' }),
+  setAvalonBotModel: (playerId: string, profile: string | null) => raw({ type: 'set_avalon_bot_model', playerId, profile }),
   kick: (playerId: string) => raw({ type: 'kick', playerId }),
   startGame: () => raw({ type: 'start_game' }),
   act: (action: unknown) => raw({ type: 'game_action', action }),

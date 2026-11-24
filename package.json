@@ -17,7 +17,7 @@
     "dev": "concurrently -k -n server,web -c blue,yellow \"SERVER_PORT=8790 pnpm --filter @tabletop/server dev\" \"pnpm --filter @tabletop/web dev\"",
     "build": "pnpm --filter @tabletop/web build",
     "start": "pnpm --filter @tabletop/server start",
-    "test": "pnpm --filter @tabletop/shared test",
+    "test": "pnpm --filter @tabletop/shared test && pnpm --filter @tabletop/server test",
     "typecheck": "pnpm -r typecheck"
   },
   "devDependencies": {

@@ -14,6 +14,10 @@ import {
   type ServerMessage,
 } from '@tabletop/shared';
 import { answerAvalonAssistant } from './deepseek';
+import {
+  askAvalonBot, botModelDirectory, decisionToken, localBotModel, modelFor, needsAvalonModel, rememberAction,
+  type BotMemory,
+} from './avalon-bot';
 
 /** 一条到客户端的连接。服务端不关心底层是不是 WebSocket。 */
 export interface Connection {
@@ -29,6 +33,7 @@ interface Member {
   clientId: string | null;
   name: string;
   isBot: boolean;
+  avalonProfile?: string;
   connection: Connection | null;
   /** 大厅里断线后的清理定时器 */
   dropTimer: NodeJS.Timeout | null;
@@ -45,6 +50,12 @@ interface Room {
   state: unknown | null;
   gameSeq: number;
   botTimers: Map<PlayerId, NodeJS.Timeout>;
+  speechTimer?: NodeJS.Timeout;
+  avalonAgents?: {
+    memory: Map<PlayerId, BotMemory>;
+    running: Map<PlayerId, AbortController>;
+    requests: number;
+  };
   aiRequestTimes: Map<PlayerId, number>;
   aiRequestHistory: number[];
   emptyTimer: NodeJS.Timeout | null;
@@ -71,6 +82,9 @@ function cleanName(raw: unknown): string {
 
 export class RoomManager {
   private rooms = new Map<string, Room>();
+  private readonly botModels = botModelDirectory(process.env);
+  private botModelInFlight = 0;
+  private botModelCalls: number[] = [];
   /** clientId → 所在房间号 */
   private seats = new Map<string, string>();
   /** clientId → 对外公开的玩家 id（公开 id 不能反推出 clientId） */
@@ -200,6 +214,18 @@ export class RoomManager {
         room.members.push({ id: newId(), seatIndex: this.firstFreeSeat(room), clientId: null, name, isBot: true, connection: null, dropTimer: null });
         return this.broadcast(room);
       }
+      case 'set_avalon_bot_model': {
+        hostOnly();
+        lobbyOnly();
+        if (room.game.id !== Avalon.avalon.id) throw new GameError('当前桌游没有阿瓦隆模型设置');
+        const bot = room.members.find((m) => m.id === msg.playerId && m.isBot);
+        if (!bot) throw new GameError('请选择有效的机器人座位');
+        if (msg.profile !== null && msg.profile !== localBotModel && !this.botModels.profiles.has(msg.profile)) {
+          throw new GameError('请选择服务器已配置的模型');
+        }
+        bot.avalonProfile = msg.profile ?? undefined;
+        return this.broadcast(room);
+      }
       case 'kick': {
         hostOnly();
         lobbyOnly();
@@ -222,6 +248,10 @@ export class RoomManager {
           room.options,
           rng,
         );
+        if (room.game.id === Avalon.avalon.id && room.members.some((m) => m.isBot)) {
+          (room.state as Avalon.AvalonState).speechMode = 'text';
+          room.avalonAgents = { memory: new Map(), running: new Map(), requests: 0 };
+        }
         room.status = 'playing';
         room.gameSeq += 1;
         this.broadcast(room);
@@ -238,6 +268,7 @@ export class RoomManager {
         hostOnly();
         if (room.status !== 'ended') throw new GameError('这一局还没结束');
         this.clearBotTimers(room);
+        room.avalonAgents = undefined;
         room.status = 'lobby';
         room.state = null;
         for (const m of room.members.filter((m) => !m.isBot && !m.connection)) this.remove(room, m, null);
@@ -420,16 +451,38 @@ export class RoomManager {
     const timedAction = room.game.id === Avalon.avalon.id && action && typeof action === 'object'
       ? { ...(action as Record<string, unknown>), now: Date.now() }
       : action;
-    room.state = room.game.reduce(room.state, playerId, timedAction, Math.random, {
+    const next = room.game.reduce(room.state, playerId, timedAction, Math.random, {
       hostId: room.hostId,
       offlinePlayers: room.members.filter((m) => !m.isBot && !m.connection).map((m) => m.id),
     });
+    if (next === room.state && room.game.id === Avalon.avalon.id) return;
+    room.state = next;
+    this.afterAction(room);
+  }
+
+  private afterAction(room: Room) {
     if (room.game.isOver(room.state)) {
       room.status = 'ended';
       this.clearBotTimers(room);
     }
     this.broadcast(room);
+    this.scheduleSpeechTimer(room);
     this.scheduleBots(room);
+  }
+
+  private scheduleSpeechTimer(room: Room) {
+    if (room.speechTimer) clearTimeout(room.speechTimer);
+    room.speechTimer = undefined;
+    if (room.game.id !== Avalon.avalon.id || room.status !== 'playing') return;
+    const state = room.state as Avalon.AvalonState;
+    const discussion = state.discussion;
+    if (!discussion) return;
+    const player = discussion.order[discussion.currentIndex];
+    room.speechTimer = setTimeout(() => {
+      room.speechTimer = undefined;
+      if (room.status !== 'playing' || !this.rooms.has(room.code)) return;
+      this.applyAction(room, player, { type: 'timeout_speech' } satisfies Avalon.AvalonAction);
+    }, Math.max(1, discussion.deadline - Date.now() + 10));
   }
 
   private requestAvalonAssistant(
@@ -501,6 +554,76 @@ export class RoomManager {
   private clearBotTimers(room: Room) {
     for (const t of room.botTimers.values()) clearTimeout(t);
     room.botTimers.clear();
+    if (room.speechTimer) clearTimeout(room.speechTimer);
+    room.speechTimer = undefined;
+    for (const controller of room.avalonAgents?.running.values() ?? []) controller.abort();
+    room.avalonAgents?.running.clear();
+  }
+
+  private playerViews(room: Room): RoomPlayer[] {
+    return [...room.members].sort((a, b) => a.seatIndex - b.seatIndex).map((m) => ({
+      id: m.id, name: m.name, connected: m.isBot || m.connection !== null, isBot: m.isBot, seatIndex: m.seatIndex,
+    }));
+  }
+
+  private async runAvalonBot(room: Room, bot: Member, action: Avalon.AvalonAction) {
+    const session = room.avalonAgents;
+    const view = room.game.view(room.state, bot.id) as Avalon.AvalonView;
+    if (!session || !view.me) return;
+    const players = this.playerViews(room);
+    const memory = session.memory.get(bot.id) ?? { actions: [], note: '' };
+    session.memory.set(bot.id, memory);
+    const token = decisionToken(view, action.type);
+    const model = modelFor(this.botModels, view.me.role, bot.avalonProfile);
+    const ts = Date.now();
+    this.botModelCalls = this.botModelCalls.filter((time) => ts - time < 60_000);
+
+    let reply: Awaited<ReturnType<typeof askAvalonBot>> = null;
+    if (model && needsAvalonModel(action) && session.requests < 600 &&
+        this.botModelInFlight < 12 && this.botModelCalls.length < 180) {
+      const controller = new AbortController();
+      session.running.set(bot.id, controller);
+      session.requests++;
+      this.botModelInFlight++;
+      this.botModelCalls.push(ts);
+      try {
+        reply = await askAvalonBot(model, view, players, memory, action,
+          AbortSignal.any([controller.signal, AbortSignal.timeout(12_000)]));
+      } catch {
+        // 断线、超时或模型格式异常，按游戏规则继续。
+      } finally {
+        this.botModelInFlight--;
+        session.running.delete(bot.id);
+      }
+    }
+    if (!this.rooms.has(room.code) || room.status !== 'playing' || room.avalonAgents !== session) return;
+    const fallback = room.game.botAction?.(room.state, bot.id, Math.random) as Avalon.AvalonAction | null;
+    const latest = room.game.view(room.state, bot.id) as Avalon.AvalonView;
+    if (!fallback || decisionToken(latest, fallback.type) !== token) {
+      this.scheduleBots(room);
+      return;
+    }
+    if (reply) {
+      try {
+        this.applyAction(room, bot.id, reply.action);
+        if (reply.note) memory.note = reply.note;
+        rememberAction(memory, latest, reply.action, players);
+        return;
+      } catch (error) {
+        if (!(error instanceof GameError)) throw error;
+      }
+    }
+    if (fallback.type === 'finish_speech' && latest.discussion) {
+      const next = Avalon.skipUnavailableSpeech(room.state as Avalon.AvalonState, bot.id, latest.discussion.turn, Date.now());
+      if (next !== room.state) {
+        room.state = next;
+        rememberAction(memory, latest, fallback, players);
+        this.afterAction(room);
+      }
+      return;
+    }
+    this.applyAction(room, bot.id, fallback);
+    rememberAction(memory, latest, fallback, players);
   }
 
   /** 机器人像真人一样隔一小会儿再行动 */
@@ -508,7 +631,7 @@ export class RoomManager {
     const game = room.game;
     if (room.status !== 'playing' || !game.botAction) return;
     for (const bot of room.members.filter((m) => m.isBot)) {
-      if (room.botTimers.has(bot.id)) continue;
+      if (room.botTimers.has(bot.id) || room.avalonAgents?.running.has(bot.id)) continue;
       if (game.botAction(room.state, bot.id, Math.random) === null) continue;
       const delay = (900 + Math.random() * 1600) * BOT_PACE;
       room.botTimers.set(
@@ -518,6 +641,12 @@ export class RoomManager {
           if (room.status !== 'playing') return;
           const action = game.botAction!(room.state, bot.id, Math.random);
           if (action === null) return;
+          if (room.avalonAgents) {
+            void this.runAvalonBot(room, bot, action as Avalon.AvalonAction).catch((error) => {
+              console.error('[bot] Avalon decision failed', error);
+            });
+            return;
+          }
           try {
             this.applyAction(room, bot.id, action);
           } catch (err) {
@@ -544,13 +673,7 @@ export class RoomManager {
       code: room.code,
       gameId: room.game.id,
       hostId: room.hostId,
-      players: [...room.members].sort((a, b) => a.seatIndex - b.seatIndex).map((m) => ({
-        id: m.id,
-        name: m.name,
-        connected: m.isBot || m.connection !== null,
-        isBot: m.isBot,
-        seatIndex: m.seatIndex,
-      })),
+      players: this.playerViews(room),
       status: room.status,
       options: room.options,
       targetPlayers: room.targetPlayers,
@@ -558,6 +681,12 @@ export class RoomManager {
       gameSeq: room.gameSeq,
       view: room.state === null ? null : room.game.view(room.state, viewer.id),
       you: viewer.id,
+      ...(room.game.id === Avalon.avalon.id && room.status === 'lobby' && viewer.id === room.hostId ? {
+        avalonModels: {
+          profiles: [...this.botModels.profiles.values()].map(({ id, label }) => ({ id, label })),
+          seats: Object.fromEntries(room.members.filter((m) => m.isBot).map((m) => [m.id, m.avalonProfile ?? null])),
+        },
+      } : {}),
     };
   }
 

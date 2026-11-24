@@ -3,7 +3,7 @@ import { createServer } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer, type WebSocket } from 'ws';
-import type { ClientMessage, ServerMessage } from '@tabletop/shared';
+import { GAME_MESSAGE_BYTES, type ClientMessage, type ServerMessage } from '@tabletop/shared';
 import { RoomManager, type Connection } from './rooms';
 
 const PORT = Number(process.env.SERVER_PORT ?? process.env.PORT ?? 8790);
@@ -59,7 +59,7 @@ const http = createServer((req, res) => {
   createReadStream(file).pipe(res);
 });
 
-const wss = new WebSocketServer({ server: http, path: '/ws', maxPayload: 16 * 1024 });
+const wss = new WebSocketServer({ server: http, path: '/ws', maxPayload: GAME_MESSAGE_BYTES });
 
 wss.on('connection', (socket: WebSocket) => {
   const conn: Connection & { alive: boolean } = {

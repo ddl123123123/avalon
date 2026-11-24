@@ -30,6 +30,11 @@ export interface RoomSnapshot {
   /** 当前玩家视角下的对局信息；大厅阶段为 null */
   view: unknown | null;
   you: PlayerId;
+  /** 阿瓦隆大厅中的服务端模型选项。不会包含密钥、私密身份或实际角色路由。 */
+  avalonModels?: {
+    profiles: { id: string; label: string }[];
+    seats: Record<PlayerId, string | null>;
+  };
 }
 
 export type AvalonAssistantFeature =
@@ -50,6 +55,7 @@ export type ClientMessage =
   | { type: 'set_options'; options: unknown }
   | { type: 'set_player_count'; playerCount: number }
   | { type: 'add_bot' }
+  | { type: 'set_avalon_bot_model'; playerId: PlayerId; profile: string | null }
   | { type: 'kick'; playerId: PlayerId }
   | { type: 'start_game' }
   | { type: 'game_action'; action: unknown }
@@ -72,3 +78,4 @@ export type ServerMessage =
   | { type: 'error'; message: string };
 
 export const NAME_MAX_LENGTH = 12;
+export const GAME_MESSAGE_BYTES = 64 * 1024;

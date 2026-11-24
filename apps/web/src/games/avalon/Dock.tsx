@@ -3,6 +3,7 @@ import { useId, useState } from 'react';
 import { Avalon } from '@tabletop/shared';
 import { net } from '../../net/client';
 import { QuestCard, VoteToken } from './art';
+import { SpeechDesk } from './SpeechDesk';
 
 type View = Avalon.AvalonView;
 
@@ -21,6 +22,7 @@ export function Dock({
   direction,
   onDirectionChange,
   speechSecondsRemaining,
+  onShowSpeechLog,
 }: {
   view: View;
   nameOf: (id: string | null) => string;
@@ -33,6 +35,7 @@ export function Dock({
   direction: 'left' | 'right';
   onDirectionChange: (value: 'left' | 'right') => void;
   speechSecondsRemaining: number;
+  onShowSpeechLog: () => void;
 }) {
   const me = view.me;
   const n = view.players.length;
@@ -63,7 +66,7 @@ export function Dock({
           <DockShell
             key={`setup-${questNo}-${view.rejectCount}`}
             prompt={`第 ${questNo} 次任务 · 先设置讨论顺序`}
-            hint={preselectedTeam ? `在桌上选满 ${size} 人，预选名单对全桌公开。每人限时 ${view.options.speechSeconds} 秒。` : `讨论结束后再选队伍。每人限时 ${view.options.speechSeconds} 秒。`}
+            hint={`${preselectedTeam ? `在桌上选满 ${size} 人，预选名单对全桌公开。` : '讨论结束后再选队伍。'}每人${view.speechMode === 'text' ? '文字' : ''}发言限时 ${view.options.speechSeconds} 秒。`}
             stacked
             compactLabel={preselectedTeam ? `讨论设置 · 已选 ${view.team.length}/${size}` : '讨论设置'}
           >
@@ -113,11 +116,13 @@ export function Dock({
       const current = speaker === me.id;
       return (
         <DockShell
-          prompt={current ? '现在轮到你发言' : `现在由 ${speakerNumber} 号玩家发言`}
+          prompt={current ? (view.speechMode === 'text' ? '现在轮到你打字发言' : '现在轮到你发言') : `现在由 ${speakerNumber} 号玩家发言`}
           hint={`第 ${discussion.currentIndex + 1} / ${discussion.order.length} 位 · ${timer} · ${nameOf(speaker)}`}
           waiting={!current}
         >
-          {current && (
+          {view.speechMode === 'text' ? (
+            <SpeechDesk key={discussion.turn} view={view} canSpeak={current} nameOf={nameOf} onOpenLog={onShowSpeechLog} />
+          ) : current && (
             <button type="button" className="btn btn-primary speech-finish" onClick={() => send({ type: 'finish_speech' })}>
               我说完了
             </button>

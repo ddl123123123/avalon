@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GameError, type PlayerId, type Rng } from '../../framework';
-import { avalon, type AvalonAction, type AvalonState } from './engine';
+import { avalon, skipUnavailableSpeech, type AvalonAction, type AvalonState } from './engine';
 import { EVIL_COUNT, ROLES, TEAM_SIZES, buildRoleDeck, defaultOptions, recommendedOptions, validateOptions, type AvalonOptions } from './rules';
 
 function seeded(seed: number) {
@@ -48,6 +48,25 @@ function teamWithEvil(s: AvalonState, evilCount = 1) {
   const good = s.players.filter((p) => !isEvil(s, p)).slice(0, size - evil.length);
   return { team: [...evil, ...good], evil };
 }
+
+it('requires discussion in text rooms and records only the current speaker’s submitted text', () => {
+  let state: AvalonState = { ...startGame(ids(5), opts(), seeded(13)), speechMode: 'text' };
+  const leader = leaderOf(state);
+  expect(() => propose(state, ids(5).slice(0, 2))).toThrow('请先完成本轮文字讨论');
+  state = act(state, leader, { type: 'start_discussion', preselectedTeam: false, leaderFirst: true, direction: 'left', now: 100 });
+  const { turn, currentSpeaker, deadline } = avalon.view(state, leader).discussion!;
+  expect(() => act(state, state.players.find((id) => id !== leader)!, { type: 'submit_speech', turn, text: '抢先', now: 101 })).toThrow();
+  expect(() => act(state, currentSpeaker, { type: 'submit_speech', turn: 'old-turn', text: '过期轮次', now: 101 })).toThrow();
+  expect(() => act(state, currentSpeaker, { type: 'submit_speech', turn, text: '时间到', now: deadline })).toThrow();
+  const text = '把第一轮的赞成和反对票对一下。'.repeat(600);
+  state = act(state, currentSpeaker, { type: 'submit_speech', turn, text, now: 101 });
+  expect(avalon.view(state, null).speeches).toEqual([{ questIndex: 0, attempt: 1, player: currentSpeaker, text, result: 'spoken' }]);
+  const next = avalon.view(state, leader).discussion!;
+  expect(skipUnavailableSpeech(state, next.currentSpeaker, turn, 200)).toBe(state);
+  state = skipUnavailableSpeech(state, next.currentSpeaker, next.turn, 200);
+  state = act(state, leader, { type: 'timeout_speech', now: state.discussion!.deadline });
+  expect(state.speeches.map(({ result }) => result)).toEqual(['spoken', 'unavailable', 'timed_out']);
+});
 
 describe('牌堆', () => {
   it.each([

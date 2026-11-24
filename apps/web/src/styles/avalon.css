@@ -832,6 +832,42 @@
 .speech-finish {
   min-width: 150px;
 }
+.av-bot-settings {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #d6c49b45;
+  border-radius: 8px;
+}
+.av-bot-settings legend { padding-inline: 6px; color: var(--gilt-bright); }
+.av-bot-settings p { color: var(--vellum-dim); }
+.av-bot-settings select { width: 100%; }
+.av-game-dock.av-text-discussion .dock-inner {
+  align-items: stretch;
+  flex-direction: column;
+  gap: 8px;
+}
+.av-game-dock.av-text-discussion .dock-actions { width: 100%; }
+.av-speech-desk, .av-speech-composer { display: grid; gap: 8px; width: 100%; min-width: 0; }
+.av-speech-composer { text-align: left; }
+.av-speech-composer .input { width: 100%; min-height: 76px; resize: vertical; font-size: max(16px, 1rem); line-height: 1.4; }
+.av-speech-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+.av-speech-buttons .btn { min-height: 42px; }
+.av-speech-preview {
+  padding: 6px 8px;
+  border-left: 2px solid var(--gilt);
+  background: #8d9bc314;
+  text-align: left;
+}
+.av-speech-body { white-space: pre-wrap; overflow-wrap: anywhere; }
+.av-speech-preview .av-speech-body {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.av-speech-log .av-speech-body { margin-top: 6px; line-height: 1.6; }
 .speech-waiting-countdown {
   color: var(--gilt-bright);
   font: 700 1rem/1 var(--font-numeral);

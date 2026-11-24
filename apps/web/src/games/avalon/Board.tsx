@@ -1,7 +1,7 @@
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Avalon, type RoomSnapshot } from '@tabletop/shared';
-import { net, useNet } from '../../net/client';
+import { net } from '../../net/client';
 import { RoundTable } from '../../ui/RoundTable';
 import { Dock } from './Dock';
 import { EndScreen } from './EndScreen';
@@ -13,6 +13,7 @@ import { useAvalonCardStyle } from './cardLibrary';
 import { AvalonAssistant } from './Assistant';
 import { Notebook } from './Notebook';
 import { notebookStorageKey, readNotebook, saveNotebook } from './notebookData';
+import { SpeechLog } from './SpeechDesk';
 
 type View = Avalon.AvalonView;
 
@@ -71,7 +72,6 @@ export function AvalonBoard({ room }: { room: RoomSnapshot }) {
 
 function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
   const pigTheme = useAvalonCardStyle() === 'pig';
-  const { link } = useNet();
   const view = room.view as View;
   const me = view.me;
   const byId = new Map(room.players.map((p) => [p.id, p]));
@@ -97,6 +97,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
   const intro = confirmingRoles && me !== null && !view.confirmedRoles.includes(me.id);
   const [showRole, setShowRole] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showSpeeches, setShowSpeeches] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
   const [preselectedTeam, setPreselectedTeam] = useState(true);
   const [leaderFirst, setLeaderFirst] = useState(true);
@@ -110,17 +111,6 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
     const interval = window.setInterval(() => setClockTick(Date.now()), 1000);
     return () => window.clearInterval(interval);
   }, [speechDeadline]);
-
-  useEffect(() => {
-    if (speechDeadline === null || link !== 'online') return;
-    let timer = 0;
-    const requestTimeout = () => {
-      net.act({ type: 'timeout_speech' } satisfies Avalon.AvalonAction);
-      timer = window.setTimeout(requestTimeout, 900);
-    };
-    timer = window.setTimeout(requestTimeout, Math.max(0, speechDeadline - Date.now()) + 250);
-    return () => window.clearTimeout(timer);
-  }, [speechDeadline, link]);
 
   useEffect(() => {
     if (!view.discussionComplete) {
@@ -238,6 +228,9 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
             <button type="button" className="btn btn-ghost btn-small" onClick={() => openTool(setShowHistory)}>
               任务记录
             </button>
+            {view.speechMode === 'text' && (
+              <button type="button" className="btn btn-ghost btn-small" onClick={() => openTool(setShowSpeeches)}>发言记录</button>
+            )}
             {me && (
               <button type="button" className="btn btn-ghost btn-small" onClick={() => openTool(setShowAssistant)}>
                 AI 助手
@@ -287,7 +280,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
                             <div className="speech-status">
                               <div className="speech-status-main" role="status">
                                 <span className="speech-seat-number">{(byId.get(view.discussion.currentSpeaker)?.seatIndex ?? view.players.indexOf(view.discussion.currentSpeaker)) + 1}</span>
-                                <span>号玩家发言</span>
+                                <span>号玩家{view.speechMode === 'text' ? '文字发言' : '发言'}</span>
                               </div>
                               <strong className="speech-countdown">
                                 {Math.floor(speechSecondsRemaining / 60)}:{String(speechSecondsRemaining % 60).padStart(2, '0')}
@@ -367,7 +360,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
             </LayoutGroup>
           </div>
 
-          <footer className="dock av-game-dock" aria-label="对局操作">
+          <footer className={`dock av-game-dock${view.speechMode === 'text' && view.phase === 'discussion' ? ' av-text-discussion' : ''}`} aria-label="对局操作">
             {busy ? (
               voteReveal && <div className="dock-inner dock-waiting"><p className="dock-hint">亮票结束后自动继续</p></div>
             ) : (
@@ -385,6 +378,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
                 direction={direction}
                 onDirectionChange={setDirection}
                 speechSecondsRemaining={speechSecondsRemaining}
+                onShowSpeechLog={() => setShowSpeeches(true)}
               />
             )}
           </footer>
@@ -415,6 +409,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
           />
         )}
         {showHistory && <History key="history" view={view} nameOf={seatNameOf} onClose={() => setShowHistory(false)} />}
+        {showSpeeches && <SpeechLog key="speeches" speeches={view.speeches} nameOf={seatNameOf} onClose={() => setShowSpeeches(false)} />}
         {showAssistant && me && (
           <AvalonAssistant
             key={`assistant-${room.gameSeq}`}

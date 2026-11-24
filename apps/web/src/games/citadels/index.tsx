@@ -3,6 +3,7 @@ import type { GameClient } from '../registry';
 import { CitadelsBoard } from './Board';
 import { CitadelsOptions } from './Options';
 import { CityWindow, Coin } from './art';
+import { CitadelsLobbyCardStyles } from './cardStyle';
 
 export const citadelsClient: GameClient = {
   id: Citadels.citadels.id,
@@ -21,5 +22,6 @@ export const citadelsClient: GameClient = {
     goals: [{ tone: 'gilt', title: '分数最高的城市获胜', text: '城区造价即分数。五种颜色齐全加 3 分，率先建成加 4 分，其他建成的人加 2 分。' }],
   },
   Options: CitadelsOptions,
+  LobbyCardStyles: CitadelsLobbyCardStyles,
   Board: CitadelsBoard,
 };

@@ -1,6 +1,5 @@
 import { Citadels } from '@tabletop/shared';
 import { CharacterCard } from './art';
-import { CitadelsCardStylePicker } from './cardStyle';
 
 const { CHARACTERS, CITY_SIZE, MAX_PLAYERS, MIN_PLAYERS } = Citadels;
 
@@ -15,10 +14,6 @@ export function CitadelsOptions({ playerCount }: { playerCount: number }) {
         {n} 人局：每人每轮选 {each} 个角色。选角前盖着移出 {faceDown} 张{faceUp > 0 ? `、明着移出 ${faceUp} 张` : ''}角色牌
         {n === 7 ? '，最后一人可以在剩下的一张和盖着的那张之间选' : ''}。先建成 {CITY_SIZE} 座城区的人触发终局。
       </p>
-      <label className="ct-lobby-card-style">
-        卡牌画风
-        <CitadelsCardStylePicker />
-      </label>
       <h2 className="av-options-heading">八个角色，按号码依次行动</h2>
       <ol className="ct-roster">
         {CHARACTERS.map((c) => (

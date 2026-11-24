@@ -34,6 +34,8 @@ export interface GameClient {
     /** 提交选项的改动（增量），由服务器合并后广播回来 */
     onChange: (patch: unknown) => void;
   }>;
+  /** 在大厅房间号下方切换本机卡牌画风。 */
+  LobbyCardStyles?: ComponentType;
   /** 对局界面（进行中和结束后都由它负责） */
   Board: ComponentType<{ room: RoomSnapshot }>;
 }

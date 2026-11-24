@@ -23,11 +23,34 @@
   font-size: 0.8rem;
   color-scheme: dark;
 }
-.ct-lobby-card-style,
 .ct-draft-discard {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+.ct-lobby-card-style {
+  grid-column: 1 / -1;
+  justify-self: center;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--vellum-dim);
+  font-size: 0.86rem;
+}
+.ct-lobby-card-style button {
+  min-height: 44px;
+  padding: 4px 10px;
+  border: 1px solid rgba(214, 196, 155, 0.36);
+  border-radius: 4px;
+  color: var(--vellum);
+  background: #141b29;
+}
+.ct-lobby-card-style button[aria-pressed="true"] {
+  color: var(--gilt-bright);
+  border-color: var(--gilt-bright);
+  background: rgba(214, 196, 155, 0.16);
 }
 .ct-draft-discard {
   justify-content: center;

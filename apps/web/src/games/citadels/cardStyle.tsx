@@ -36,8 +36,38 @@ function useCardStyle() {
   return useSyncExternalStore(subscribe, () => style, () => 'blue-gold');
 }
 
+const STYLES = [
+  { id: 'blue-gold', name: '蓝金徽章' },
+  { id: 'starry-night', name: '星夜典藏' },
+] as const;
+
+function setCardStyle(next: CardStyle) {
+  if (style === next) return;
+  style = next;
+  try {
+    localStorage.setItem(KEY, style);
+  } catch {
+    // 仍可在当前页面切换。
+  }
+  emit();
+}
+
 export function useCitadelsCardArt(asset: string): string {
   return `${import.meta.env.BASE_URL}citadels-cards/${useCardStyle()}/${asset}.webp`;
+}
+
+export function CitadelsLobbyCardStyles() {
+  const selected = useCardStyle();
+  return (
+    <div className="ct-lobby-card-style" role="group" aria-label="卡牌画风">
+      <span>卡牌画风</span>
+      {STYLES.map(({ id, name }) => (
+        <button key={id} type="button" aria-pressed={selected === id} onClick={() => setCardStyle(id)}>
+          {name}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 export function CitadelsCardStylePicker() {
@@ -47,18 +77,9 @@ export function CitadelsCardStylePicker() {
       className="ct-card-style"
       aria-label="卡牌画风"
       value={selected}
-      onChange={(event) => {
-        style = event.target.value === 'starry-night' ? 'starry-night' : 'blue-gold';
-        try {
-          localStorage.setItem(KEY, style);
-        } catch {
-          // 仍可在当前页面切换。
-        }
-        emit();
-      }}
+      onChange={(event) => setCardStyle(event.target.value === 'starry-night' ? 'starry-night' : 'blue-gold')}
     >
-      <option value="blue-gold">蓝金徽章</option>
-      <option value="starry-night">星夜典藏</option>
+      {STYLES.map(({ id, name }) => <option key={id} value={id}>{name}</option>)}
     </select>
   );
 }

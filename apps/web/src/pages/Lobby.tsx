@@ -66,6 +66,7 @@ export function Lobby({ room, game }: { room: RoomSnapshot; game: GameClient }) 
         <button type="button" className="btn btn-ghost btn-small" onClick={copy}>
           {copied ? '链接已复制' : '复制邀请链接'}
         </button>
+        {game.LobbyCardStyles && <game.LobbyCardStyles />}
       </header>
 
       <div className="lobby-body">

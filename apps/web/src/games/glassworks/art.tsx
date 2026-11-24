@@ -1,6 +1,6 @@
-import { useId, type ReactNode } from 'react';
+import { createContext, useContext, useId, type ReactNode } from 'react';
 import { Glassworks } from '@tabletop/shared';
-import { polar, sector, wedge } from '../../art/geometry';
+import { polar, sector } from '../../art/geometry';
 import { EMBLEM, GILT, LEAD, type Glass } from '../../art/glass';
 import { seededRandom } from '../../fx/motion';
 
@@ -51,40 +51,20 @@ export function Shard({ piece, className = '' }: { piece: Piece; className?: str
   );
 }
 
-/** 窗子的轮廓：小窗是单尖拱，花窗是双尖拱加一枚圆章，玫瑰窗是圆 */
-function windowShape(tier: Glassworks.Tier): { clip: string; lead: ReactNode } {
-  if (tier === 1) {
-    const d = 'M52 176V96Q52 52 100 30Q148 52 148 96V176Z';
-    return { clip: d, lead: <path d="M100 30V176M52 112H148" /> };
-  }
-  if (tier === 2) {
-    const d = 'M30 176V104Q30 70 62 54Q94 70 94 104V176ZM106 176V104Q106 70 138 54Q170 70 170 104V176ZM100 20A19 19 0 1 1 99.99 20Z';
-    return { clip: d, lead: <path d="M62 54V176M138 54V176M30 122H94M106 122H170" /> };
-  }
-  const d = 'M100 24A76 76 0 1 1 99.99 24Z';
-  return {
-    clip: d,
-    lead: (
-      <>
-        {Array.from({ length: 12 }, (_, i) => {
-          const [x, y] = polar(100, 100, 76, i * 30);
-          return <path key={i} d={`M100 100L${x} ${y}`} />;
-        })}
-        <circle cx="100" cy="100" r="46" fill="none" />
-      </>
-    ),
-  };
+export type GlassworksCardStyle = 'blue-gold' | 'starry-night';
+export const GlassworksCardStyleContext = createContext<GlassworksCardStyle>('blue-gold');
+
+function useCardArt(asset: string) {
+  const style = useContext(GlassworksCardStyleContext);
+  return `${import.meta.env.BASE_URL}glassworks-cards/${style}/${asset}.webp`;
 }
 
 /** 窗片：一扇彩窗的设计图。上半是窗，下方一行是造价。 */
 export function PanelCard({ panel }: { panel: string }) {
   const id = useId();
   const def = Glassworks.panelOf(panel);
-  const [dark, mid, light] = PIECE_GLASS[def.hue];
-  const rand = seededRandom(`panel:${def.id}`);
-  const tones = [dark, mid, mid, mid, light, light];
-  const shape = windowShape(def.tier);
-  const cy = def.tier === 3 ? 100 : 110;
+  const art = useCardArt(`front-${def.tier}`);
+  const [, mid, light] = PIECE_GLASS[def.hue];
   const cost = Glassworks.HUES.filter((h) => def.cost[h]);
   const step = Math.min(46, 172 / cost.length);
   const costText = cost.map((h) => `${Glassworks.PIECE_NAMES[h]} ${def.cost[h]}`).join('、');
@@ -97,35 +77,13 @@ export function PanelCard({ panel }: { panel: string }) {
       aria-label={`${Glassworks.TIER_NAMES[def.tier]}，炉色${Glassworks.PIECE_NAMES[def.hue]}，声望 ${def.points}，造价：${costText}`}
     >
       <defs>
-        <clipPath id={`${id}w`}>
-          <path d={shape.clip} />
+        <clipPath id={`${id}art`}>
+          <rect x="5" y="5" width="190" height="270" rx="11" />
         </clipPath>
-        <radialGradient id={`${id}l`} cx="50%" cy="32%" r="70%">
-          <stop offset="0" stopColor="#fff" stopOpacity="0.45" />
-          <stop offset="0.6" stopColor="#fff" stopOpacity="0" />
-          <stop offset="1" stopColor="#000" stopOpacity="0.35" />
-        </radialGradient>
       </defs>
       <rect x="3" y="3" width="194" height="274" rx="13" fill="#0a0f2b" stroke={GILT} strokeWidth="2.5" />
-      <rect x="10" y="10" width="180" height="182" rx="8" fill="#0d1436" stroke={GILT} strokeOpacity="0.3" />
-
-      <g clipPath={`url(#${id}w)`}>
-        <g stroke={LEAD} strokeWidth="2.4" strokeLinejoin="round">
-          {Array.from({ length: 14 }, (_, i) => (
-            <path key={i} d={wedge(100, cy, 200, (i * 360) / 14 - 90, ((i + 1) * 360) / 14 - 90)} fill={tones[Math.floor(rand() * tones.length)]} />
-          ))}
-          {Array.from({ length: 8 }, (_, i) => (
-            <path key={`r${i}`} d={sector(100, cy, 18, 44, i * 45 + 10, (i + 1) * 45 + 10)} fill={tones[Math.floor(rand() * tones.length)]} />
-          ))}
-          <circle cx="100" cy={cy} r="18" fill={GILT} />
-        </g>
-        <rect width="200" height="200" fill={`url(#${id}l)`} />
-        <g fill="none" stroke={LEAD} strokeWidth="3.2">
-          {shape.lead}
-        </g>
-      </g>
-      <path d={shape.clip} fill="none" stroke={LEAD} strokeWidth="6" strokeLinejoin="round" />
-      <path d={shape.clip} fill="none" stroke={GILT} strokeWidth="1.8" strokeLinejoin="round" />
+      <image href={art} x="5" y="5" width="190" height="196" preserveAspectRatio="xMidYMid slice" clipPath={`url(#${id}art)`} />
+      <path d="M5 202H195" stroke={GILT} strokeWidth="2" />
 
       {/* 左上：声望；右上：炉色 */}
       {def.points > 0 && (
@@ -143,7 +101,7 @@ export function PanelCard({ panel }: { panel: string }) {
       </g>
 
       {/* 造价 */}
-      <g transform={`translate(${100 - (cost.length * step) / 2} 208)`}>
+      <g transform={`translate(${86 - ((cost.length - 1) * step) / 2} 208)`}>
         {cost.map((h, i) => (
           <g key={h} transform={`translate(${i * step} 0)`}>
             <g transform="scale(0.72)">
@@ -162,41 +120,46 @@ export function PanelCard({ panel }: { panel: string }) {
 
 /** 盖着的窗片（牌堆顶、别人摸走的图稿） */
 export function PanelBack({ tier }: { tier: Glassworks.Tier }) {
+  const art = useCardArt(`back-${tier}`);
   return (
     <svg className="panel-card" viewBox="0 0 200 280" role="img" aria-label={`盖着的${Glassworks.TIER_NAMES[tier]}`}>
-      <rect x="3" y="3" width="194" height="274" rx="13" fill="#0a0f2b" stroke={GILT} strokeWidth="2.5" />
-      <rect x="12" y="12" width="176" height="256" rx="8" fill="#101a4a" stroke={GILT} strokeOpacity="0.35" />
-      <g stroke={LEAD} strokeWidth="2.6" strokeLinejoin="round">
-        {Array.from({ length: 10 }, (_, i) => (
-          <path key={i} d={sector(100, 126, 24, 62, i * 36, (i + 1) * 36)} fill={i % 2 ? '#1d3f94' : '#16286a'} />
-        ))}
-        <circle cx="100" cy="126" r="24" fill={GILT} />
-      </g>
-      {/* 档位：一到三枚菱形 */}
-      <g fill={GILT} stroke={LEAD} strokeWidth="2">
-        {Array.from({ length: tier }, (_, i) => {
-          const x = 100 + (i - (tier - 1) / 2) * 34;
-          return <path key={i} d={`M${x} 214L${x + 12} 228L${x} 242L${x - 12} 228Z`} />;
-        })}
-      </g>
+      <rect x="3" y="3" width="194" height="274" rx="10" fill="#0a0f2b" />
+      <image href={art} width="200" height="280" />
     </svg>
   );
 }
 
 /** 委托：委托人、需要的炉色、声望 */
 export function CommissionTile({ commission }: { commission: string }) {
+  const id = useId();
+  const art = useCardArt('commission');
   const def = Glassworks.commissionOf(commission);
   const need = Glassworks.HUES.filter((h) => def.need[h]);
   const text = need.map((h) => `${Glassworks.PIECE_NAMES[h]}炉色 ${def.need[h]}`).join('、');
   return (
     <svg className="commission-tile" viewBox="0 0 220 120" role="img" aria-label={`${def.name}的委托，声望 ${def.points}，需要${text}`}>
-      <rect x="3" y="3" width="214" height="114" rx="10" fill="#0a0f2b" stroke={GILT} strokeWidth="2.5" />
+      <defs>
+        <clipPath id={`${id}commission`}>
+          <rect x="3" y="3" width="214" height="114" rx="10" />
+        </clipPath>
+        <linearGradient id={`${id}shade`}>
+          <stop offset="48%" stopColor="#0a0f2b" />
+          <stop offset="100%" stopColor="#0a0f2b" stopOpacity="0.25" />
+        </linearGradient>
+      </defs>
+      <g clipPath={`url(#${id}commission)`}>
+        <rect x="3" y="3" width="214" height="114" fill="#0a0f2b" />
+        <image href={art} x="106" y="3" width="111" height="114" preserveAspectRatio="xMidYMid slice" />
+        <rect x="3" y="3" width="214" height="114" fill={`url(#${id}shade)`} />
+        <rect x="3" y="44" width="214" height="73" fill="#0a0f2b" opacity="0.66" />
+      </g>
+      <rect x="3" y="3" width="214" height="114" rx="10" fill="none" stroke={GILT} strokeWidth="2.5" />
       <path d="M3 44H217" stroke={GILT} strokeOpacity="0.35" />
       <circle cx="30" cy="24" r="16" fill={GILT} stroke={LEAD} strokeWidth="3" />
       <text x="30" y="33" textAnchor="middle" className="roundel-number" style={{ fill: '#1b1404' }} fontSize="25">
         {def.points}
       </text>
-      <text x="56" y="31" className="role-face-name" fontSize="19">
+      <text x="56" y="31" className="role-face-name" fontSize="19" paintOrder="stroke" stroke="#0a0f2b" strokeWidth="4">
         {def.name}
       </text>
       <g transform={`translate(${110 - need.length * 20} 56)`}>

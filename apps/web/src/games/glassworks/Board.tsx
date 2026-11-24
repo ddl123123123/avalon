@@ -6,7 +6,7 @@ import { Crown } from '../../art/glass';
 import { SplitText } from '../../fx/SplitText';
 import { net } from '../../net/client';
 import { Ticker } from '../../ui/Ticker';
-import { CommissionTile, KilnMark, PanelBack, PanelCard, Shard } from './art';
+import { CommissionTile, GlassworksCardStyleContext, KilnMark, PanelBack, PanelCard, Shard, type GlassworksCardStyle } from './art';
 import { describe, listPieces, shortfall, toneOf } from './text';
 
 type View = Glassworks.GlassworksView;
@@ -62,6 +62,33 @@ function Palette({ seat, onPiece, chosen }: { seat: Seat; onPiece?: (piece: Piec
 }
 
 export function GlassworksBoard({ room }: { room: RoomSnapshot }) {
+  const [cardStyle, setCardStyle] = useState<GlassworksCardStyle>(() => {
+    try {
+      return localStorage.getItem('glassworks.cardStyle') === 'starry-night' ? 'starry-night' : 'blue-gold';
+    } catch {
+      return 'blue-gold';
+    }
+  });
+  const chooseCardStyle = (style: GlassworksCardStyle) => {
+    setCardStyle(style);
+    try {
+      localStorage.setItem('glassworks.cardStyle', style);
+    } catch {
+      // 无法保存时当前对局仍可切换。
+    }
+  };
+  return (
+    <GlassworksCardStyleContext.Provider value={cardStyle}>
+      <GlassworksMatch key={room.code} room={room} cardStyle={cardStyle} onCardStyleChange={chooseCardStyle} />
+    </GlassworksCardStyleContext.Provider>
+  );
+}
+
+function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
+  room: RoomSnapshot;
+  cardStyle: GlassworksCardStyle;
+  onCardStyleChange: (style: GlassworksCardStyle) => void;
+}) {
   const view = room.view as View;
   const byId = new Map(room.players.map((p) => [p.id, p]));
   const playerOf = (id: string): RoomPlayer => byId.get(id) ?? { id, name: '？', connected: false, isBot: false, seatIndex: -1 };
@@ -221,6 +248,15 @@ export function GlassworksBoard({ room }: { room: RoomSnapshot }) {
             {view.finalRound ? '最后一圈' : `第 ${view.round} 圈`}
             {!view.finalRound && <span className="gw-target">，先到 {view.target} 分</span>}
           </span>
+          <select
+            className="gw-card-style"
+            aria-label="卡牌画风"
+            value={cardStyle}
+            onChange={(event) => onCardStyleChange(event.target.value === 'starry-night' ? 'starry-night' : 'blue-gold')}
+          >
+            <option value="blue-gold">蓝金徽章</option>
+            <option value="starry-night">星夜典藏</option>
+          </select>
           <button type="button" className="btn btn-ghost btn-small" onClick={() => setShowLog(true)}>
             记录
           </button>

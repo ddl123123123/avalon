@@ -168,6 +168,35 @@
   justify-content: center;
   gap: 8px;
 }
+.gw-card-style {
+  min-height: 40px;
+  max-width: 100%;
+  padding: 4px 6px;
+  border: 1px solid rgba(214, 196, 155, 0.36);
+  border-radius: 4px;
+  background: #141b29;
+  color: var(--vellum);
+  font: inherit;
+  font-size: 0.8rem;
+  color-scheme: dark;
+}
+@media (max-width: 480px) {
+  .gw-board .room-bar,
+  .gw-board .room-bar-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .gw-board .room-bar-actions {
+    align-items: center;
+    justify-content: flex-end;
+  }
+  .gw-card-style {
+    min-height: 44px;
+  }
+}
+.gw-deck .panel-card {
+  border-radius: 8px;
+}
 .gw-commission {
   width: clamp(100px, min(21vw, 22vh), 168px);
   filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.5));

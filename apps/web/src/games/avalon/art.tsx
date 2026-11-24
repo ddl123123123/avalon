@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Avalon } from '@tabletop/shared';
 import { polar, sector } from '../../art/geometry';
 import { EMBLEM, GILT, LEAD, type Glass } from '../../art/glass';
-import { AVALON_CARD_BACK, getAvalonCardAsset, useAvalonCardStyle, type AvalonCardStyle } from './cardLibrary';
+import { AVALON_CARD_BACK, avalonPigArt, getAvalonCardAsset, useAvalonCardStyle, type AvalonCardStyle } from './cardLibrary';
 
 type Role = Avalon.Role;
 
@@ -41,8 +41,10 @@ export function RoleFace({ role, style, thumbnail = false }: { role: Role; style
   );
 }
 
-export function AvalonCardBack() {
-  return <img className="role-face role-face-raster avalon-card-back" src={AVALON_CARD_BACK} alt="" aria-hidden="true" draggable={false} />;
+export function AvalonCardBack({ style, thumbnail = false }: { style?: AvalonCardStyle; thumbnail?: boolean }) {
+  const activeStyle = useAvalonCardStyle();
+  const back = (style ?? activeStyle) === 'pig' ? avalonPigArt(thumbnail ? 'thumbs/back' : 'back') : AVALON_CARD_BACK;
+  return <img className="role-face role-face-raster avalon-card-back" src={back} alt="" aria-hidden="true" draggable={false} />;
 }
 
 /** 投票币：白为赞成，黑为反对（与实体游戏一致）。 */
@@ -86,6 +88,15 @@ function Sword({ broken }: { broken: boolean }) {
 /** 任务牌：成功是完整的剑，失败是折断的剑。 */
 export function QuestCard({ success }: { success: boolean }) {
   const id = useId();
+  const style = useAvalonCardStyle();
+  if (style === 'pig') {
+    return (
+      <span className="quest-card-art quest-pig-card" role="img" aria-label={success ? '任务成功' : '任务失败'}>
+        <img src={avalonPigArt(success ? 'success' : 'failure')} alt="" draggable={false} />
+        <strong aria-hidden="true">{success ? '成功' : '失败'}</strong>
+      </span>
+    );
+  }
   const [dark, mid, light] = success ? GLASS.merlin : GLASS.assassin;
   return (
     <svg className="quest-card-art" viewBox="0 0 120 168" role="img" aria-label={success ? '任务成功' : '任务失败'}>

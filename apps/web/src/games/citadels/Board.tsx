@@ -7,7 +7,7 @@ import { EndScreen } from './EndScreen';
 import { PlayerPanel } from './PlayerPanel';
 import { Announcer, Track } from './Track';
 import { CharacterCard, CitadelsCardBack, Coin, DistrictCard } from './art';
-import { CitadelsCardStylePicker } from './cardStyle';
+import { CitadelsCardStylePicker, useCitadelsPigTheme } from './cardStyle';
 import { describe, destroyCostOf, incomeOf } from './text';
 
 type View = Citadels.CitadelsView;
@@ -18,6 +18,8 @@ const { CHARACTER, CHARACTERS, TYPE_NAMES, districtOf } = Citadels;
 type Mode = null | 'murder' | 'rob' | 'swap' | 'redraw' | 'lab' | 'destroy';
 
 export function CitadelsBoard({ room }: { room: RoomSnapshot }) {
+  const pigTheme = useCitadelsPigTheme();
+  const themeClass = pigTheme ? ' ct-pig-theme' : '';
   const view = room.view as View;
   const me = view.me;
   const byId = new Map(room.players.map((p) => [p.id, p]));
@@ -54,7 +56,7 @@ export function CitadelsBoard({ room }: { room: RoomSnapshot }) {
 
   if (view.phase === 'ended') {
     return (
-      <main className="board board-ended">
+      <main className={`board board-ended${themeClass}`}>
         <header className="room-bar">
           <button type="button" className="link" onClick={net.leaveRoom}>
             离开
@@ -331,7 +333,7 @@ export function CitadelsBoard({ room }: { room: RoomSnapshot }) {
   const handPickable = mode === 'redraw' || mode === 'lab';
 
   return (
-    <main className="board ct-board">
+    <main className={`board ct-board${themeClass}`}>
       <header className="room-bar">
         <button type="button" className="link" onClick={net.leaveRoom}>
           离开
@@ -341,6 +343,7 @@ export function CitadelsBoard({ room }: { room: RoomSnapshot }) {
           <strong>{room.code}</strong>
         </div>
         <div className="room-bar-actions">
+          {pigTheme && <span className="ct-pig-room-mark" aria-hidden="true">🐷</span>}
           <span className={`ct-round ${view.finalRound ? 'is-final' : ''}`}>{view.finalRound ? '最后一轮' : `第 ${view.round} 轮`}</span>
           <CitadelsCardStylePicker />
           <button type="button" className="btn btn-ghost btn-small" onClick={() => setShowLog(true)}>

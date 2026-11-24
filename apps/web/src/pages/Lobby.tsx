@@ -1,8 +1,10 @@
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import type { RoomPlayer, RoomSnapshot } from '@tabletop/shared';
-import { getGame } from '@tabletop/shared';
+import { Avalon, Citadels, getGame } from '@tabletop/shared';
 import { TableSurface } from '../art/glass';
+import { useAvalonCardStyle } from '../games/avalon/cardLibrary';
+import { useCitadelsPigTheme } from '../games/citadels/cardStyle';
 import type { GameClient } from '../games/registry';
 import { net } from '../net/client';
 import { roomUrl } from '../net/route';
@@ -12,6 +14,9 @@ type Seat = RoomPlayer | null;
 
 export function Lobby({ room, game }: { room: RoomSnapshot; game: GameClient }) {
   const def = getGame(room.gameId)!;
+  const citadelsPig = useCitadelsPigTheme();
+  const avalonPig = useAvalonCardStyle() === 'pig';
+  const pigTheme = room.gameId === Avalon.avalon.id ? avalonPig : room.gameId === Citadels.citadels.id && citadelsPig;
   const isHost = room.hostId === room.you;
   const [copied, setCopied] = useState(false);
   const count = room.players.length;
@@ -26,7 +31,7 @@ export function Lobby({ room, game }: { room: RoomSnapshot; game: GameClient }) 
   const showTitleInHeader = Boolean(game.LobbyCardStyles);
   const gameHeading = (
     <div className={`lobby-game-heading${showTitleInHeader ? ' lobby-game-heading-top' : ''}`}>
-      <span className="lobby-heading-seal" aria-hidden="true">✦</span>
+      <span className="lobby-heading-seal" aria-hidden="true">{pigTheme ? '🐷' : '✦'}</span>
       <div>
         <p>本局桌游 · GAME SELECTED</p>
         <h1>{game.name}</h1>
@@ -45,7 +50,7 @@ export function Lobby({ room, game }: { room: RoomSnapshot; game: GameClient }) 
   };
 
   return (
-    <main className={target == null ? 'lobby' : 'lobby lobby-targeted'}>
+    <main className={`lobby${target == null ? '' : ' lobby-targeted'}${pigTheme ? ' ct-pig-theme' : ''}`}>
       <header className="room-bar lobby-room-bar">
         <button type="button" className="lobby-exit" onClick={net.leaveRoom}>
           <span aria-hidden="true">‹</span>
@@ -53,7 +58,7 @@ export function Lobby({ room, game }: { room: RoomSnapshot; game: GameClient }) 
         </button>
 
         <div className="lobby-brand">
-          <span className="lobby-brand-mark" aria-hidden="true">✦</span>
+          <span className="lobby-brand-mark" aria-hidden="true">{pigTheme ? '🐷' : '✦'}</span>
           <span>
             <small>THE ROUND TABLE</small>
             <strong>集结大厅</strong>

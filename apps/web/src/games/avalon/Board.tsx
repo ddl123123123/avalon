@@ -9,6 +9,7 @@ import { History } from './History';
 import { AssassinReveal, LadyReveal, QuestReveal, RoleReveal } from './Reveals';
 import { Seat, type SeatProps } from './Seat';
 import { QuestRoundel } from './art';
+import { useAvalonCardStyle } from './cardLibrary';
 import { AvalonAssistant } from './Assistant';
 import { Notebook } from './Notebook';
 import { notebookStorageKey, readNotebook, saveNotebook } from './notebookData';
@@ -65,6 +66,7 @@ function useReveals(room: RoomSnapshot, view: View) {
 }
 
 export function AvalonBoard({ room }: { room: RoomSnapshot }) {
+  const pigTheme = useAvalonCardStyle() === 'pig';
   return <AvalonBoardSession key={`${room.code}.${room.gameSeq}.${room.you}`} room={room} />;
 }
 
@@ -211,7 +213,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
   const approvals = voteReveal ? Object.values(voteReveal.votes).filter(Boolean).length : 0;
 
   return (
-    <main className={`board av-board ${ended && !reveal ? 'board-ended' : ''}`}>
+    <main className={`board av-board${ended && !reveal ? ' board-ended' : ''}${pigTheme ? ' ct-pig-theme' : ''}`}>
       <header className="room-bar">
         <button type="button" className="link" onClick={net.leaveRoom}>
           离开

@@ -1,12 +1,15 @@
 import { motion } from 'framer-motion';
 import { useRef, useState, type CSSProperties, type FormEvent } from 'react';
-import { Avalon, NAME_MAX_LENGTH } from '@tabletop/shared';
+import { Avalon, Citadels, NAME_MAX_LENGTH } from '@tabletop/shared';
 import { DecodedImage } from '../art/DecodedImage';
 import avalonHero from '../assets/avalon/home-duel-v2.webp';
 import { Tilt } from '../fx/Tilt';
 import { useReducedMotion } from '../fx/motion';
 import { SplitText } from '../fx/SplitText';
 import { AvalonRoleGuide } from '../games/avalon/RoleGuide';
+import { avalonPigArt, setAvalonPigEdition, useAvalonCardStyle } from '../games/avalon/cardLibrary';
+import { setCitadelsPigEdition, useCitadelsPigTheme } from '../games/citadels/cardStyle';
+import { PigEditionSwitch } from '../games/pigEdition';
 import { GAME_CLIENTS } from '../games/registry';
 import { forgetRecentRoom, getName, net, notify, setName, useNet } from '../net/client';
 import { navigate, roomPath } from '../net/route';
@@ -36,6 +39,10 @@ export function Home() {
   const resumeCode = room?.code ?? lastRoomCode;
   const game = GAME_CLIENTS[gameId]!;
   const isAvalon = game.id === Avalon.avalon.id;
+  const isCitadels = game.id === Citadels.citadels.id;
+  const citadelsPig = useCitadelsPigTheme();
+  const avalonPig = useAvalonCardStyle() === 'pig';
+  const pigTheme = isAvalon ? avalonPig : isCitadels && citadelsPig;
   const resume = (roomCode: string) => navigate(roomPath(roomCode));
 
   const choose = (id: string) => {
@@ -70,10 +77,10 @@ export function Home() {
   };
 
   return (
-    <main className="home">
+    <main className={`home${pigTheme ? ' ct-pig-theme' : ''}`}>
       <header className="home-masthead">
         <div className="home-brand">
-          <span className="home-brand-mark" aria-hidden="true">✦</span>
+          <span className="home-brand-mark" aria-hidden="true">{pigTheme ? '🐷' : '✦'}</span>
           <span className="home-brand-copy">
             <small>THE ROUND TABLE</small>
             <strong>桌游厅</strong>
@@ -106,6 +113,14 @@ export function Home() {
             <SplitText key={game.id} text={game.name} delay={0.1} stagger={0.12} />
           </h1>
           <p className="hero-lede">{game.hero.lede}</p>
+          {(isAvalon || isCitadels) && (
+            <PigEditionSwitch
+              key={game.id}
+              gameName={game.name}
+              active={pigTheme}
+              onChange={isAvalon ? setAvalonPigEdition : setCitadelsPigEdition}
+            />
+          )}
 
           <div className="entry">
             <label className="field">
@@ -193,7 +208,7 @@ export function Home() {
             </div>
           )}
           <motion.div
-            key={game.id}
+            key={pigTheme ? `${game.id}-pig` : game.id}
             className="hero-art"
             initial={reducedMotion || isAvalon ? false : { opacity: 0, y: 26, scale: 0.94, rotate: 1.2 }}
             animate={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
@@ -215,7 +230,13 @@ export function Home() {
             }}
           >
             <Tilt className="hero-art-tilt" max={3} glare={false}>
-              {isAvalon ? (
+              {pigTheme ? (
+                <div className="ct-pig-hero" role="img" aria-label={`${game.name}小猪版卡牌`}>
+                  {(isAvalon ? ['percival', 'merlin', 'morgana'] : ['merchant', 'king', 'military']).map((asset) => (
+                    <img key={asset} src={isAvalon ? avalonPigArt(asset) : `${import.meta.env.BASE_URL}citadels-cards/pig/${asset}.webp`} width={300} height={420} alt="" />
+                  ))}
+                </div>
+              ) : isAvalon ? (
                 <div className="avalon-hero-portrait">
                   <DecodedImage
                     src={avalonHero}

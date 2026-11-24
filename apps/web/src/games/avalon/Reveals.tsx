@@ -5,6 +5,7 @@ import { Crest } from '../../art/Crest';
 import { Tilt } from '../../fx/Tilt';
 import { CardBack } from '../../art/glass';
 import { AvalonCardBack, QuestCard, RoleFace } from './art';
+import { avalonPigArt, useAvalonCardStyle } from './cardLibrary';
 
 const { ROLES } = Avalon;
 
@@ -12,7 +13,7 @@ const { ROLES } = Avalon;
 export function FlipCard({
   flipped,
   front,
-  back = <CardBack />,
+  back,
   className = '',
   flipDuration = 0.7,
   onBackClick,
@@ -24,6 +25,8 @@ export function FlipCard({
   flipDuration?: number;
   onBackClick?: () => void;
 }) {
+  const style = useAvalonCardStyle();
+  const backFace = back ?? (style === 'pig' ? <AvalonCardBack /> : <CardBack />);
   return (
     <div className={`flip ${className}`}>
       <motion.div
@@ -35,9 +38,9 @@ export function FlipCard({
         <div className="flip-face flip-back">
           {onBackClick ? (
             <button type="button" className="flip-back-button" onClick={onBackClick} disabled={flipped} aria-label="点击翻开身份牌">
-              {back}
+              {backFace}
             </button>
-          ) : back}
+          ) : backFace}
         </div>
         <div className="flip-face flip-front">{front}</div>
       </motion.div>
@@ -245,6 +248,7 @@ export function LadyReveal({
   alignment: Avalon.Alignment;
   onDone: () => void;
 }) {
+  const pigTheme = useAvalonCardStyle() === 'pig';
   const [shown, setShown] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setShown(true), 1200);
@@ -254,7 +258,7 @@ export function LadyReveal({
     <Overlay tone={shown ? alignment : 'plain'} onClose={onDone}>
       <p className="overlay-kicker">湖中仙女映出了 {target.name} 的阵营</p>
       <motion.div className="lady-target" animate={shown ? { scale: 1 } : { scale: [1, 1.05, 1] }} transition={{ repeat: shown ? 0 : Infinity, duration: 1.2 }}>
-        <Crest seed={target.id} />
+        {pigTheme ? <img className="pig-lady-portrait" src={avalonPigArt('lady')} alt="小猪版湖中仙女" /> : <Crest seed={target.id} />}
       </motion.div>
       <div className="overlay-text">
         {shown && (

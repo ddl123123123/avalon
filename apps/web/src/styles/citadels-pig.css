@@ -1,0 +1,277 @@
+.ct-edition,
+.ct-edition-unlock {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 16px;
+  color: var(--vellum);
+}
+
+.ct-edition,
+.ct-edition-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ct-edition-unlock summary,
+.ct-edition button {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--gilt-deep);
+  border-radius: 10px;
+  background: var(--night);
+  cursor: pointer;
+}
+
+.ct-edition-unlock summary {
+  color: var(--gilt-bright);
+}
+
+.ct-edition button[aria-pressed="true"] {
+  border-color: var(--gilt-bright);
+  color: var(--gilt-bright);
+  background: var(--night-2);
+}
+
+.ct-edition-form {
+  margin-top: 8px;
+}
+.ct-edition-question {
+  flex-basis: 100%;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.ct-edition-form .input {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.ct-edition-form p {
+  flex-basis: 100%;
+  color: var(--ruby-soft);
+  font-size: 0.88rem;
+}
+
+body:has(.ct-pig-theme) {
+  background: #ffe2ec;
+}
+
+.ct-pig-theme {
+  --abyss: #ffe2ec;
+  --night: #fff7fa;
+  --night-2: #ffd9e7;
+  --vellum: #432b37;
+  --vellum-dim: #725262;
+  --gilt: #db789d;
+  --gilt-bright: #90264e;
+  --gilt-deep: #a4496b;
+  --ruby: #af385d;
+  --ruby-soft: #942047;
+  --sapphire-soft: #315d6c;
+  --font-display: var(--font-body);
+  color: var(--vellum);
+  background:
+    radial-gradient(circle, #fff7fa 0 5px, transparent 6px) 0 0 / 96px 96px,
+    linear-gradient(155deg, #ffe2ec, #fff3f7);
+}
+
+.home.ct-pig-theme {
+  border-radius: 22px;
+}
+
+.ct-pig-theme :is(.room-bar, .lobby-side.panel, .entry, .city-panel, .ct-me, .ct-actions, .ct-rank, .drawer, .overlay-body,
+  .av-match-panel, .av-card-library, .av-timer-setting, .av-deck-side, .av-role-editor, .dock, .lobby-center, .lobby-table, .recent-rooms li,
+  .av-tools-menu, .speech-setup-choice, .av-card-style-option, .av-timer-choice, .overlay-seen) {
+  border-color: #efb4cb;
+  background: #fffafb;
+}
+.ct-pig-theme :is(.entry, .lobby-side.panel, .city-panel, .av-match-panel, .lobby-center) {
+  border-radius: 18px;
+  box-shadow: 0 8px 22px #b3447020;
+}
+.ct-pig-theme .city-panel.is-active {
+  border-color: #bd4e78;
+  box-shadow: 0 0 0 2px #f0a6c1;
+}
+.ct-pig-theme :is(.hero-title, .lobby-game-heading h1) {
+  color: #ad3563;
+  text-shadow: 1px 2px #fff;
+  font-weight: 750;
+}
+.ct-pig-theme :is(.hero-lede, .hero-kicker, .home-brand-copy strong, .home-brand-copy small, .home-masthead-note,
+  .lobby-brand strong, .lobby-brand small, .lobby-exit, .lobby-room-meta .room-code, .lobby-room-meta .room-code strong,
+  .lobby-room-state, .lobby-room-players, .lobby-game-heading p, .lobby-count, .lobby-center p, .lobby-seat-hint,
+  .lobby-center-kicker, .lobby-size legend, .dock-waiting .dock-prompt, .recent-rooms h2, .recent-rooms header p,
+  .recent-rooms header > span, .recent-room-rejoin, .recent-room-main strong, .recent-room-main small,
+  .ct-actions:not(.is-mine) .dock-prompt, .howto-note, .overlay-title, .overlay-kicker) {
+  color: var(--vellum);
+}
+.ct-pig-theme .hero-title { color: #ad3563; }
+.ct-pig-theme .hero::after {
+  opacity: 0.14;
+}
+
+.ct-pig-theme :is(.btn-primary, .btn-ghost, .ct-card-style, .input, .ct-lobby-card-style button) {
+  border-radius: 10px;
+  clip-path: none;
+}
+
+.ct-pig-theme .btn-primary {
+  --btn-bg: linear-gradient(135deg, #f68bb3, #ffacc8);
+  --btn-fg: #480e28;
+  font-weight: 650;
+}
+
+.ct-pig-theme :is(.btn-ghost, .ct-card-style, .input, .ct-lobby-card-style button) {
+  border-color: #dda3b9;
+  background: #fff7fa;
+  color: var(--vellum);
+}
+
+.ct-pig-theme .ct-card-style {
+  color-scheme: light;
+}
+
+.ct-pig-theme :is(.ct-lobby-card-style button, .game-tab, .av-card-style-option, .av-timer-choice, .speech-setup-choice)[aria-pressed="true"] {
+  border-color: #bf517a;
+  background: #ffd9e7;
+  color: #7c1c42;
+  box-shadow: none;
+}
+.ct-pig-theme .game-tab:not([aria-pressed="true"]) {
+  border-color: #e7abc2;
+  background: #fffafb;
+  color: var(--vellum-dim);
+}
+.ct-pig-theme .game-tab {
+  border-radius: 12px;
+}
+
+.ct-pig-theme :is(.home-brand-mark, .lobby-brand-mark, .lobby-heading-seal) {
+  border-color: #e5a0b8;
+  border-radius: 50%;
+  background: #ffdbe8;
+  transform: none;
+}
+
+.ct-pig-theme .ct-pig-room-mark {
+  align-self: center;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.ct-pig-theme .seat-avatar {
+  color: #602840;
+  border-color: #d184a4;
+  box-shadow: 0 4px 12px #b3447033;
+  background: radial-gradient(circle at 38% 30%, #fff5f8, #f8b7cf 75%);
+}
+.ct-pig-theme :is(.seat-name, .lobby-table .seat-name, .lobby-size-button) {
+  color: #602840;
+  border-color: #e4a6bf;
+  background: #fff7fb;
+}
+.ct-pig-theme .lobby-table .round-table-surface {
+  border: 2px solid #efa7c4;
+  border-radius: 50%;
+  background: repeating-radial-gradient(ellipse, #fff5f9 0 34px, #ffeaf2 35px 39px);
+  filter: none;
+}
+.ct-pig-theme .lobby-table .table-surface {
+  visibility: hidden;
+}
+
+.ct-pig-theme .hero-window {
+  border: 1px solid #ebadc5;
+  border-radius: 24px;
+  background: radial-gradient(ellipse at center, #fff9fb, #ffcde0 85%);
+  box-shadow: 0 13px 32px #b3447029;
+}
+
+.ct-pig-theme .hero-window-stamp {
+  display: none;
+}
+
+.ct-pig-hero {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+}
+
+.ct-pig-hero img {
+  grid-area: 1 / 1;
+  width: 36%;
+  height: auto;
+  border: 2px solid #e7b387;
+  border-radius: 8px;
+  box-shadow: 0 12px 25px #28121eaa;
+}
+
+.ct-pig-hero img:first-child {
+  transform: translate(-57%, 12%) rotate(-17deg);
+}
+
+.ct-pig-hero img:nth-child(2) {
+  z-index: 1;
+  transform: translateY(-6%);
+}
+
+.ct-pig-hero img:last-child {
+  transform: translate(57%, 12%) rotate(17deg);
+}
+
+.ct-coin-pig-mark,
+.ct-pig-theme .ct-coin-crown {
+  display: none;
+}
+
+.ct-pig-theme .ct-coin-pig-mark {
+  display: inline;
+}
+
+.ct-pig-theme :is(.ct-character-card, .district-card, .roundel) :is(.role-face-name, .roundel-number) {
+  fill: #fff2e5;
+}
+.ct-pig-theme .reject-pip {
+  border-color: #ae7890;
+}
+.ct-pig-theme .reject-pip.is-used {
+  border-color: var(--ruby);
+}
+.ct-pig-theme :is(.speech-seat-number, .ct-round.is-final) {
+  color: var(--gilt-bright);
+}
+.ct-pig-theme .speech-seat-number {
+  background: #ffe2ec;
+}
+
+.quest-pig-card {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 5 / 7;
+  border-radius: 8px;
+}
+.quest-pig-card img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.quest-pig-card strong {
+  position: absolute;
+  inset: auto 8% 5%;
+  border-radius: 5px;
+  background: #30151fcf;
+  color: #fff6ec;
+  text-align: center;
+  font-size: clamp(0.72rem, 2.8vw, 0.95rem);
+}
+.pig-lady-portrait {
+  display: block;
+  width: 100%;
+  border-radius: 9px;
+}

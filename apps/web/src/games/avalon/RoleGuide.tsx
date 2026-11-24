@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Avalon } from '@tabletop/shared';
 import { DecodedImage } from '../../art/DecodedImage';
 import { useReducedMotion } from '../../fx/motion';
+import { avalonPigArt, useAvalonCardStyle } from './cardLibrary';
 
 type RoleId = Avalon.Role;
 
@@ -78,6 +79,7 @@ const ROLE_INDEX_LABEL: Record<RoleId, string> = {
 };
 
 export function AvalonRoleGuide() {
+  const pigTheme = useAvalonCardStyle() === 'pig';
   const reducedMotion = useReducedMotion();
   const [selected, setSelected] = useState<RoleId>('merlin');
   const swipeStartX = useRef<number | null>(null);
@@ -151,7 +153,7 @@ export function AvalonRoleGuide() {
             }}
           >
             <DecodedImage
-              src={`${import.meta.env.BASE_URL}avalon-roles/${selected}.jpg`}
+              src={pigTheme ? avalonPigArt(selected) : `${import.meta.env.BASE_URL}avalon-roles/${selected}.jpg`}
               width={768}
               height={1024}
               alt={`${role.name}角色立绘`}

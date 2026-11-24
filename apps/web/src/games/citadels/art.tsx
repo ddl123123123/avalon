@@ -380,7 +380,11 @@ export function Coin({ className = '' }: { className?: string }) {
     <svg className={`coin ${className}`} viewBox="0 0 40 40" aria-hidden="true">
       <circle cx="20" cy="20" r="18" fill={GILT} stroke={LEAD} strokeWidth="2.6" />
       <circle cx="20" cy="20" r="13" fill="none" stroke="#9c6f1e" strokeWidth="1.6" />
-      <path d="M12 25L11 14L16 19L20 12L24 19L29 14L28 25Z" fill="#fbe9ae" stroke="#9c6f1e" strokeWidth="1.4" strokeLinejoin="round" />
+      <path className="ct-coin-crown" d="M12 25L11 14L16 19L20 12L24 19L29 14L28 25Z" fill="#fbe9ae" stroke="#9c6f1e" strokeWidth="1.4" strokeLinejoin="round" />
+      <g className="ct-coin-pig-mark">
+        <ellipse cx="20" cy="20" rx="9" ry="6" fill="#ffbbc7" stroke="#a25b72" strokeWidth="1.5" />
+        <path d="M17 18v4m6-4v4" stroke="#8b435e" strokeWidth="2" strokeLinecap="round" />
+      </g>
     </svg>
   );
 }

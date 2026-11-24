@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { Avalon, NAME_MAX_LENGTH } from '@tabletop/shared';
+import { DecodedImage } from '../art/DecodedImage';
 import { useReducedMotion } from '../fx/motion';
 import { SplitText } from '../fx/SplitText';
 import { AvalonRoleGuide } from '../games/avalon/RoleGuide';
@@ -185,7 +186,7 @@ export function Home() {
           >
             {isAvalon ? (
               <div className="avalon-hero-portrait">
-                <img
+                <DecodedImage
                   src={`${import.meta.env.BASE_URL}avalon-cards/home-duel-v2.png`}
                   width={1254}
                   height={1254}

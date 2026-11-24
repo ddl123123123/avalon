@@ -1,6 +1,7 @@
 import { useId } from 'react';
 import { Avalon } from '@tabletop/shared';
 import { polar, sector } from '../../art/geometry';
+import { DecodedImage } from '../../art/DecodedImage';
 import { ArchCard, EMBLEM, GILT, LEAD, type Glass } from '../../art/glass';
 import { getAvalonCardAsset, useAvalonCardStyle, type AvalonCardStyle } from './cardLibrary';
 
@@ -102,31 +103,16 @@ export function RoleFace({ role, style }: { role: Role; style?: AvalonCardStyle 
   const asset = getAvalonCardAsset(cardStyle, role);
   const info = Avalon.ROLES[role];
   const good = info.alignment === 'good';
-  if (asset) {
-    return (
-      <div
-        className="role-face role-face-raster"
-        role="img"
-        aria-label={`${info.name}，${good ? '正义方' : '邪恶方'}`}
-        data-card-style={cardStyle}
-        style={{
-          backgroundImage: `url("${asset.src}")`,
-          backgroundSize: asset.side ? '200% 100%' : 'cover',
-          backgroundPosition: asset.side === 'right' ? '100% 50%' : '0% 50%',
-        }}
-      />
-    );
-  }
+  const label = `${info.name}，${good ? '正义方' : '邪恶方'}`;
   return (
-    <ArchCard
-      seed={role}
-      glass={GLASS[role]}
-      name={info.name}
-      accent={good ? '#4c86ea' : '#d2384f'}
-      label={`${info.name}，${good ? '正义方' : '邪恶方'}`}
-    >
-      <Emblem role={role} />
-    </ArchCard>
+    <div className="role-face role-face-raster" role="img" aria-label={label} data-card-style={cardStyle}>
+      <div className="role-face-fallback" aria-hidden="true">
+        <ArchCard seed={role} glass={GLASS[role]} name={info.name} accent={good ? '#4c86ea' : '#d2384f'} label={label}>
+          <Emblem role={role} />
+        </ArchCard>
+      </div>
+      <DecodedImage className="role-face-art" data-side={asset.side} src={asset.src} alt="" />
+    </div>
   );
 }
 

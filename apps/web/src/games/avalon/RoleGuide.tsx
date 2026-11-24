@@ -1,5 +1,6 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { Avalon } from '@tabletop/shared';
+import { DecodedImage } from '../../art/DecodedImage';
 
 type RoleId = Avalon.Role;
 
@@ -126,8 +127,7 @@ export function AvalonRoleGuide() {
       >
         <div className="avalon-guide-visual">
           <figure className={`avalon-guide-portrait is-${side}`}>
-            <img
-              key={selected}
+            <DecodedImage
               src={`${import.meta.env.BASE_URL}avalon-roles/${selected}.jpg`}
               width={768}
               height={1024}

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Avalon } from '@tabletop/shared';
 import { polar, sector } from '../../art/geometry';
 import { EMBLEM, GILT, LEAD, type Glass } from '../../art/glass';
-import { getAvalonCardAsset, useAvalonCardStyle, type AvalonCardStyle } from './cardLibrary';
+import { AVALON_CARD_BACK, getAvalonCardAsset, useAvalonCardStyle, type AvalonCardStyle } from './cardLibrary';
 
 type Role = Avalon.Role;
 
@@ -39,6 +39,10 @@ export function RoleFace({ role, style, thumbnail = false }: { role: Role; style
       </span>
     </motion.div>
   );
+}
+
+export function AvalonCardBack() {
+  return <img className="role-face role-face-raster avalon-card-back" src={AVALON_CARD_BACK} alt="" aria-hidden="true" draggable={false} />;
 }
 
 /** 投票币：白为赞成，黑为反对（与实体游戏一致）。 */

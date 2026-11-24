@@ -1,4 +1,4 @@
-import { RoleFace } from './art';
+import { AvalonCardBack, RoleFace } from './art';
 import { AVALON_CARD_STYLES, setAvalonCardStyle, useAvalonCardStyle } from './cardLibrary';
 
 export function CardLibrarySettings({ compact = false }: { compact?: boolean }) {
@@ -24,6 +24,7 @@ export function CardLibrarySettings({ compact = false }: { compact?: boolean }) 
             <span className="av-card-style-preview" aria-hidden="true">
               <RoleFace role="merlin" style={style.id} thumbnail />
               <RoleFace role="morgana" style={style.id} thumbnail />
+              <AvalonCardBack />
             </span>
             <span className="av-card-style-name">{style.name}</span>
             <small>{style.description}</small>

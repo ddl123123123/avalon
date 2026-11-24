@@ -8,6 +8,8 @@ export const AVALON_CARD_STYLES: { id: AvalonCardStyle; name: string; descriptio
   { id: 'style-2', name: '风格二 · 星夜典藏', description: '写实奇幻插画与细致卡框' },
 ];
 
+export const AVALON_CARD_BACK = `${import.meta.env.BASE_URL}avalon-card-back.png`;
+
 interface CardAsset {
   src: string;
 }

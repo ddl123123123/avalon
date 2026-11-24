@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { NinjaNight, type RoomPlayer, type RoomSnapshot } from '@tabletop/shared';
 import { net } from '../../net/client';
 import type { GameClient } from '../registry';
+import { NinjaCardArt, NinjaCardStyles, NinjaIdentityCard, ninjaFactions as factionNames, useNinjaCardStyle } from './NinjaCards';
 import { PartyTable } from './PartyTable';
 
 const { ninjaNight, MAX_ROUNDS, shadowCount } = NinjaNight;
-const factionNames = { guard: '守夜忍', shadow: '影忍' };
 
 function NinjaOptions({ playerCount }: { playerCount: number }) {
   const shadows = shadowCount(playerCount);
@@ -13,12 +13,14 @@ function NinjaOptions({ playerCount }: { playerCount: number }) {
     <div className="party-lobby-copy">
       <p>{playerCount} 人局 · {playerCount - shadows} 名守夜忍，{shadows} 名影忍</p>
       <p>每人有一次私密侦察。每轮讨论后匿名投票，单独最高票的玩家公开阵营。三轮内找齐影忍，守夜忍就获胜。</p>
+      <NinjaCardStyles />
     </div>
   );
 }
 
 function NinjaBoard({ room }: { room: RoomSnapshot }) {
   const view = room.view as NinjaNight.NinjaView;
+  const cardStyle = useNinjaCardStyle();
   const players = room.players;
   const label = (id: string) => {
     const player = players.find((seat) => seat.id === id);
@@ -32,13 +34,23 @@ function NinjaBoard({ room }: { room: RoomSnapshot }) {
     <PartyTable room={room} name={ninjaNight.name} theme="ninja">
       <section className="panel party-panel">
         <p className="party-kicker">{view.winner ? '对局结束' : `第 ${view.round} / ${MAX_ROUNDS} 轮 · 讨论与投票`}</p>
-        <h2>{view.winner ? `${factionNames[view.winner]}获胜` : view.faction && `你是${factionNames[view.faction]}`}</h2>
         {view.revealedShadows ? (
-          <p>本局影忍：{view.revealedShadows.map(label).join('、')}</p>
-        ) : (
-          <p>{view.faction === 'shadow' ? '只要三轮结束时还有影忍没有公开阵营，你们就赢。' : '在三轮内找出所有影忍。'}</p>
+          <>
+            {view.winner && <h2>{factionNames[view.winner]}获胜</h2>}
+            <p>本局影忍：{view.revealedShadows.map(label).join('、')}</p>
+          </>
+        ) : view.faction && (
+          <details className="party-details ninja-identity">
+            <summary>查看我的身份牌</summary>
+            <div className="ninja-identity-body">
+              <NinjaIdentityCard faction={view.faction} style={cardStyle} />
+              <div>
+                <p>{view.faction === 'shadow' ? '只要三轮结束时还有影忍没有公开阵营，你们就赢。' : '在三轮内找出所有影忍。'}</p>
+                {view.allies.length > 0 && <p>你的同伴：{view.allies.map(label).join('、')}</p>}
+              </div>
+            </div>
+          </details>
         )}
-        {!view.winner && view.allies.length > 0 && <p>你的同伴：{view.allies.map(label).join('、')}</p>}
         {view.clue && (
           <p className="party-note">你的侦察结果：{label(view.clue.first)} 与 {label(view.clue.second)} {view.clue.same ? '同阵营' : '不同阵营'}。</p>
         )}
@@ -155,7 +167,7 @@ export const ninjaNightClient: GameClient = {
   icon: <span className="party-tab-mark" aria-hidden="true">☾</span>,
   hero: {
     lede: '夜色掩护着潜伏的影忍。用一次私密侦察比对阵营，再和同桌的人讨论，决定这一轮要查验谁。',
-    Art: () => <div className="party-art party-art-ninja" aria-hidden="true"><span /><i /></div>,
+    Art: NinjaCardArt,
     note: '4 到 8 人的原创阵营推理游戏。可加机器人凑人数。',
     steps: [
       { title: '查收密令', text: '查看自己的阵营。影忍也能看到同伴。' },

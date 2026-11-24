@@ -26,20 +26,142 @@
     radial-gradient(ellipse at 50% 30%, #344765, #111827 64%, #0a0e18);
 }
 
-.party-art-ninja span {
-  width: 41%;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: radial-gradient(circle at 40% 25%, #fff7d8, #d0ab72 80%);
-  box-shadow: 0 0 60px #e3bd7066;
-  transform: translateY(-22%);
+.ninja-card {
+  --card-rim: #d4ae65;
+  --card-label: #14274a;
+  position: relative;
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  border: 1px solid var(--card-rim);
+  border-radius: 5%;
+  background: var(--card-label);
+  box-shadow: 0 4px 14px #070b16aa;
 }
 
-.party-art-ninja i {
+.ninja-card[data-faction='shadow'] {
+  --card-label: #331d33;
+  --card-rim: #b68b7b;
+}
+
+.ninja-card[data-style='starry-night'] {
+  border-color: #dcccb0;
+}
+
+.ninja-card::after {
+  content: '';
   position: absolute;
-  inset: 32% 0 0;
-  background: linear-gradient(153deg, #3b4960, #0b101a 62%);
-  clip-path: polygon(0 49%, 16% 34%, 26% 50%, 40% 22%, 56% 56%, 74% 33%, 88% 11%, 100% 42%, 100% 100%, 0 100%);
+  inset: 3px;
+  border: 1px solid color-mix(in srgb, var(--card-rim) 80%, transparent);
+  border-radius: 5%;
+  pointer-events: none;
+}
+
+.ninja-card[data-style='starry-night']::after {
+  border-color: #e5d9cda8;
+  box-shadow: inset 0 0 14px #06081060;
+}
+
+.ninja-card img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 43%;
+}
+
+.ninja-card-name {
+  position: absolute;
+  z-index: 1;
+  inset: auto 6% 6%;
+  padding: 3px 1px;
+  border: 1px solid var(--card-rim);
+  border-radius: 3px;
+  background: var(--card-label);
+  color: #f9ead0;
+  font-family: var(--font-display);
+  font-size: var(--card-name-size, 0.78rem);
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.ninja-card-pair,
+.ninja-style-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.party-art-ninja .ninja-card-pair {
+  --card-name-size: clamp(0.7rem, 1.6vw, 1.35rem);
+  width: 72%;
+  max-width: 430px;
+}
+
+.party-art-ninja .ninja-card:first-child {
+  transform: rotate(-7deg);
+}
+
+.party-art-ninja .ninja-card:last-child {
+  transform: rotate(7deg);
+}
+
+.ninja-card-library {
+  display: grid;
+  gap: 8px;
+}
+
+.ninja-card-library p {
+  font-size: 0.88rem;
+  color: var(--vellum-dim);
+}
+
+.ninja-style-option {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  padding: clamp(5px, 1.5vw, 12px);
+  border: 1px solid #d6c49b50;
+  border-radius: 8px;
+  background: #111825;
+  text-align: center;
+}
+
+.ninja-style-option[aria-pressed='true'] {
+  border-color: var(--gilt-bright);
+  background: #242832;
+}
+
+.ninja-style-option small {
+  color: var(--vellum-dim);
+  line-height: 1.35;
+}
+
+.ninja-style-option .ninja-card-pair {
+  --card-name-size: clamp(0.55rem, 1.6vw, 0.76rem);
+  gap: 4px;
+  width: min(100%, 186px);
+  justify-self: center;
+}
+
+.ninja-identity-body {
+  display: grid;
+  grid-template-columns: minmax(90px, 32%) minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  padding: 4px 0 10px;
+}
+
+.ninja-identity-body > div {
+  display: grid;
+  gap: 8px;
+}
+
+.ninja-identity-body .ninja-card {
+  --card-name-size: clamp(0.9rem, 2.4vw, 1.25rem);
 }
 
 .party-art-truth {

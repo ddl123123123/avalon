@@ -1,5 +1,14 @@
 import { useSyncExternalStore } from 'react';
 import type { Avalon } from '@tabletop/shared';
+import badgeMerlinMorgana from '../../assets/avalon/style-1-merlin-morgana.webp';
+import badgePercivalServant from '../../assets/avalon/style-1-percival-servant.webp';
+import badgeOberonMinion from '../../assets/avalon/style-1-oberon-minion.webp';
+import badgeAssassinMordred from '../../assets/avalon/style-1-assassin-mordred.webp';
+import nightMerlin from '../../assets/avalon/style-2-merlin.webp';
+import nightMorgana from '../../assets/avalon/style-2-morgana.webp';
+import nightPercivalAssassin from '../../assets/avalon/style-2-percival-assassin.webp';
+import nightServantMordred from '../../assets/avalon/style-2-servant-mordred.webp';
+import nightOberonMinion from '../../assets/avalon/style-2-oberon-minion.webp';
 
 export type AvalonCardStyle = 'style-1' | 'style-2';
 
@@ -15,24 +24,24 @@ interface CardAsset {
 
 const assets: Record<AvalonCardStyle, Record<Avalon.Role, CardAsset>> = {
   'style-1': {
-    merlin: { src: '/avalon-cards/style-1-merlin-morgana.png', side: 'left' },
-    morgana: { src: '/avalon-cards/style-1-merlin-morgana.png', side: 'right' },
-    percival: { src: '/avalon-cards/style-1-percival-servant.png', side: 'left' },
-    servant: { src: '/avalon-cards/style-1-percival-servant.png', side: 'right' },
-    oberon: { src: '/avalon-cards/style-1-oberon-minion.png', side: 'left' },
-    minion: { src: '/avalon-cards/style-1-oberon-minion.png', side: 'right' },
-    assassin: { src: '/avalon-cards/style-1-assassin-mordred.png', side: 'left' },
-    mordred: { src: '/avalon-cards/style-1-assassin-mordred.png', side: 'right' },
+    merlin: { src: badgeMerlinMorgana, side: 'left' },
+    morgana: { src: badgeMerlinMorgana, side: 'right' },
+    percival: { src: badgePercivalServant, side: 'left' },
+    servant: { src: badgePercivalServant, side: 'right' },
+    oberon: { src: badgeOberonMinion, side: 'left' },
+    minion: { src: badgeOberonMinion, side: 'right' },
+    assassin: { src: badgeAssassinMordred, side: 'left' },
+    mordred: { src: badgeAssassinMordred, side: 'right' },
   },
   'style-2': {
-    merlin: { src: '/avalon-cards/style-2-merlin.png' },
-    morgana: { src: '/avalon-cards/style-2-morgana.png' },
-    percival: { src: '/avalon-cards/style-2-percival-assassin.png', side: 'left' },
-    assassin: { src: '/avalon-cards/style-2-percival-assassin.png', side: 'right' },
-    servant: { src: '/avalon-cards/style-2-servant-mordred.png', side: 'left' },
-    mordred: { src: '/avalon-cards/style-2-servant-mordred.png', side: 'right' },
-    oberon: { src: '/avalon-cards/style-2-oberon-minion.png', side: 'left' },
-    minion: { src: '/avalon-cards/style-2-oberon-minion.png', side: 'right' },
+    merlin: { src: nightMerlin },
+    morgana: { src: nightMorgana },
+    percival: { src: nightPercivalAssassin, side: 'left' },
+    assassin: { src: nightPercivalAssassin, side: 'right' },
+    servant: { src: nightServantMordred, side: 'left' },
+    mordred: { src: nightServantMordred, side: 'right' },
+    oberon: { src: nightOberonMinion, side: 'left' },
+    minion: { src: nightOberonMinion, side: 'right' },
   },
 };
 

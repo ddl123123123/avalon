@@ -9,7 +9,6 @@ import { History } from './History';
 import { AssassinReveal, LadyReveal, QuestReveal, RoleReveal } from './Reveals';
 import { Seat, type SeatProps } from './Seat';
 import { QuestRoundel } from './art';
-import { CardLibrarySettings } from './CardLibrarySettings';
 import { AvalonAssistant } from './Assistant';
 import { Notebook } from './Notebook';
 import { notebookStorageKey, readNotebook, saveNotebook } from './notebookData';
@@ -84,6 +83,12 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
   const [notebook, setNotebook] = useState(() => readNotebook(dossierKey));
   const [showNotebook, setShowNotebook] = useState(false);
   const [showAssistant, setShowAssistant] = useState(false);
+  const [showTools, setShowTools] = useState(false);
+  const toolsButton = useRef<HTMLButtonElement>(null);
+  const openTool = (open: (value: boolean) => void) => {
+    setShowTools(false);
+    open(true);
+  };
 
   const { current: reveal, next, sealedFrom } = useReveals(room, view);
   const confirmingRoles = view.phase === 'identity';
@@ -215,25 +220,33 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
           <span>房间号</span>
           <strong>{room.code}</strong>
         </div>
-        <div className="room-bar-actions">
-          <details className="role-card-settings">
-            <summary className="btn btn-ghost btn-small" aria-label="角色卡牌库设置" title="角色卡牌库设置">卡牌</summary>
-            <CardLibrarySettings compact />
-          </details>
-          <button type="button" className="btn btn-ghost btn-small" onClick={() => setShowNotebook(true)}>
-            笔记
+        <div className="av-room-tools" onKeyDown={(event) => {
+          if (event.key === 'Escape' && showTools) {
+            setShowTools(false);
+            toolsButton.current?.focus();
+          }
+        }}>
+          <button ref={toolsButton} type="button" className="btn btn-ghost btn-small av-tools-toggle" aria-controls="av-room-tools" aria-expanded={showTools} onClick={() => setShowTools((open) => !open)}>
+            工具 <span aria-hidden="true">{showTools ? '−' : '+'}</span>
           </button>
-          <button type="button" className="btn btn-ghost btn-small" onClick={() => setShowHistory(true)}>
-            任务记录
-          </button>
-          <button type="button" className="btn btn-ghost btn-small" onClick={() => setShowAssistant(true)}>
-            AI 助手
-          </button>
-          {me && !ended && (
-            <button type="button" className="btn btn-ghost btn-small" onClick={() => setShowRole(true)}>
-              我的身份
+          <div id="av-room-tools" className="room-bar-actions av-tools-menu" data-expanded={showTools} role="group" aria-label="对局工具">
+            <button type="button" className="btn btn-ghost btn-small" onClick={() => openTool(setShowNotebook)}>
+              笔记
             </button>
-          )}
+            <button type="button" className="btn btn-ghost btn-small" onClick={() => openTool(setShowHistory)}>
+              任务记录
+            </button>
+            {me && (
+              <button type="button" className="btn btn-ghost btn-small" onClick={() => openTool(setShowAssistant)}>
+                AI 助手
+              </button>
+            )}
+            {me && !ended && (
+              <button type="button" className="btn btn-ghost btn-small" onClick={() => openTool(setShowRole)}>
+                我的身份
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -352,13 +365,9 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
             </LayoutGroup>
           </div>
 
-          <footer className="dock">
+          <footer className="dock av-game-dock" aria-label="对局操作">
             {busy ? (
-              <div className="dock-inner dock-waiting">
-                {voteReveal && (
-                  <p className="dock-hint">亮票结束后自动继续</p>
-                )}
-              </div>
+              voteReveal && <div className="dock-inner dock-waiting"><p className="dock-hint">亮票结束后自动继续</p></div>
             ) : (
               <Dock
                 view={view}

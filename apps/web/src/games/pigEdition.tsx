@@ -80,20 +80,30 @@ export function PigEditionSwitch({ active, gameName, onChange }: {
   }
   return (
     <details className="ct-edition-unlock">
-      <summary>解锁小猪版</summary>
+      <summary>解锁其他版本</summary>
       <form onSubmit={unlock} className="ct-edition-form">
         <label className="ct-edition-question" htmlFor="pig-edition-answer">小猪小猪</label>
         <input
           className="input"
           id="pig-edition-answer"
-          type="password"
+          type="text"
+          inputMode="text"
           aria-invalid={error}
           placeholder="输入回答"
           autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
           required
           maxLength={24}
           value={password}
           onChange={(event) => { setPassword(event.target.value); setError(false); }}
+          onKeyDown={(event) => {
+            const { isComposing, keyCode } = event.nativeEvent;
+            // 某些浏览器确认输入法候选词时只会报告键码 229。
+            if (event.key === 'Enter' && (isComposing || keyCode === 229)) {
+              event.preventDefault();
+            }
+          }}
         />
         <button type="submit" className="btn btn-ghost btn-small">解锁</button>
         {error && <p role="alert">口令不正确，请再试一次。</p>}

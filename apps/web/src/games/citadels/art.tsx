@@ -1,7 +1,8 @@
 import { useId, type ReactNode } from 'react';
 import { Citadels } from '@tabletop/shared';
-import { ArchCard, EMBLEM, GILT, LEAD, type Glass } from '../../art/glass';
+import { EMBLEM, GILT, LEAD, type Glass } from '../../art/glass';
 import { seededRandom } from '../../fx/motion';
+import { useCitadelsCardArt } from './cardStyle';
 
 type CharacterId = Citadels.CharacterId;
 type DistrictType = Citadels.DistrictType;
@@ -22,113 +23,25 @@ export const TYPE_ACCENT: Record<DistrictType, string> = {
   special: '#b98af0',
 };
 
-const CHARACTER_GLASS: Record<CharacterId, Glass> = {
-  assassin: ['#3a0d1c', '#7c1429', '#c7304a'],
-  thief: ['#0f3b3f', '#1f6f73', '#6fc2bf'],
-  magician: ['#35186b', '#6b3fc0', '#b79af5'],
-  king: ['#5c3f0a', '#b07a1c', '#f0cf72'],
-  bishop: ['#1d3f94', '#3f6fd8', '#8fb8ff'],
-  merchant: ['#14532d', '#23856a', '#7ed0a6'],
-  architect: ['#333f52', '#64789a', '#c3d2e6'],
-  warlord: ['#6e1a12', '#b8402b', '#f08a5c'],
-};
-
-function CharacterEmblem({ id }: { id: CharacterId }) {
-  switch (id) {
-    case 'assassin':
-      return (
-        <>
-          <path d="M50 94L41 44H59Z" />
-          <path d="M28 36H72V46H28Z" />
-          <path d="M45 16H55V36H45Z" />
-          <circle cx="50" cy="12" r="7" />
-        </>
-      );
-    case 'thief':
-      // 钥匙
-      return (
-        <>
-          <path fillRule="evenodd" d="M50 8a16 16 0 1 0 .01 0zM50 17a7 7 0 1 1-.01 0z" />
-          <path d="M45 40H55V92H45Z" />
-          <path d="M55 64H68V72H55ZM55 78H64V86H55Z" />
-        </>
-      );
-    case 'magician':
-      // 魔杖与星
-      return (
-        <>
-          <path d="M18 80L26 88L66 46L58 38Z" />
-          <path d="M72 4l6 16 16 6-16 6-6 16-6-16-16-6 16-6z" />
-          <circle cx="30" cy="30" r="4" />
-          <circle cx="84" cy="62" r="3.5" />
-        </>
-      );
-    case 'king':
-      return (
-        <>
-          <path d="M16 68L12 28L32 46L50 18L68 46L88 28L84 68Z" />
-          <path d="M16 74H84V86H16Z" />
-          <circle cx="50" cy="52" r="5" fill="#c7304a" />
-        </>
-      );
-    case 'bishop':
-      // 主教冠
-      return (
-        <>
-          <path d="M50 6C68 22 74 42 70 62H30C26 42 32 22 50 6Z" />
-          <path d="M28 62H72V74H28Z" />
-          <path d="M34 74h9v18h-9zM57 74h9v18h-9z" />
-          <path d="M50 22V52M40 34H60" fill="none" stroke={LEAD} strokeWidth="5" />
-        </>
-      );
-    case 'merchant':
-      // 一摞金币
-      return (
-        <>
-          {[76, 62, 48].map((y) => (
-            <path key={y} d={`M18 ${y}a24 8 0 0 0 48 0v10a24 8 0 0 1-48 0z`} />
-          ))}
-          <ellipse cx="42" cy="48" rx="24" ry="8" />
-          <circle cx="76" cy="30" r="15" />
-          <circle cx="76" cy="30" r="8" fill="none" strokeWidth="2.5" />
-        </>
-      );
-    case 'architect':
-      // 圆规
-      return (
-        <>
-          <path d="M45 22L26 88H36L53 30Z" />
-          <path d="M55 22L74 88H64L47 30Z" />
-          <circle cx="50" cy="16" r="9" />
-          <path d="M32 64Q50 54 68 64" fill="none" stroke={EMBLEM} strokeWidth="4" />
-        </>
-      );
-    case 'warlord':
-      // 头盔
-      return (
-        <>
-          <path d="M50 16C50 4 64 0 78 8C66 8 60 12 58 18Z" />
-          <path d="M20 60C20 32 32 16 50 16C68 16 80 32 80 60V76H62V54H38V76H20Z" />
-          <path d="M45 46H55V80H45Z" />
-        </>
-      );
-  }
-}
-
 export function CharacterCard({ character }: { character: CharacterId }) {
   const def = Citadels.CHARACTER[character];
+  const art = useCitadelsCardArt(character);
+  const accent = def.income ? TYPE_ACCENT[def.income] : GILT;
   return (
-    <ArchCard
-      seed={`citadels:${character}`}
-      glass={CHARACTER_GLASS[character]}
-      name={def.name}
-      accent={def.income ? TYPE_ACCENT[def.income] : GILT}
-      badge={def.rank}
-      label={`${def.rank} 号角色，${def.name}`}
-    >
-      <CharacterEmblem id={character} />
-    </ArchCard>
+    <svg className="ct-character-card" viewBox="0 0 200 280" role="img" aria-label={`${def.rank} 号角色，${def.name}`}>
+      <rect width="200" height="280" fill={LEAD} />
+      <image href={art} width="200" height="280" />
+      <circle cx="27" cy="25" r="19" fill={LEAD} stroke={accent} strokeWidth="1.5" />
+      <text x="27" y="26" dominantBaseline="central" textAnchor="middle" className="roundel-number" fontSize="26">{def.rank}</text>
+      <rect x="9" y="239" width="182" height="34" rx="6" fill={LEAD} fillOpacity="0.96" stroke={accent} strokeWidth="1.5" />
+      <text x="100" y="257" dominantBaseline="central" textAnchor="middle" className="role-face-name" fontSize="25">{def.name}</text>
+    </svg>
   );
+}
+
+export function CitadelsCardBack({ kind }: { kind: 'character' | 'district' }) {
+  const art = useCitadelsCardArt(`${kind}-back`);
+  return <img className="ct-card-back" src={art} width={300} height={420} alt="" draggable={false} />;
 }
 
 /* ---------- 建筑剪影 ---------- */
@@ -422,76 +335,40 @@ const GLYPHS: Record<string, ReactNode> = {
   ),
 };
 
-/** 城区牌。compact 用在城市里：不带名字，只看剪影、颜色和造价。 */
+/** 同类城区共用插画，具体建筑继续用名称和剪影区分。 */
 export function DistrictCard({ card, compact = false }: { card: string; compact?: boolean }) {
   const id = useId();
   const def = Citadels.districtOf(card);
-  const [dark, mid, light] = TYPE_GLASS[def.type];
-  const rand = seededRandom(`district:${def.id}`);
-  const tones = [dark, dark, mid, mid, mid, light];
+  const art = useCitadelsCardArt(def.type);
+  const accent = TYPE_ACCENT[def.type];
   const height = compact ? 214 : 280;
-  // 菱形小窗格铺满天空
-  const panes: ReactNode[] = [];
-  const S = 30;
-  for (let row = 0; row < 8; row++) {
-    for (let col = 0; col < 7; col++) {
-      const cx = 10 + col * S + (row % 2 ? S / 2 : 0);
-      const cy = 14 + row * (S / 2) * 1.5;
-      panes.push(
-        <path
-          key={`${row}-${col}`}
-          d={`M${cx} ${cy - S * 0.75}L${cx + S / 2} ${cy}L${cx} ${cy + S * 0.75}L${cx - S / 2} ${cy}Z`}
-          fill={tones[Math.floor(rand() * tones.length)]}
-        />,
-      );
-    }
-  }
-
+  const glyphY = compact ? 142 : 183;
   return (
-    <svg
-      className="district-card"
-      viewBox={`0 0 200 ${height}`}
-      role="img"
-      aria-label={`${def.name}，${Citadels.TYPE_NAMES[def.type]}城区，造价 ${def.cost}`}
-    >
+    <svg className="district-card" viewBox={`0 0 200 ${height}`} role="img"
+      aria-label={`${def.name}，${Citadels.TYPE_NAMES[def.type]}城区，造价 ${def.cost}`}>
       <defs>
-        <clipPath id={`${id}p`}>
-          <rect x="18" y="18" width="164" height="178" rx="8" />
+        <clipPath id={id}>
+          <rect x="2" y="2" width="196" height={height - 4} rx="9" />
         </clipPath>
-        <radialGradient id={`${id}l`} cx="50%" cy="30%" r="75%">
-          <stop offset="0" stopColor="#fff" stopOpacity="0.4" />
-          <stop offset="0.6" stopColor="#fff" stopOpacity="0" />
-          <stop offset="1" stopColor="#000" stopOpacity="0.4" />
-        </radialGradient>
       </defs>
-      <rect x="3" y="3" width="194" height={height - 6} rx="13" fill="#0a0f2b" stroke={GILT} strokeWidth="2.5" />
-      <g clipPath={`url(#${id}p)`}>
-        <g stroke={LEAD} strokeWidth="2.2">{panes}</g>
-        <rect x="18" y="18" width="164" height="178" fill={`url(#${id}l)`} />
-        <rect x="18" y="164" width="164" height="34" fill={dark} stroke={LEAD} strokeWidth="2.6" />
+      <rect width="200" height={height} fill={LEAD} />
+      <image href={art} y={compact ? -10 : 0} width="200" height="280" clipPath={`url(#${id})`} />
+      <rect x="2" y="2" width="196" height={height - 4} rx="9" fill="none" stroke={accent} strokeWidth="2" />
+      <circle cx="28" cy="25" r="19" fill={LEAD} stroke={GILT} strokeWidth="1.8" />
+      <text x="28" y="26" dominantBaseline="central" textAnchor="middle" className="roundel-number" fontSize="27">{def.cost}</text>
+
+      <g transform={`translate(138 ${glyphY})`}>
+        <rect width="52" height="47" rx="6" fill={LEAD} fillOpacity="0.94" stroke={accent} strokeWidth="1.5" />
+        <g transform="translate(5 2) scale(.42)" fill={accent} stroke={LEAD} strokeWidth="2.6" strokeLinejoin="round" paintOrder="stroke">
+          {GLYPHS[def.id]}
+        </g>
       </g>
-      <rect x="18" y="18" width="164" height="178" rx="8" fill="none" stroke={LEAD} strokeWidth="6" />
-      <rect x="18" y="18" width="164" height="178" rx="8" fill="none" stroke={GILT} strokeWidth="1.8" />
-
-      <g transform="translate(28 36) scale(1.44)" fill={EMBLEM} stroke={LEAD} strokeWidth="2.6" strokeLinejoin="round" paintOrder="stroke">
-        {GLYPHS[def.id]}
-      </g>
-
-      <circle cx="38" cy="38" r="21" fill={GILT} stroke={LEAD} strokeWidth="3.5" />
-      <circle cx="38" cy="38" r="15.5" fill="none" stroke="#9c6f1e" strokeWidth="1.6" />
-      <text x="38" y="49" textAnchor="middle" className="roundel-number" style={{ fill: '#1b1404' }} fontSize="32">
-        {def.cost}
-      </text>
-
-      {!compact && (
+      {compact ? (
+        <text x="12" y="202" className="role-face-name" fontSize="22" paintOrder="stroke" stroke={LEAD} strokeWidth="7">{def.name}</text>
+      ) : (
         <>
-          <text x="100" y="240" textAnchor="middle" className="role-face-name" fontSize={def.name.length > 3 ? 23 : 27}>
-            {def.name}
-          </text>
-          <g transform="translate(100 258)">
-            <path d="M-34 0h20M14 0h20" stroke={TYPE_ACCENT[def.type]} strokeWidth="1.5" />
-            <path d="M0 -6L6 0L0 6L-6 0Z" fill={TYPE_ACCENT[def.type]} />
-          </g>
+          <rect x="9" y="237" width="182" height="36" rx="6" fill={LEAD} fillOpacity="0.96" stroke={accent} strokeWidth="1.5" />
+          <text x="100" y="256" dominantBaseline="central" textAnchor="middle" className="role-face-name" fontSize={def.name.length > 3 ? 23 : 26}>{def.name}</text>
         </>
       )}
     </svg>

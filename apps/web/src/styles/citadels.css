@@ -1,9 +1,42 @@
 /* 富饶之城 */
 .district-card,
+.ct-character-card,
 .coin {
   display: block;
   width: 100%;
   height: auto;
+}
+.district-card,
+.ct-character-card {
+  border-radius: 6px;
+  overflow: hidden;
+}
+.ct-card-style {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 4px 7px;
+  border: 1px solid rgba(214, 196, 155, 0.36);
+  border-radius: 4px;
+  background: #141b29;
+  color: var(--vellum);
+  font: inherit;
+  font-size: 0.8rem;
+  color-scheme: dark;
+}
+.ct-lobby-card-style,
+.ct-draft-discard {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ct-draft-discard {
+  justify-content: center;
+}
+.ct-card-back {
+  width: 19px;
+  height: auto;
+  flex: none;
+  border-radius: 2px;
 }
 
 .ct-board {
@@ -620,6 +653,14 @@ button.city-head {
 }
 
 @media (max-width: 640px) {
+  .ct-board .room-bar,
+  .ct-board .room-bar-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .ct-board .room-bar-actions {
+    justify-content: flex-end;
+  }
   .ct-rivals {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;

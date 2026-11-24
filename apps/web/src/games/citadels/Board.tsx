@@ -6,7 +6,8 @@ import { DraftPicker } from './Draft';
 import { EndScreen } from './EndScreen';
 import { PlayerPanel } from './PlayerPanel';
 import { Announcer, Track } from './Track';
-import { CharacterCard, Coin, DistrictCard } from './art';
+import { CharacterCard, CitadelsCardBack, Coin, DistrictCard } from './art';
+import { CitadelsCardStylePicker } from './cardStyle';
 import { describe, destroyCostOf, incomeOf } from './text';
 
 type View = Citadels.CitadelsView;
@@ -62,7 +63,7 @@ export function CitadelsBoard({ room }: { room: RoomSnapshot }) {
             <span>房间号</span>
             <strong>{room.code}</strong>
           </div>
-          <span />
+          <CitadelsCardStylePicker />
         </header>
         <EndScreen room={room} view={view} onCard={setInspect} />
         <AnimatePresence>{inspect && <Inspect card={inspect} onClose={() => setInspect(null)} />}</AnimatePresence>
@@ -268,6 +269,7 @@ export function CitadelsBoard({ room }: { room: RoomSnapshot }) {
               拿 {Citadels.ACTION_GOLD} 枚金币
             </button>
             <button type="button" className="btn btn-primary" onClick={() => act({ type: 'draw' })}>
+              <CitadelsCardBack kind="district" />
               抽牌
             </button>
           </>
@@ -340,6 +342,7 @@ export function CitadelsBoard({ room }: { room: RoomSnapshot }) {
         </div>
         <div className="room-bar-actions">
           <span className={`ct-round ${view.finalRound ? 'is-final' : ''}`}>{view.finalRound ? '最后一轮' : `第 ${view.round} 轮`}</span>
+          <CitadelsCardStylePicker />
           <button type="button" className="btn btn-ghost btn-small" onClick={() => setShowLog(true)}>
             记录
           </button>

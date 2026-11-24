@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { Citadels } from '@tabletop/shared';
 import { net } from '../../net/client';
-import { CharacterCard } from './art';
+import { CharacterCard, CitadelsCardBack } from './art';
 
 const { CHARACTER } = Citadels;
 
@@ -19,9 +19,12 @@ export function DraftPicker({ view }: { view: Citadels.CitadelsView }) {
     <div className="draft">
       <div className="draft-head">
         <p className="dock-prompt">{picking ? '选一个角色，这一轮你就是他' : '再盖弃一个角色，对手不会知道是哪张'}</p>
-        <p className="dock-hint">
-          {view.faceUp.length > 0 && `明弃：${view.faceUp.map((c) => CHARACTER[c].name).join('、')}。`}
-          另有 {draft.faceDownCount} 张盖着移出，没人知道是谁。
+        <p className="dock-hint ct-draft-discard">
+          {draft.faceDownCount > 0 && <CitadelsCardBack kind="character" />}
+          <span>
+            {view.faceUp.length > 0 && `明弃：${view.faceUp.map((c) => CHARACTER[c].name).join('、')}。`}
+            另有 {draft.faceDownCount} 张盖着移出，没人知道是谁。
+          </span>
         </p>
       </div>
       <div className="draft-cards">

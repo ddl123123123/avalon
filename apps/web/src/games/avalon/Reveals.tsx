@@ -7,9 +7,14 @@ import { CardBack } from '../../art/glass';
 import { QuestCard, RoleFace } from './art';
 
 const { ROLES } = Avalon;
+const AVALON_ROLE_BACK = `${import.meta.env.BASE_URL}avalon-card-back.png`;
+
+function AvalonCardBack() {
+  return <img className="role-face avalon-card-back" src={AVALON_ROLE_BACK} alt="" draggable={false} />;
+}
 
 /** 可翻转的牌：背面朝上入场，flipped 后翻到正面。 */
-export function FlipCard({ flipped, front, className = '' }: { flipped: boolean; front: ReactNode; className?: string }) {
+export function FlipCard({ flipped, front, back = <CardBack />, className = '' }: { flipped: boolean; front: ReactNode; back?: ReactNode; className?: string }) {
   return (
     <div className={`flip ${className}`}>
       <motion.div
@@ -19,7 +24,7 @@ export function FlipCard({ flipped, front, className = '' }: { flipped: boolean;
         transition={{ duration: 0.7, ease: [0.3, 0.1, 0.2, 1] }}
       >
         <div className="flip-face flip-back">
-          <CardBack />
+          {back}
         </div>
         <div className="flip-face flip-front">{front}</div>
       </motion.div>
@@ -103,7 +108,7 @@ export function RoleReveal({
         transition={{ type: 'spring', stiffness: 120, damping: 16 }}
       >
         <Tilt className="role-card-big" max={12}>
-          <FlipCard flipped={flipped} front={<RoleFace role={me.role} />} />
+          <FlipCard flipped={flipped} front={<RoleFace role={me.role} />} back={<AvalonCardBack />} />
         </Tilt>
       </motion.div>
       <motion.div className="overlay-text" initial={{ opacity: 0, y: 10 }} animate={flipped ? { opacity: 1, y: 0 } : {}} transition={{ delay: 0.55 }}>
@@ -286,7 +291,7 @@ export function AssassinReveal({
         刺客 {assassin.name} 把匕首指向了 {target.name}
       </p>
       <div className="assassin-stage">
-        <FlipCard flipped={flipped} front={<RoleFace role={targetRole} />} />
+        <FlipCard flipped={flipped} front={<RoleFace role={targetRole} />} back={<AvalonCardBack />} />
         <motion.svg
           className="assassin-dagger"
           viewBox="0 0 100 100"

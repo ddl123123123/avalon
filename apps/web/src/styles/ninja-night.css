@@ -1,0 +1,135 @@
+.ninja-scores,
+.ninja-draft,
+.ninja-site-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.ninja-scores {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ninja-scores > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px 8px;
+  padding: 8px 12px;
+  border: 1px solid #a8c9e74d;
+  border-radius: 6px;
+  background: #15305766;
+  color: #d1e6ff;
+}
+
+.ninja-scores > div[data-faction='shadow'] {
+  background: #55253674;
+  border-color: #b7777f72;
+  color: #f6c5ce;
+}
+
+.ninja-scores strong {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.4rem;
+}
+
+.ninja-draft,
+.ninja-site-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ninja-profession,
+.ninja-site {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 5px;
+  padding: 10px 6px;
+  border-radius: 8px;
+  border: 1px solid #a98a54;
+  background: linear-gradient(145deg, #213d69, #101a2b 65%);
+  color: var(--vellum);
+  text-align: center;
+}
+
+.ninja-profession[data-style='starry-night'] {
+  border-color: #aa9d88;
+  background: radial-gradient(ellipse at 50% 20%, #475267, #1a2134 55%, #141a26);
+}
+
+.ninja-profession-mark,
+.ninja-site-mark {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #d6bc8080;
+  background: #0b183bb0;
+  border-radius: 50%;
+  color: #f8dfa8;
+  font-family: var(--font-display);
+  font-size: 1.28rem;
+}
+
+.ninja-profession small,
+.ninja-site small {
+  color: var(--vellum-dim);
+  line-height: 1.35;
+}
+
+.ninja-profession[aria-pressed='true'],
+.ninja-site[aria-pressed='true'] {
+  border-color: #ffdf98;
+  box-shadow: inset 0 0 0 1px #ffdf98;
+  background: linear-gradient(145deg, #5b4e40, #263041);
+}
+
+.ninja-site {
+  background: #19273d;
+  border-color: #a8c9e746;
+}
+
+.ninja-site[data-focus='true'] {
+  border-color: #d0ad669c;
+}
+
+.ninja-site[data-focus='true'] small:first-of-type {
+  color: #ffdfa0;
+}
+
+.ninja-outcomes {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.ninja-guide dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.ninja-guide dl > div {
+  padding: 5px 0;
+}
+
+.ninja-guide dt {
+  font-weight: 700;
+}
+
+.ninja-guide dd {
+  margin: 2px 0 0;
+  color: var(--vellum-dim);
+}
+
+.ninja-notice {
+  padding: 9px;
+  border: 1px solid #a8c9e748;
+  border-radius: 6px;
+  color: var(--party-accent);
+}
+
+.ninja-history > ol {
+  margin-bottom: 5px;
+}

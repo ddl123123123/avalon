@@ -1,162 +1,208 @@
 import { useState } from 'react';
-import { NinjaNight, type RoomPlayer, type RoomSnapshot } from '@tabletop/shared';
+import { NinjaNight, type RoomSnapshot } from '@tabletop/shared';
 import { net } from '../../net/client';
 import type { GameClient } from '../registry';
 import { NinjaCardArt, NinjaCardStyles, NinjaIdentityCard, ninjaFactions as factionNames, useNinjaCardStyle } from './NinjaCards';
 import { PartyTable } from './PartyTable';
 
-const { ninjaNight, MAX_ROUNDS, shadowCount } = NinjaNight;
+const { ninjaNight, NIGHT_LIMIT, TARGET_SCORE, shadowCount, professions, professionIds, sites, siteOrder } = NinjaNight;
+type View = NinjaNight.NinjaView;
+type NightResult = View['history'][number];
+const phases = { draft: '暗选职业', night: '夜间行动', dawn: '天亮结算', ended: '对局结束' };
+const factions = ['guard', 'shadow'] as const;
+
+function ProfessionGuide() {
+  return (
+    <details className="party-details ninja-guide">
+      <summary>查看六种职业</summary>
+      <dl>
+        {professionIds.map((id) => (
+          <div key={id}><dt>{professions[id].name}</dt><dd>{professions[id].detail}</dd></div>
+        ))}
+      </dl>
+    </details>
+  );
+}
 
 function NinjaOptions({ playerCount }: { playerCount: number }) {
   const shadows = shadowCount(playerCount);
   return (
     <div className="party-lobby-copy">
       <p>{playerCount} 人局 · {playerCount - shadows} 名守夜忍，{shadows} 名影忍</p>
-      <p>每人有一次私密侦察。每轮讨论后匿名投票，单独最高票的玩家公开阵营。三轮内找齐影忍，守夜忍就获胜。</p>
+      <p>暗选职业，再秘密选择山门、枫庭或钟楼。天亮后按阵眼力量结算得分。</p>
+      {playerCount % 2 === 1 && <p>奇数局里，若有影忍选中焦点，影忍在该处额外获得 1 点力量。</p>}
+      <ProfessionGuide />
       <NinjaCardStyles />
     </div>
   );
 }
 
+function DraftStep({ view, style }: { view: View; style: ReturnType<typeof useNinjaCardStyle> }) {
+  const [selected, setSelected] = useState<NinjaNight.Profession | null>(null);
+  if (view.profession) {
+    return <p className="ninja-notice" role="status">已暗选{professions[view.profession].name}。等待其他玩家。</p>;
+  }
+  if (!view.offers.length) return <p className="ninja-notice">这夜已跳过你的座位。</p>;
+
+  return (
+    <>
+      <p>从这夜发给你的三张牌里暗选一张。每夜会重新发牌。</p>
+      <div className="ninja-draft" role="group" aria-label="选择职业">
+        {view.offers.map((profession) => {
+          const card = professions[profession];
+          return (
+            <button key={profession} type="button" className="ninja-profession" data-style={style}
+              aria-pressed={profession === selected} onClick={() => setSelected(profession)}>
+              <span aria-hidden="true" className="ninja-profession-mark">{card.mark}</span>
+              <strong>{card.name}</strong>
+              <small>{card.detail}</small>
+            </button>
+          );
+        })}
+      </div>
+      <button type="button" className="btn btn-primary" disabled={!selected} onClick={() => {
+        if (selected) net.act({ type: 'draft', night: view.night, profession: selected });
+      }}>确认职业</button>
+    </>
+  );
+}
+
+function NightStep({ view }: { view: View }) {
+  const [selected, setSelected] = useState<NinjaNight.Site | null>(null);
+  const role = view.profession && professions[view.profession];
+  if (!role) return <p className="ninja-notice">这夜已跳过你的座位。可以在下一夜重新加入。</p>;
+  if (view.target) {
+    return <p className="ninja-notice" role="status">已锁定{sites[view.target].name}。等所有玩家提交后结算。</p>;
+  }
+
+  return (
+    <>
+      <p><strong>你的职业是{role.name}。</strong> {role.detail}</p>
+      <p className="party-note">顺时针顺序：山门 → 枫庭 → 钟楼 → 山门。</p>
+      <div className="ninja-site-grid" role="group" aria-label="选择阵眼">
+        {siteOrder.map((site) => (
+          <button key={site} type="button" className="ninja-site" aria-pressed={selected === site}
+            data-focus={view.focus === site} onClick={() => setSelected(site)}>
+            <span aria-hidden="true" className="ninja-site-mark">{sites[site].mark}</span>
+            <strong>{sites[site].name}</strong>
+            <small>{view.focus === site ? '焦点 · 2 分' : '1 分'}</small>
+          </button>
+        ))}
+      </div>
+      <button type="button" className="btn btn-primary" disabled={!selected} onClick={() => {
+        if (selected) net.act({ type: 'visit', night: view.night, site: selected });
+      }}>锁定阵眼</button>
+    </>
+  );
+}
+
+function SiteResults({ night }: { night: NightResult }) {
+  return (
+    <>
+      <p>守夜忍 +{night.earned.guard} 分 · 影忍 +{night.earned.shadow} 分</p>
+      <ul className="ninja-site-grid ninja-outcomes">
+        {night.sites.map((result) => (
+          <li key={result.site} className="ninja-site" data-focus={result.site === night.focus}>
+            <strong>{sites[result.site].name}{result.site === night.focus && ' · 焦点'}</strong>
+            <small>力量 {result.power.guard} : {result.power.shadow}</small>
+            <small>{result.winner ? `${factionNames[result.winner]} +${result.points} 分` : '平手 · 无人得分'}</small>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
 function NinjaBoard({ room }: { room: RoomSnapshot }) {
-  const view = room.view as NinjaNight.NinjaView;
+  const view = room.view as View;
   const cardStyle = useNinjaCardStyle();
-  const players = room.players;
-  const label = (id: string) => {
-    const player = players.find((seat) => seat.id === id);
-    return player ? `${player.seatIndex + 1} 号 · ${player.name}` : '未知玩家';
-  };
-  const waiting = players.filter((player) => !view.votedPlayers.includes(player.id));
-  const canSettle = room.hostId === room.you && waiting.length > 0 && waiting.every((player) => !player.connected);
-  const revealed = new Map(view.history.flatMap(({ revealed }) => revealed ? [[revealed.player, revealed.faction] as const] : []));
-  const otherPlayers = players.filter((player) => player.id !== room.you);
+  const isHost = room.hostId === room.you;
+  const actionable = view.phase === 'draft' || view.phase === 'night';
+  const canSkip = isHost && view.waiting.length > 0 &&
+    view.waiting.every((id) => !room.players.find((player) => player.id === id)?.connected);
+  const last = view.history.at(-1);
+  const past = view.history.slice(0, view.phase === 'ended' || view.phase === 'dawn' ? -1 : undefined);
+  const phaseKey = `${room.code}-${room.gameSeq}-${view.night}`;
+
   return (
     <PartyTable room={room} name={ninjaNight.name} theme="ninja">
       <section className="panel party-panel">
-        <p className="party-kicker">{view.winner ? '对局结束' : `第 ${view.round} / ${MAX_ROUNDS} 轮 · 讨论与投票`}</p>
-        {view.revealedShadows ? (
-          <>
-            {view.winner && <h2>{factionNames[view.winner]}获胜</h2>}
-            <p>本局影忍：{view.revealedShadows.map(label).join('、')}</p>
-          </>
-        ) : view.faction && (
+        <p className="party-kicker">第 {view.night} / {NIGHT_LIMIT} 夜 · {phases[view.phase]}</p>
+        <h2>{view.winner === 'draw' ? '双方打平' : view.winner ? `${factionNames[view.winner]}获胜` : `本夜焦点 · ${sites[view.focus].name}`}</h2>
+        <div className="ninja-scores" aria-label="双方累计得分">
+          {factions.map((faction) => (
+            <div key={faction} data-faction={faction}>
+              <span>{factionNames[faction]}</span>
+              <strong>{view.scores[faction]} <small>分</small></strong>
+            </div>
+          ))}
+        </div>
+        {!view.winner && view.faction && (
           <details className="party-details ninja-identity">
             <summary>查看我的身份牌</summary>
             <div className="ninja-identity-body">
               <NinjaIdentityCard faction={view.faction} style={cardStyle} />
-              <div>
-                <p>{view.faction === 'shadow' ? '只要三轮结束时还有影忍没有公开阵营，你们就赢。' : '在三轮内找出所有影忍。'}</p>
-                {view.allies.length > 0 && <p>你的同伴：{view.allies.map(label).join('、')}</p>}
-              </div>
+              <div><p>帮自己的阵营赢得阵眼。每个人只能看到自己的身份。</p></div>
             </div>
           </details>
         )}
-        {view.clue && (
-          <p className="party-note">你的侦察结果：{label(view.clue.first)} 与 {label(view.clue.second)} {view.clue.same ? '同阵营' : '不同阵营'}。</p>
+      </section>
+
+      <section className="panel party-panel">
+        <h2>{phases[view.phase]}</h2>
+        {view.phase === 'draft' && <DraftStep key={phaseKey} view={view} style={cardStyle} />}
+        {view.phase === 'night' && <NightStep key={phaseKey} view={view} />}
+        {(view.phase === 'dawn' || view.phase === 'ended') && last && (
+          <>
+            <SiteResults night={last} />
+            {view.profession && view.target && (
+              <p className="party-note">这夜你用{professions[view.profession].name}去了{sites[view.target].name}。</p>
+            )}
+            {view.phase === 'dawn' && (
+              isHost ? (
+                <button type="button" className="btn btn-primary"
+                  onClick={() => net.act({ type: 'next_night', night: view.night })}>开启下一夜</button>
+              ) : <p className="party-note">等房主开启下一夜。</p>
+            )}
+          </>
+        )}
+        {actionable && canSkip && (
+          <button type="button" className="btn btn-ghost"
+            onClick={() => net.act({ type: 'settle_offline', night: view.night, phase: view.phase })}>
+            跳过离线座位
+          </button>
         )}
       </section>
 
-      {!view.winner && (
-        <section className="panel party-panel">
-          <h2>本轮行动</h2>
-          <p>用你们的语音通话或当面讨论。投票提交后，系统只公布各人得票数。</p>
-          {view.myVote ? (
-            <p className="party-note">已投给 {label(view.myVote)}，等待本轮结算。</p>
-          ) : (
-            <NinjaActions
-              key={`${room.code}-${room.gameSeq}-${view.round}`}
-              round={view.round}
-              others={otherPlayers}
-              candidates={otherPlayers.filter((player) => !revealed.has(player.id))}
-              canScout={!view.clue}
-            />
-          )}
-          {canSettle && (
-            <button type="button" className="btn btn-ghost" onClick={() => net.act({ type: 'settle_offline', round: view.round })}>
-              跳过离线玩家并结算
-            </button>
-          )}
-        </section>
-      )}
-
       <section className="panel party-panel">
-        <h2>玩家{!view.winner && <small> · 已投票 {view.votedPlayers.length} / {players.length}</small>}</h2>
+        <h2>玩家{actionable && <small> · 还有 {view.waiting.length} 人待提交</small>}</h2>
         <ul className="party-roster">
-          {players.map((player) => (
+          {room.players.map((player) => (
             <li key={player.id}>
-              <span>{label(player.id)}{player.id === room.you && '（你）'}</span>
-              <small>
-                {revealed.has(player.id) && factionNames[revealed.get(player.id)!]}
-                {!view.winner && ` ${!player.connected ? '离线' : view.votedPlayers.includes(player.id) ? '已投票' : '待投票'}`}
-              </small>
+              <span>{player.seatIndex + 1} 号 · {player.name}{player.id === room.you && '（你）'}</span>
+              <small>{view.revealedShadows
+                ? factionNames[view.revealedShadows.includes(player.id) ? 'shadow' : 'guard']
+                : !player.connected ? '离线' : actionable ? view.waiting.includes(player.id) ? '待提交' : '已处理' : ''}</small>
             </li>
           ))}
         </ul>
+        <ProfessionGuide />
       </section>
 
-      {view.history.length > 0 && (
-        <section className="panel party-panel">
-          <h2>查验记录</h2>
+      {past.length > 0 && (
+        <details className="panel party-panel party-details ninja-history">
+          <summary>查看往夜战报</summary>
           <ol className="party-history">
-            {view.history.map(({ round, revealed: result, tally }) => (
-              <li key={round}>
-                <strong>第 {round} 轮 · {result ? `${label(result.player)} 是${factionNames[result.faction]}` : '平票，本轮无人公开阵营'}</strong>
-                <p>{tally.map(({ target, votes }) => `${label(target)} ${votes} 票`).join('、')}</p>
+            {[...past].reverse().map((night) => (
+              <li key={night.night}>
+                <h3>第 {night.night} 夜</h3>
+                <SiteResults night={night} />
               </li>
             ))}
           </ol>
-        </section>
-      )}
-    </PartyTable>
-  );
-}
-
-function PlayerSelect({ label, players, value, setValue }: {
-  label: string;
-  players: RoomPlayer[];
-  value: string;
-  setValue: (id: string) => void;
-}) {
-  return (
-    <label className="field">
-      {label}
-      <select className="input" value={value} onChange={(event) => setValue(event.currentTarget.value)}>
-        <option value="">请选择玩家</option>
-        {players.map((player) => <option key={player.id} value={player.id}>{player.seatIndex + 1} 号 · {player.name}</option>)}
-      </select>
-    </label>
-  );
-}
-
-function NinjaActions({ round, others, candidates, canScout }: {
-  round: number;
-  others: RoomPlayer[];
-  candidates: RoomPlayer[];
-  canScout: boolean;
-}) {
-  const [first, setFirst] = useState('');
-  const [second, setSecond] = useState('');
-  const [target, setTarget] = useState('');
-  return (
-    <>
-      {canScout && (
-        <details className="party-details">
-          <summary>私密侦察 · 每局一次，可留到后续轮次</summary>
-          <p>选择两位其他玩家。只有你会知道他们是否同阵营。</p>
-          <div className="party-fields">
-            <PlayerSelect label="第一位" players={others} value={first} setValue={setFirst} />
-            <PlayerSelect label="第二位" players={others} value={second} setValue={setSecond} />
-          </div>
-          <button type="button" className="btn btn-ghost" disabled={!first || !second || first === second}
-            onClick={() => net.act({ type: 'scout', round, first, second })}>查看侦察结果</button>
         </details>
       )}
-      <div className="party-actions">
-        <PlayerSelect label="投票查验对象" players={candidates} value={target} setValue={setTarget} />
-        <button type="button" className="btn btn-primary" disabled={!target}
-          onClick={() => net.act({ type: 'vote', round, target })}>确认投票</button>
-      </div>
-    </>
+    </PartyTable>
   );
 }
 
@@ -166,17 +212,16 @@ export const ninjaNightClient: GameClient = {
   tagline: ninjaNight.tagline,
   icon: <span className="party-tab-mark" aria-hidden="true">☾</span>,
   hero: {
-    lede: '夜色掩护着潜伏的影忍。用一次私密侦察比对阵营，再和同桌的人讨论，决定这一轮要查验谁。',
+    lede: '山门、枫庭、钟楼每夜争夺一轮。你只知道自己的阵营。选一张职业牌，猜猜其他人今夜会去哪里。',
     Art: NinjaCardArt,
-    note: '4 到 8 人的原创阵营推理游戏。可加机器人凑人数。',
+    note: '4 到 8 人的原创阵营策略游戏，可添加机器人。奇数局里，若有影忍到达焦点，影忍在该处额外获得 1 点力量。',
     steps: [
-      { title: '查收密令', text: '查看自己的阵营。影忍也能看到同伴。' },
-      { title: '私密侦察', text: '全局任选一轮，对比两位其他玩家，只查得同阵营或不同阵营。' },
-      { title: '匿名投票', text: '每轮讨论后投票。唯一最高票公开阵营，平票无人公开。已公开的玩家仍能投票。' },
+      { title: '暗选职业', text: '每人收到三张职业牌，暗选其一。六种职业的能力对所有人公开。' },
+      { title: '夜探阵眼', text: '三处阵眼任选其一，职业能力在天亮时一起结算。本夜焦点值 2 分，其他阵眼各值 1 分。' },
+      { title: '查看战报', text: '每处由力量更高的阵营得分，平手不得分。战报公开各处合计力量，个人分工保密。' },
     ],
     goals: [
-      { tone: 'good', title: '守夜忍', text: '三轮内公开所有影忍的阵营。' },
-      { tone: 'evil', title: '影忍', text: '三轮结束时至少有一名影忍仍未公开阵营。' },
+      { tone: 'gilt', title: `累计 ${TARGET_SCORE} 分并领先即可获胜`, text: `若打满 ${NIGHT_LIMIT} 夜，累计得分更高的一方获胜，同分则平局。结束后公开所有人阵营。` },
     ],
   },
   Options: NinjaOptions,

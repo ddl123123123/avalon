@@ -190,8 +190,6 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
     switch (view.phase) {
       case 'identity':
         return `已确认身份 ${view.confirmedRoles.length} / ${view.players.length}`;
-      case 'team':
-        return `${nameOf(view.leader)} 正在组队`;
       case 'vote':
         return `投票中 ${view.voted.length} / ${view.players.length}`;
       case 'quest':
@@ -252,6 +250,52 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
                 seatKey={(id) => id}
                 center={
                   <section className="av-match-panel" aria-label="对局信息">
+                    <AnimatePresence mode="wait">
+                      {voteReveal ? (
+                        <motion.div
+                          key="verdict"
+                          className={`verdict ${voteReveal.approved ? 'verdict-yes' : 'verdict-no'}`}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ delay: 0.5 + view.players.length * 0.11, duration: 0.22 }}
+                        >
+                          <strong>{voteReveal.approved ? '组队通过' : '组队被否决'}</strong>
+                          <span>
+                            赞成 {approvals}，反对 {view.players.length - approvals}
+                          </span>
+                          <span>{voteReveal.team.map(seatNameOf).join('、')}</span>
+                        </motion.div>
+                      ) : (
+                        <motion.div key="status" className="center-info" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                          {view.discussion && (
+                            <div className="speech-status">
+                              <div className="speech-status-main" role="status">
+                                <span className="speech-seat-number">{(byId.get(view.discussion.currentSpeaker)?.seatIndex ?? view.players.indexOf(view.discussion.currentSpeaker)) + 1}</span>
+                                <span>号玩家发言</span>
+                              </div>
+                              <strong className="speech-countdown">
+                                {Math.floor(speechSecondsRemaining / 60)}:{String(speechSecondsRemaining % 60).padStart(2, '0')}
+                              </strong>
+                              <small className="speech-progress">
+                                第 {view.discussion.currentIndex + 1} / {view.discussion.order.length} 位 · 从队长{view.discussion.direction === 'left' ? '左' : '右'}手边开始
+                              </small>
+                            </div>
+                          )}
+                          {view.phase === 'team' ? (
+                            <div className="center-info" role="status">
+                              <p className="center-status-label">车头{view.discussionComplete ? '正在确认队伍' : '正在组队'}</p>
+                              <p className="center-status">{seatNameOf(view.leader)}</p>
+                            </div>
+                          ) : !view.discussion && <p className="center-status" role="status">{status()}</p>}
+                          {publicPreselection && (
+                            <p className="public-preselected-team" aria-live="polite">
+                              公开预组车 · {publicPreselection} 号
+                            </p>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                     <div className="av-match-progress">
                       <h2>任务进度</h2>
                       <div className="quest-track" role="list" aria-label="五次任务">
@@ -272,53 +316,17 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
                         <p className="av-match-rule">本次任务需两张失败牌才算失败</p>
                       )}
                     </div>
-                    <AnimatePresence mode="wait">
-                      {voteReveal ? (
-                        <motion.div
-                          key="verdict"
-                          className={`verdict ${voteReveal.approved ? 'verdict-yes' : 'verdict-no'}`}
-                          initial={{ opacity: 0, y: 6 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ delay: 0.5 + view.players.length * 0.11, duration: 0.22 }}
-                        >
-                          <strong>{voteReveal.approved ? '组队通过' : '组队被否决'}</strong>
-                          <span>
-                            赞成 {approvals}，反对 {view.players.length - approvals}
-                          </span>
-                          <span>{voteReveal.team.map(seatNameOf).join('、')}</span>
-                        </motion.div>
-                      ) : (
-                        <motion.div key="status" className="center-info" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                          <div className="reject-track" aria-label={`本轮已否决 ${view.rejectCount} 次，满 5 次邪恶方获胜`}>
-                            {Array.from({ length: Avalon.MAX_REJECTS }, (_, i) => (
-                              <span key={i} className={`reject-pip ${i < view.rejectCount ? 'is-used' : ''} ${i === 4 ? 'is-last' : ''}`} />
-                            ))}
-                            <span className="reject-label">否决 {view.rejectCount} / 5</span>
-                          </div>
-                          {view.discussion && (
-                            <div className="speech-status">
-                              <div className="speech-status-main" role="status">
-                                <span className="speech-seat-number">{(byId.get(view.discussion.currentSpeaker)?.seatIndex ?? view.players.indexOf(view.discussion.currentSpeaker)) + 1}</span>
-                                <span>号玩家发言</span>
-                              </div>
-                              <strong className="speech-countdown">
-                                {Math.floor(speechSecondsRemaining / 60)}:{String(speechSecondsRemaining % 60).padStart(2, '0')}
-                              </strong>
-                              <small className="speech-progress">
-                                第 {view.discussion.currentIndex + 1} / {view.discussion.order.length} 位 · 从队长{view.discussion.direction === 'left' ? '左' : '右'}手边开始
-                              </small>
-                            </div>
-                          )}
-                          {!view.discussion && <p className="center-status" role="status">{status()}</p>}
-                          {publicPreselection && (
-                            <p className="public-preselected-team" aria-live="polite">
-                              公开预组车 · {publicPreselection} 号
-                            </p>
-                          )}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    {view.phase !== 'identity' && !voteReveal && (
+                      <div className="reject-track" aria-label={`本轮已否决 ${view.rejectCount} 次，满 5 次邪恶方获胜`}>
+                        <span className="reject-label">本轮否决</span>
+                        <div className="reject-segments" aria-hidden="true">
+                          {Array.from({ length: Avalon.MAX_REJECTS }, (_, i) => (
+                            <span key={i} className={`reject-pip ${i < view.rejectCount ? 'is-used' : ''}`} />
+                          ))}
+                        </div>
+                        <strong>{view.rejectCount} / {Avalon.MAX_REJECTS}</strong>
+                      </div>
+                    )}
                   </section>
                 }
                 renderSeat={(id, i) => (

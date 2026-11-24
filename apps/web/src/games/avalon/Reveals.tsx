@@ -9,17 +9,35 @@ import { AvalonCardBack, QuestCard, RoleFace } from './art';
 const { ROLES } = Avalon;
 
 /** 可翻转的牌：背面朝上入场，flipped 后翻到正面。 */
-export function FlipCard({ flipped, front, back = <CardBack />, className = '' }: { flipped: boolean; front: ReactNode; back?: ReactNode; className?: string }) {
+export function FlipCard({
+  flipped,
+  front,
+  back = <CardBack />,
+  className = '',
+  flipDuration = 0.7,
+  onBackClick,
+}: {
+  flipped: boolean;
+  front: ReactNode;
+  back?: ReactNode;
+  className?: string;
+  flipDuration?: number;
+  onBackClick?: () => void;
+}) {
   return (
     <div className={`flip ${className}`}>
       <motion.div
         className="flip-inner"
         initial={false}
         animate={{ rotateY: flipped ? 180 : 0 }}
-        transition={{ duration: 0.7, ease: [0.3, 0.1, 0.2, 1] }}
+        transition={{ duration: flipDuration, ease: [0.3, 0.1, 0.2, 1] }}
       >
         <div className="flip-face flip-back">
-          {back}
+          {onBackClick ? (
+            <button type="button" className="flip-back-button" onClick={onBackClick} disabled={flipped} aria-label="点击翻开身份牌">
+              {back}
+            </button>
+          ) : back}
         </div>
         <div className="flip-face flip-front">{front}</div>
       </motion.div>
@@ -63,7 +81,7 @@ export function sightingText(
   return null;
 }
 
-/** 身份牌：开局时自动翻开，之后可以随时再看。 */
+/** 身份牌先显示牌背，玩家可点击翻开；未操作时约 5 秒后自动翻开。 */
 export function RoleReveal({
   me,
   players,
@@ -79,7 +97,7 @@ export function RoleReveal({
 }) {
   const [flipped, setFlipped] = useState(false);
   useEffect(() => {
-    const t = setTimeout(() => setFlipped(true), intro ? 1100 : 900);
+    const t = setTimeout(() => setFlipped(true), 5000);
     return () => clearTimeout(t);
   }, [intro]);
   const info = ROLES[me.role];
@@ -103,9 +121,10 @@ export function RoleReveal({
         transition={{ type: 'spring', stiffness: 120, damping: 16 }}
       >
         <Tilt className="role-card-big" max={12}>
-          <FlipCard flipped={flipped} front={<RoleFace role={me.role} />} back={<AvalonCardBack />} />
+          <FlipCard flipped={flipped} front={<RoleFace role={me.role} />} back={<AvalonCardBack />} flipDuration={1.15} onBackClick={() => setFlipped(true)} />
         </Tilt>
       </motion.div>
+      {!flipped && <p className="flip-hint">点击卡牌翻开 · 稍后自动揭晓</p>}
       <motion.div className="overlay-text" initial={{ opacity: 0, y: 10 }} animate={flipped ? { opacity: 1, y: 0 } : {}} transition={{ delay: 0.55 }}>
         <p className={`overlay-title tone-${me.alignment}`}>
           {info.name}，{me.alignment === 'good' ? '正义方' : '邪恶方'}
@@ -272,8 +291,8 @@ export function AssassinReveal({
   const [flipped, setFlipped] = useState(false);
   const hit = targetRole === 'merlin';
   useEffect(() => {
-    const t1 = setTimeout(() => setFlipped(true), 1900);
-    const t2 = setTimeout(onDone, 6200);
+    const t1 = setTimeout(() => setFlipped(true), 3600);
+    const t2 = setTimeout(onDone, 9500);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
@@ -286,7 +305,7 @@ export function AssassinReveal({
         刺客 {assassin.name} 把匕首指向了 {target.name}
       </p>
       <div className="assassin-stage">
-        <FlipCard flipped={flipped} front={<RoleFace role={targetRole} />} back={<AvalonCardBack />} />
+        <FlipCard flipped={flipped} front={<RoleFace role={targetRole} />} back={<AvalonCardBack />} flipDuration={1.15} onBackClick={() => setFlipped(true)} />
         <motion.svg
           className="assassin-dagger"
           viewBox="0 0 100 100"
@@ -303,6 +322,7 @@ export function AssassinReveal({
           </g>
         </motion.svg>
       </div>
+      {!flipped && <p className="flip-hint">点击卡牌揭晓 · 稍后自动翻开</p>}
       <div className="overlay-text">
         {flipped && (
           <>

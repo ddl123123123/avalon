@@ -66,11 +66,11 @@ function useReveals(room: RoomSnapshot, view: View) {
 }
 
 export function AvalonBoard({ room }: { room: RoomSnapshot }) {
-  const pigTheme = useAvalonCardStyle() === 'pig';
   return <AvalonBoardSession key={`${room.code}.${room.gameSeq}.${room.you}`} room={room} />;
 }
 
 function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
+  const pigTheme = useAvalonCardStyle() === 'pig';
   const { link } = useNet();
   const view = room.view as View;
   const me = view.me;

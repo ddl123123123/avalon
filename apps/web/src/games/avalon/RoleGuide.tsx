@@ -1,6 +1,8 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { motion } from 'framer-motion';
 import { Avalon } from '@tabletop/shared';
 import { DecodedImage } from '../../art/DecodedImage';
+import { useReducedMotion } from '../../fx/motion';
 
 type RoleId = Avalon.Role;
 
@@ -76,6 +78,7 @@ const ROLE_INDEX_LABEL: Record<RoleId, string> = {
 };
 
 export function AvalonRoleGuide() {
+  const reducedMotion = useReducedMotion();
   const [selected, setSelected] = useState<RoleId>('merlin');
   const swipeStartX = useRef<number | null>(null);
   const role = Avalon.ROLES[selected];
@@ -126,7 +129,27 @@ export function AvalonRoleGuide() {
         onPointerCancel={() => { swipeStartX.current = null; }}
       >
         <div className="avalon-guide-visual">
-          <figure className={`avalon-guide-portrait is-${side}`}>
+          <motion.figure
+            key={selected}
+            className={`avalon-guide-portrait is-${side}`}
+            initial={reducedMotion ? false : { opacity: 0, y: 22, scale: 0.95, rotateY: 7 }}
+            animate={{ opacity: 1, y: 0, scale: 1, rotateY: 0 }}
+            transition={reducedMotion ? { duration: 0 } : {
+              opacity: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
+              y: { type: 'spring', stiffness: 94, damping: 17, mass: 0.82 },
+              scale: { type: 'spring', stiffness: 115, damping: 19 },
+              rotateY: { duration: 0.68, ease: [0.22, 1, 0.36, 1] },
+            }}
+            whileHover={reducedMotion ? undefined : {
+              y: -4,
+              scale: 1.012,
+              transition: { type: 'spring', stiffness: 230, damping: 20 },
+            }}
+            whileTap={reducedMotion ? undefined : {
+              scale: 0.986,
+              transition: { type: 'spring', stiffness: 300, damping: 20 },
+            }}
+          >
             <DecodedImage
               src={`${import.meta.env.BASE_URL}avalon-roles/${selected}.jpg`}
               width={768}
@@ -137,7 +160,7 @@ export function AvalonRoleGuide() {
               decoding="async"
             />
             <figcaption>{guide.englishName}</figcaption>
-          </figure>
+          </motion.figure>
           <div className="avalon-guide-index" role="group" aria-label="选择要查看的角色">
             <div className="avalon-guide-index-heading">
               <strong>选择一张身份牌</strong>

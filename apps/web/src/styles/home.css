@@ -564,6 +564,11 @@
   width: auto;
   height: auto;
   z-index: 1;
+  transform-origin: 50% 55%;
+}
+.hero-art-tilt {
+  width: 100%;
+  height: 100%;
 }
 .hero-window-avalon {
   overflow: hidden;
@@ -593,7 +598,7 @@
   height: auto;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .avalon-hero-portrait img {
+  .avalon-hero-portrait {
     animation: avalon-portrait-drift 9s ease-in-out infinite alternate;
   }
 }

@@ -117,7 +117,11 @@ export interface AvalonOptions {
   mordred: boolean;
   oberon: boolean;
   ladyOfTheLake: boolean;
+  speechSeconds: SpeechSeconds;
 }
+
+export const SPEECH_TIMERS = [60, 90, 120] as const;
+export type SpeechSeconds = (typeof SPEECH_TIMERS)[number];
 
 export const OPTIONAL_ROLES = ['percival', 'morgana', 'mordred', 'oberon'] as const;
 export type OptionalRole = (typeof OPTIONAL_ROLES)[number];
@@ -133,7 +137,7 @@ export function recommendedOptions(playerCount: number): Pick<AvalonOptions, Opt
 }
 
 export function defaultOptions(): AvalonOptions {
-  return { percival: false, morgana: false, mordred: false, oberon: false, ladyOfTheLake: false };
+  return { percival: false, morgana: false, mordred: false, oberon: false, ladyOfTheLake: false, speechSeconds: 90 };
 }
 
 export function normalizeOptions(raw: unknown): AvalonOptions {
@@ -144,6 +148,7 @@ export function normalizeOptions(raw: unknown): AvalonOptions {
     mordred: src.mordred === true,
     oberon: src.oberon === true,
     ladyOfTheLake: src.ladyOfTheLake === true,
+    speechSeconds: SPEECH_TIMERS.includes(src.speechSeconds as SpeechSeconds) ? (src.speechSeconds as SpeechSeconds) : 90,
   };
 }
 

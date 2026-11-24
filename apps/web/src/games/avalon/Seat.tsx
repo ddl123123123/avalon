@@ -1,6 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import type { RoomPlayer } from '@tabletop/shared';
-import { Crest } from '../../art/Crest';
 import { Crown } from '../../art/glass';
 import { LadyToken, TeamMark, VoteToken } from './art';
 
@@ -9,6 +8,7 @@ export interface SeatProps {
   seatNumber: number;
   isMe: boolean;
   isLeader: boolean;
+  isSpeaking: boolean;
   onTeam: boolean;
   hasLady: boolean;
   /** 已经投票 / 出牌（内容保密） */
@@ -30,6 +30,7 @@ export function Seat(p: SeatProps) {
   const classes = [
     'seat',
     p.isMe && 'seat-me',
+    p.isSpeaking && 'seat-speaking',
     p.onTeam && 'seat-on-team',
     p.picked && 'seat-picked',
     p.pickable && 'seat-pickable',
@@ -41,9 +42,17 @@ export function Seat(p: SeatProps) {
 
   const body = (
     <>
-      <div className="seat-crest">
-        <Crest seed={p.player.id} />
-        <span className="seat-number" aria-label={`座位 ${p.seatNumber}`}>{p.seatNumber}</span>
+      <motion.div
+        className="seat-avatar"
+        role="img"
+        aria-label={`${p.seatNumber} 号玩家`}
+        initial={{ opacity: 0, scale: 0.72, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 280, damping: 19, delay: Math.min(p.order, 8) * 0.035 }}
+        whileHover={p.pickable ? { scale: 1.08, y: -3 } : undefined}
+        whileTap={p.pickable ? { scale: 0.94 } : undefined}
+      >
+        <span className="seat-avatar-number">{p.seatNumber}</span>
         <AnimatePresence>
           {p.isLeader && (
             <motion.span
@@ -91,7 +100,7 @@ export function Seat(p: SeatProps) {
             </motion.span>
           )}
         </AnimatePresence>
-      </div>
+      </motion.div>
       <div className="seat-name">
         {p.player.name}
         {p.isMe && <span className="seat-you">你</span>}

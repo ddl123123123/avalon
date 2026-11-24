@@ -80,9 +80,12 @@
   height: auto;
   aspect-ratio: 5 / 7;
   overflow: hidden;
-  border: 1px solid rgba(211, 192, 153, 0.56);
-  border-radius: 4px;
-  background-color: #111620;
+  isolation: isolate;
+  container-type: inline-size;
+  border: 0;
+  border-radius: 6px;
+  background: #111620;
+  box-shadow: 0 0 0 1px rgba(211, 192, 153, 0.68), 0 5px 18px rgba(0, 0, 0, 0.34);
 }
 .role-face-fallback,
 .role-face-art {
@@ -91,16 +94,76 @@
   width: 100%;
   height: 100%;
 }
+.role-face-fallback {
+  z-index: 0;
+}
 .role-face-art {
+  z-index: 1;
   max-width: none;
   object-fit: cover;
+  object-position: center 35%;
 }
-.role-face-art[data-side] {
-  width: 200%;
-  object-fit: fill;
+.role-face-frame {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  border: 1px solid rgba(230, 207, 151, 0.92);
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 5px rgba(230, 207, 151, 0.62);
 }
-.role-face-art[data-side='right'] {
-  left: -100%;
+.role-face-raster[data-card-style='style-1'] .role-face-frame {
+  border-color: rgba(246, 203, 91, 0.98);
+  box-shadow: inset 0 0 0 5px rgba(246, 203, 91, 0.82);
+}
+.role-face-nameplate {
+  position: absolute;
+  z-index: 3;
+  right: 6px;
+  bottom: 6px;
+  left: 6px;
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  padding: 6px 4px 5px;
+  color: #f4e8c9;
+  background: linear-gradient(180deg, rgba(8, 12, 26, 0.78), rgba(6, 9, 20, 0.97));
+  border: 1px solid rgba(217, 190, 129, 0.82);
+  border-radius: 3px;
+  line-height: 1.1;
+  pointer-events: none;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+}
+.role-face-nameplate strong {
+  font-size: clamp(0.4rem, 10cqw, 0.9rem);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+.role-face-nameplate small {
+  color: rgba(239, 217, 171, 0.8);
+  font-size: clamp(0.32rem, 5.5cqw, 0.48rem);
+  letter-spacing: 0.16em;
+}
+.role-face-raster[data-card-style='style-1'] .role-face-nameplate {
+  color: #f8df9b;
+  background: linear-gradient(180deg, rgba(18, 31, 82, 0.84), rgba(9, 17, 49, 0.98));
+  border-color: rgba(246, 203, 91, 0.9);
+}
+@container (max-width: 80px) {
+  .role-face-nameplate {
+    right: 3px;
+    bottom: 3px;
+    left: 3px;
+    gap: 0;
+    padding: 3px 2px;
+  }
+  .role-face-nameplate strong {
+    font-size: clamp(5px, 10cqw, 8px);
+    letter-spacing: 0.04em;
+  }
+  .role-face-nameplate small {
+    display: none;
+  }
 }
 .flip-front .role-face-raster {
   height: 100%;
@@ -131,6 +194,58 @@
 }
 .av-options-summary span {
   display: block;
+}
+.av-timer-setting {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border: 1px solid rgba(214, 196, 155, 0.24);
+  border-radius: 4px;
+  background: rgba(7, 10, 24, 0.55);
+}
+.av-timer-setting legend {
+  padding: 0 6px;
+  color: var(--gilt-bright);
+  font-size: 0.98rem;
+}
+.av-timer-setting p {
+  color: var(--vellum-dim);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+.av-timer-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+.av-timer-choice {
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px;
+  border: 1px solid rgba(214, 196, 155, 0.3);
+  border-radius: 4px;
+  background: rgba(5, 8, 26, 0.58);
+  color: var(--vellum-dim);
+  font-size: 0.9rem;
+  transition: border-color 0.18s, background 0.18s, color 0.18s;
+}
+.av-timer-choice[aria-pressed='true'] {
+  border-color: var(--gilt-bright);
+  background: rgba(184, 158, 114, 0.16);
+  color: var(--vellum);
+  box-shadow: inset 0 0 0 1px rgba(246, 217, 138, 0.1);
+}
+.av-timer-choice:disabled {
+  opacity: 0.76;
+  cursor: default;
+}
+.home-av-timer-setting {
+  padding: 8px 10px 10px;
+  background: rgba(5, 8, 26, 0.38);
+}
+.home-av-timer-setting .av-timer-choice {
+  min-height: 42px;
 }
 .av-options-heading {
   font-size: 1.25rem;
@@ -486,7 +601,7 @@
   z-index: 4;
   filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.7));
 }
-.seat-on-team .seat-crest {
+.seat-on-team .seat-avatar {
   filter: drop-shadow(0 0 14px rgba(246, 217, 138, 0.9));
 }
 .seat-on-team .seat-name {
@@ -519,7 +634,7 @@
 .seat-pickable {
   cursor: pointer;
 }
-.seat-pickable .seat-crest::before {
+.seat-pickable .seat-avatar::before {
   content: '';
   position: absolute;
   inset: -14% -18% -10%;
@@ -527,15 +642,59 @@
   border-radius: 50%;
   animation: spin 14s linear infinite;
 }
-.seat-pickable:hover .seat-crest {
+.seat-pickable:hover .seat-avatar {
   filter: drop-shadow(0 0 14px rgba(246, 217, 138, 0.8)) brightness(1.15);
 }
-.seat-picked .seat-crest {
+.seat-picked .seat-avatar {
   filter: drop-shadow(0 0 16px rgba(240, 141, 154, 1));
 }
-.seat-picked .seat-crest::before {
+.seat-picked .seat-avatar::before {
   border-style: solid;
   border-color: var(--ruby-soft);
+}
+.seat-speaking .seat-avatar {
+  border-color: var(--gilt-bright);
+  color: #fff1c4;
+  box-shadow: 0 0 0 4px rgba(246, 217, 138, 0.17), 0 0 24px rgba(246, 217, 138, 0.72), inset 0 0 0 3px rgba(5, 8, 26, 0.72);
+  animation: speaker-pulse 1.8s ease-in-out infinite;
+}
+@keyframes speaker-pulse {
+  50% { box-shadow: 0 0 0 7px rgba(246, 217, 138, 0.08), 0 0 30px rgba(246, 217, 138, 0.9), inset 0 0 0 3px rgba(5, 8, 26, 0.72); }
+}
+
+.speech-status {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  color: var(--vellum);
+}
+.speech-status-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: clamp(0.9rem, 2vw, 1.2rem);
+}
+.speech-seat-number {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border: 1px solid var(--gilt-bright);
+  border-radius: 50%;
+  background: rgba(8, 12, 36, 0.86);
+  color: var(--gilt-bright);
+  font: 700 0.82rem/1 var(--font-numeral);
+}
+.speech-countdown {
+  color: var(--gilt-bright);
+  font: 700 clamp(1.1rem, 2.4vw, 1.5rem)/1.15 var(--font-numeral);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+}
+.speech-progress {
+  color: var(--vellum-dim);
+  font-size: 0.72rem;
 }
 
 /* 行动区 */
@@ -571,6 +730,61 @@
   margin-top: 4px;
   font-size: 0.86rem;
   color: var(--vellum-dim);
+}
+.dock-inner-stacked {
+  align-items: stretch;
+  flex-direction: column;
+  gap: 10px;
+}
+.dock-inner-stacked .dock-actions {
+  width: 100%;
+}
+.speech-setup {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  width: 100%;
+}
+.speech-setup-group {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.speech-setup-group > span {
+  color: var(--vellum-dim);
+  font-size: 0.78rem;
+}
+.speech-setup-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+.speech-setup-choice {
+  min-height: 40px;
+  padding: 6px 8px;
+  border: 1px solid rgba(214, 196, 155, 0.28);
+  border-radius: 4px;
+  background: rgba(7, 10, 24, 0.82);
+  color: var(--vellum-dim);
+  font-size: 0.8rem;
+  line-height: 1.25;
+}
+.speech-setup-choice[aria-pressed='true'] {
+  border-color: var(--gilt-bright);
+  background: rgba(184, 158, 114, 0.16);
+  color: var(--vellum);
+}
+.speech-setup-submit {
+  justify-self: end;
+}
+.speech-finish {
+  min-width: 150px;
+}
+.speech-waiting-countdown {
+  color: var(--gilt-bright);
+  font: 700 1rem/1 var(--font-numeral);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .dock-actions {
   flex: none;
@@ -1157,9 +1371,17 @@
   font-size: 0.74rem;
   white-space: nowrap;
 }
-.end-crest {
-  width: 20px;
+.end-avatar-number {
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  border: 1px solid rgba(214, 196, 155, 0.68);
+  border-radius: 50%;
+  background: rgba(10, 14, 22, 0.96);
+  color: #e5d9bd;
   flex: none;
+  font: 700 0.7rem/1 var(--font-numeral);
 }
 .end-tag {
   font-size: 0.76rem;
@@ -1187,7 +1409,7 @@
 .end-evil .end-title {
   text-shadow: 0 0 52px rgba(143, 88, 99, 0.42);
 }
-.seat-picked .seat-crest {
+.seat-picked .seat-avatar {
   filter: drop-shadow(0 0 16px rgba(193, 142, 149, 0.62));
 }
 
@@ -1239,6 +1461,22 @@
     flex-direction: column;
     gap: 10px;
     text-align: center;
+  }
+  .speech-setup {
+    grid-template-columns: 1fr;
+    text-align: left;
+  }
+  .speech-setup-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .speech-setup-choice {
+    min-height: 44px;
+  }
+  .speech-setup-submit,
+  .speech-finish {
+    justify-self: stretch;
+    width: 100%;
+    min-height: 48px;
   }
   .dock {
     min-height: 168px;

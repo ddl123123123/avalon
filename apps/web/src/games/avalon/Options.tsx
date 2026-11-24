@@ -27,7 +27,7 @@ export function AvalonOptions({
   const evilSlotsFull = OPTIONAL_ROLES.filter((role) => ROLES[role].alignment === 'evil' && options[role]).length >= evil - 1;
 
   // 只提交改动的那一项，由服务器合并
-  const toggle = (key: keyof Avalon.AvalonOptions) => onChange({ [key]: !options[key] });
+  const toggle = (key: Avalon.OptionalRole | 'ladyOfTheLake') => onChange({ [key]: !options[key] });
 
   return (
     <div className="av-options">
@@ -36,6 +36,25 @@ export function AvalonOptions({
         {n} 人局 · 五次任务人数 {TEAM_SIZES[n]!.join(' / ')}
         {n >= 7 && <span>第 4 次任务需两张失败牌才算失败</span>}
       </p>
+
+      <fieldset className="av-timer-setting">
+        <legend>发言倒计时</legend>
+        <p>轮到玩家发言时开始计时</p>
+        <div className="av-timer-options" role="group" aria-label="选择发言时长">
+          {Avalon.SPEECH_TIMERS.map((seconds) => (
+            <button
+              key={seconds}
+              type="button"
+              className="av-timer-choice"
+              aria-pressed={options.speechSeconds === seconds}
+              disabled={!editable}
+              onClick={() => onChange({ speechSeconds: seconds })}
+            >
+              {seconds} 秒
+            </button>
+          ))}
+        </div>
+      </fieldset>
 
       <div className="av-roster" aria-live="polite">
         <h2 className="av-options-heading">{custom ? '自定义阵容' : '推荐阵容'}</h2>

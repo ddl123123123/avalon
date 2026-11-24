@@ -34,7 +34,7 @@ export interface RoomSnapshot {
 
 export type ClientMessage =
   | { type: 'hello'; clientId: string }
-  | { type: 'create_room'; name: string; gameId: string }
+  | { type: 'create_room'; name: string; gameId: string; options?: unknown }
   | { type: 'join_room'; code: string; name: string }
   | { type: 'leave_room' }
   | { type: 'choose_seat'; seatIndex: number }

@@ -111,7 +111,7 @@ export class RoomManager {
 
     switch (msg.type) {
       case 'create_room':
-        return this.createRoom(conn, msg.name, msg.gameId);
+        return this.createRoom(conn, msg.name, msg.gameId, msg.options);
       case 'join_room':
         return this.joinRoom(conn, msg.code, msg.name);
     }
@@ -237,7 +237,7 @@ export class RoomManager {
     }
   }
 
-  private createRoom(conn: Connection, rawName: unknown, gameId: unknown) {
+  private createRoom(conn: Connection, rawName: unknown, gameId: unknown, requestedOptions?: unknown) {
     const name = cleanName(rawName);
     const game = typeof gameId === 'string' ? getGame(gameId) : undefined;
     if (!game) throw new GameError('这款桌游还没上线');
@@ -253,15 +253,22 @@ export class RoomManager {
     }
     const id = this.publicId(conn.clientId!);
     const config = game.playerCountOptions;
+    const defaults = config
+      ? game.normalizeOptions({ ...game.defaultOptions(), ...config.recommendedOptions(config.defaultCount) })
+      : game.defaultOptions();
+    const options = game.normalizeOptions({
+      ...(defaults as object),
+      ...(requestedOptions && typeof requestedOptions === 'object' ? requestedOptions as object : {}),
+    });
+    const blocker = config ? game.validateOptions(options, config.defaultCount) : null;
+    if (blocker) throw new GameError(blocker);
     const room: Room = {
       code,
       game,
       hostId: id,
       members: [{ id, seatIndex: 0, clientId: conn.clientId, name, isBot: false, connection: conn, dropTimer: null }],
       status: 'lobby',
-      options: config
-        ? game.normalizeOptions({ ...game.defaultOptions(), ...config.recommendedOptions(config.defaultCount) })
-        : game.defaultOptions(),
+      options,
       targetPlayers: config?.defaultCount ?? null,
       state: null,
       gameSeq: 0,
@@ -397,7 +404,10 @@ export class RoomManager {
   }
 
   private applyAction(room: Room, playerId: PlayerId, action: unknown) {
-    room.state = room.game.reduce(room.state, playerId, action, Math.random);
+    const timedAction = room.game.id === Avalon.avalon.id && action && typeof action === 'object'
+      ? { ...(action as Record<string, unknown>), now: Date.now() }
+      : action;
+    room.state = room.game.reduce(room.state, playerId, timedAction, Math.random);
     if (room.game.isOver(room.state)) {
       room.status = 'ended';
       this.clearBotTimers(room);

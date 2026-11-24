@@ -3,6 +3,7 @@ import { useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { Avalon, NAME_MAX_LENGTH } from '@tabletop/shared';
 import { DecodedImage } from '../art/DecodedImage';
 import avalonHero from '../assets/avalon/home-duel-v2.webp';
+import { Tilt } from '../fx/Tilt';
 import { useReducedMotion } from '../fx/motion';
 import { SplitText } from '../fx/SplitText';
 import { AvalonRoleGuide } from '../games/avalon/RoleGuide';
@@ -29,6 +30,7 @@ export function Home() {
   const [gameId, setGameId] = useState(rememberedGame);
   const [name, setNameInput] = useState(getName);
   const [code, setCode] = useState('');
+  const [speechSeconds, setSpeechSeconds] = useState<Avalon.SpeechSeconds>(90);
   const nameRef = useRef<HTMLInputElement>(null);
   const resumeCode = room?.code ?? lastRoomCode;
   const game = GAME_CLIENTS[gameId]!;
@@ -54,7 +56,7 @@ export function Home() {
 
   const create = () => {
     const who = requireName();
-    if (who) net.createRoom(who, game.id);
+    if (who) net.createRoom(who, game.id, isAvalon ? { speechSeconds } : undefined);
   };
 
   const join = (e: FormEvent) => {
@@ -117,6 +119,25 @@ export function Home() {
                 autoComplete="nickname"
               />
             </label>
+            {isAvalon && (
+              <fieldset className="av-timer-setting home-av-timer-setting">
+                <legend>发言倒计时</legend>
+                <p>每位玩家的发言时间，可在房间内调整</p>
+                <div className="av-timer-options" role="group" aria-label="选择发言时长">
+                  {Avalon.SPEECH_TIMERS.map((seconds) => (
+                    <button
+                      key={seconds}
+                      type="button"
+                      className="av-timer-choice"
+                      aria-pressed={speechSeconds === seconds}
+                      onClick={() => setSpeechSeconds(seconds)}
+                    >
+                      {seconds} 秒
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+            )}
             <div className="entry-actions">
               <button type="button" className="btn btn-primary" onClick={create}>
                 开一间{game.name}的房
@@ -181,21 +202,39 @@ export function Home() {
           <motion.div
             key={game.id}
             className="hero-art"
-            initial={reducedMotion ? false : { opacity: 0.85 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.16 }}
+            initial={reducedMotion || isAvalon ? false : { opacity: 0, y: 26, scale: 0.94, rotate: 1.2 }}
+            animate={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
+            transition={reducedMotion ? { duration: 0 } : {
+              opacity: { duration: 0.62, ease: [0.22, 1, 0.36, 1] },
+              y: { type: 'spring', stiffness: 82, damping: 17, mass: 0.85 },
+              scale: { type: 'spring', stiffness: 96, damping: 18, mass: 0.8 },
+              rotate: { duration: 0.78, ease: [0.22, 1, 0.36, 1] },
+            }}
+            whileHover={reducedMotion ? undefined : {
+              y: -4,
+              scale: 1.014,
+              transition: { type: 'spring', stiffness: 230, damping: 19 },
+            }}
+            whileTap={reducedMotion ? undefined : {
+              y: 2,
+              scale: 0.987,
+              transition: { type: 'spring', stiffness: 300, damping: 20 },
+            }}
           >
-            {isAvalon ? (
-              <div className="avalon-hero-portrait">
-                <DecodedImage
-                  src={avalonHero}
-                  {...{ fetchpriority: 'high' }}
-                  width={1254}
-                  height={1254}
-                  alt="蓝袍与红袍的两位角色隔着金框相对"
-                />
-              </div>
-            ) : <game.hero.Art />}
+            <Tilt className="hero-art-tilt" max={3}>
+              {isAvalon ? (
+                <div className="avalon-hero-portrait">
+                  <DecodedImage
+                    src={avalonHero}
+                    revealDuration={1.5}
+                    {...{ fetchpriority: 'high' }}
+                    width={1254}
+                    height={1254}
+                    alt="蓝袍与红袍的两位角色隔着金框相对"
+                  />
+                </div>
+              ) : <game.hero.Art />}
+            </Tilt>
           </motion.div>
         </div>
       </section>

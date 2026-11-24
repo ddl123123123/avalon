@@ -13,11 +13,25 @@ export function Dock({
   view,
   nameOf,
   picked,
+  preselectedTeam,
+  onPreselectedTeamChange,
+  leaderFirst,
+  onLeaderFirstChange,
+  direction,
+  onDirectionChange,
+  speechSecondsRemaining,
 }: {
   view: View;
   nameOf: (id: string) => string;
   /** 湖中仙女 / 刺杀时在桌上选中的目标 */
   picked: string | null;
+  preselectedTeam: boolean;
+  onPreselectedTeamChange: (value: boolean) => void;
+  leaderFirst: boolean;
+  onLeaderFirstChange: (value: boolean) => void;
+  direction: 'left' | 'right';
+  onDirectionChange: (value: 'left' | 'right') => void;
+  speechSecondsRemaining: number;
 }) {
   const me = view.me;
   const n = view.players.length;
@@ -32,17 +46,77 @@ export function Dock({
     case 'team': {
       const selected = `已选 ${view.team.length} / ${size}${view.team.length ? ` · ${names(view.team)}` : ''}`;
       if (view.leader !== me.id) {
-        return <DockShell prompt={`${nameOf(view.leader)} 是队长，正在为第 ${questNo} 次任务挑选 ${size} 名队员`} hint={selected} waiting />;
+        return (
+          <DockShell
+            prompt={view.discussionComplete ? `${nameOf(view.leader)} 是队长，正在确定第 ${questNo} 次任务队伍` : `${nameOf(view.leader)} 是队长，正在设置预选队伍和发言顺序`}
+            hint={selected}
+            waiting
+          />
+        );
+      }
+      if (!view.discussionComplete) {
+        const readyToTalk = !preselectedTeam || view.team.length === size;
+        return (
+          <DockShell
+            prompt={`第 ${questNo} 次任务 · 先设置讨论顺序`}
+            hint={preselectedTeam ? `先在桌上选满 ${size} 人作为预选队伍。每人限时 ${view.options.speechSeconds} 秒。` : `讨论结束后再选队伍。每人限时 ${view.options.speechSeconds} 秒。`}
+            stacked
+          >
+            <div className="speech-setup">
+              <SetupGroup label="预选任务队伍">
+                <SetupChoice selected={preselectedTeam} onClick={() => onPreselectedTeamChange(true)}>先亮预选车</SetupChoice>
+                <SetupChoice selected={!preselectedTeam} onClick={() => onPreselectedTeamChange(false)}>讨论后再选</SetupChoice>
+              </SetupGroup>
+              <SetupGroup label="队长发言位置">
+                <SetupChoice selected={leaderFirst} onClick={() => onLeaderFirstChange(true)}>我先发言</SetupChoice>
+                <SetupChoice selected={!leaderFirst} onClick={() => onLeaderFirstChange(false)}>我最后发言</SetupChoice>
+              </SetupGroup>
+              <SetupGroup label="从哪一侧开始">
+                <SetupChoice selected={direction === 'left'} onClick={() => onDirectionChange('left')}>我的左手边</SetupChoice>
+                <SetupChoice selected={direction === 'right'} onClick={() => onDirectionChange('right')}>我的右手边</SetupChoice>
+              </SetupGroup>
+            </div>
+            <button
+              type="button"
+              className="btn btn-primary speech-setup-submit"
+              disabled={!readyToTalk}
+              onClick={() => send({ type: 'start_discussion', preselectedTeam, leaderFirst, direction })}
+            >
+              开始按顺序发言
+            </button>
+          </DockShell>
+        );
       }
       const ready = view.team.length === size;
       return (
         <DockShell
-          prompt={`你是队长。在桌上点选 ${size} 名队员出第 ${questNo} 次任务`}
+          prompt={`讨论结束。你是队长，确认第 ${questNo} 次任务队伍`}
           hint={`${selected}${view.rejectCount === 4 ? '。这是本轮最后一次组队，再被否决邪恶方直接获胜' : ''}`}
         >
           <button type="button" className="btn btn-primary" disabled={!ready} onClick={() => send({ type: 'propose_team', team: view.team })}>
             就这支队伍
           </button>
+        </DockShell>
+      );
+    }
+
+    case 'discussion': {
+      const discussion = view.discussion!;
+      const speaker = discussion.currentSpeaker;
+      const speakerNumber = view.players.indexOf(speaker) + 1;
+      const timer = formatTimer(speechSecondsRemaining);
+      const current = speaker === me.id;
+      return (
+        <DockShell
+          prompt={current ? '现在轮到你发言' : `现在由 ${speakerNumber} 号玩家发言`}
+          hint={`第 ${discussion.currentIndex + 1} / ${discussion.order.length} 位 · ${timer} · ${nameOf(speaker)}`}
+          waiting={!current}
+        >
+          {current && (
+            <button type="button" className="btn btn-primary speech-finish" onClick={() => send({ type: 'finish_speech' })}>
+              我说完了
+            </button>
+          )}
         </DockShell>
       );
     }
@@ -143,18 +217,20 @@ function DockShell({
   prompt,
   hint,
   waiting = false,
+  stacked = false,
   children,
 }: {
   prompt: string;
   hint?: string;
   waiting?: boolean;
+  stacked?: boolean;
   children?: React.ReactNode;
 }) {
   return (
     <motion.div
       // 文案变了就重新入场，提醒玩家局面有变化
       key={prompt}
-      className={`dock-inner ${waiting ? 'dock-waiting' : 'dock-active'}`}
+      className={`dock-inner ${waiting ? 'dock-waiting' : 'dock-active'} ${stacked ? 'dock-inner-stacked' : ''}`}
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: [0.2, 0.7, 0.2, 1] }}
@@ -169,6 +245,27 @@ function DockShell({
       {children && <div className="dock-actions">{children}</div>}
     </motion.div>
   );
+}
+
+function SetupGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="speech-setup-group">
+      <span>{label}</span>
+      <div className="speech-setup-options" role="group" aria-label={label}>{children}</div>
+    </div>
+  );
+}
+
+function SetupChoice({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" className="speech-setup-choice" aria-pressed={selected} onClick={onClick}>
+      {children}
+    </button>
+  );
+}
+
+function formatTimer(seconds: number) {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
 function ChoiceButton({

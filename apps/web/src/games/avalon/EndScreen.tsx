@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion';
 import { Avalon, type RoomSnapshot } from '@tabletop/shared';
-import { Crest } from '../../art/Crest';
 import { SplitText } from '../../fx/SplitText';
 import { Tilt } from '../../fx/Tilt';
 import { net } from '../../net/client';
@@ -58,10 +57,7 @@ export function EndScreen({
                 <RoleFace role={role} />
               </Tilt>
               <div className="end-name">
-                <span className="end-seat-number">{p.seatIndex + 1} 号</span>
-                <span className="end-crest">
-                  <Crest seed={p.id} />
-                </span>
+                <span className="end-avatar-number" aria-label={`${p.seatIndex + 1} 号玩家`}>{p.seatIndex + 1}</span>
                 {p.name}
                 {p.id === room.you && <span className="seat-you">你</span>}
               </div>

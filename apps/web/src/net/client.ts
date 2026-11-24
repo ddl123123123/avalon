@@ -207,9 +207,9 @@ export function setName(name: string) {
 }
 
 export const net = {
-  createRoom(name: string, gameId: string) {
+  createRoom(name: string, gameId: string, options?: unknown) {
     setName(name);
-    raw({ type: 'create_room', name, gameId });
+    raw({ type: 'create_room', name, gameId, options });
   },
   joinRoom(code: string, name: string) {
     setName(name);

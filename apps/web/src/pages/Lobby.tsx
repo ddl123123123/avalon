@@ -2,7 +2,6 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import type { RoomPlayer, RoomSnapshot } from '@tabletop/shared';
 import { getGame } from '@tabletop/shared';
-import { Crest } from '../art/Crest';
 import { TableSurface } from '../art/glass';
 import type { GameClient } from '../games/registry';
 import { net } from '../net/client';
@@ -95,9 +94,8 @@ export function Lobby({ room, game }: { room: RoomSnapshot; game: GameClient }) 
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 transition={{ type: 'spring', stiffness: 260, damping: 20 }}
               >
-                <div className="seat-crest">
-                  <Crest seed={seat.id} />
-                  <span className="seat-number" aria-label={`座位 ${seatIndex + 1}`}>{seatIndex + 1}</span>
+                <div className="seat-avatar" role="img" aria-label={`${seatIndex + 1} 号玩家`}>
+                  <span className="seat-avatar-number">{seatIndex + 1}</span>
                 </div>
                 <div className="seat-name">
                   {seat.name}
@@ -113,12 +111,20 @@ export function Lobby({ room, game }: { room: RoomSnapshot; game: GameClient }) 
                 )}
               </motion.div>
             ) : (
-              <button type="button" className="seat seat-empty seat-open" onClick={() => net.chooseSeat(seatIndex)} aria-label={`选择 ${seatIndex + 1} 号座位`}>
-                <div className="seat-crest seat-crest-empty">
-                  <span className="seat-number">{seatIndex + 1}</span>
+              <motion.button
+                type="button"
+                className="seat seat-empty seat-open"
+                onClick={() => net.chooseSeat(seatIndex)}
+                aria-label={`选择 ${seatIndex + 1} 号座位`}
+                whileHover={{ scale: 1.045, y: -3 }}
+                whileTap={{ scale: 0.96 }}
+                transition={{ type: 'spring', stiffness: 320, damping: 20 }}
+              >
+                <div className="seat-avatar seat-avatar-empty">
+                  <span className="seat-avatar-number">{seatIndex + 1}</span>
                 </div>
                 <div className="seat-name">空位</div>
-              </button>
+              </motion.button>
             )
           }
         />

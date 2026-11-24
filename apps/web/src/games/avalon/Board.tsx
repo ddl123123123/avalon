@@ -1,7 +1,7 @@
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Avalon, type RoomSnapshot } from '@tabletop/shared';
-import { net } from '../../net/client';
+import { net, useNet } from '../../net/client';
 import { RoundTable } from '../../ui/RoundTable';
 import { Dock } from './Dock';
 import { EndScreen } from './EndScreen';
@@ -72,6 +72,7 @@ export function AvalonBoard({ room }: { room: RoomSnapshot }) {
 }
 
 function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
+  const { link } = useNet();
   const view = room.view as View;
   const me = view.me;
   const byId = new Map(room.players.map((p) => [p.id, p]));
@@ -89,6 +90,37 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
   const [showRole, setShowRole] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
+  const [preselectedTeam, setPreselectedTeam] = useState(true);
+  const [leaderFirst, setLeaderFirst] = useState(true);
+  const [direction, setDirection] = useState<'left' | 'right'>('left');
+  const [, setClockTick] = useState(0);
+  const speechDeadline = view.discussion?.deadline ?? null;
+
+  useEffect(() => {
+    if (speechDeadline === null) return;
+    setClockTick(Date.now());
+    const interval = window.setInterval(() => setClockTick(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, [speechDeadline]);
+
+  useEffect(() => {
+    if (speechDeadline === null || link !== 'online') return;
+    let timer = 0;
+    const requestTimeout = () => {
+      net.act({ type: 'timeout_speech' } satisfies Avalon.AvalonAction);
+      timer = window.setTimeout(requestTimeout, 900);
+    };
+    timer = window.setTimeout(requestTimeout, Math.max(0, speechDeadline - Date.now()) + 250);
+    return () => window.clearTimeout(timer);
+  }, [speechDeadline, link]);
+
+  useEffect(() => {
+    if (!view.discussionComplete) {
+      setPreselectedTeam(true);
+      setLeaderFirst(true);
+      setDirection('left');
+    }
+  }, [view.discussionComplete, view.leader, view.questIndex, view.rejectCount]);
 
   useEffect(() => saveNotebook(dossierKey, notebook), [dossierKey, notebook]);
 
@@ -112,6 +144,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
   const voteReveal = reveal?.kind === 'vote' ? reveal.proposal : null;
   const busy = reveal !== null || intro;
   const ended = view.phase === 'ended';
+  const speechSecondsRemaining = speechDeadline === null ? 0 : Math.max(0, Math.ceil((speechDeadline - Date.now()) / 1000));
 
   // 亮票期间牌桌停留在被表决的那支队伍上
   const shownTeam = voteReveal ? voteReveal.team : view.phase === 'lady' || view.phase === 'assassin' ? [] : view.team;
@@ -121,7 +154,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
 
   const pickableIds = new Set<string>();
   if (!busy && me) {
-    if (view.phase === 'team' && iLead) view.players.forEach((id) => pickableIds.add(id));
+    if (view.phase === 'team' && iLead && (view.discussionComplete || preselectedTeam)) view.players.forEach((id) => pickableIds.add(id));
     if (view.phase === 'lady' && view.lady?.holder === me.id) {
       view.players.filter((id) => !view.lady!.pastHolders.includes(id)).forEach((id) => pickableIds.add(id));
     }
@@ -154,6 +187,8 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
     switch (view.phase) {
       case 'team':
         return `${nameOf(view.leader)} 正在组队`;
+      case 'discussion':
+        return '按顺序发言';
       case 'vote':
         return `投票中 ${view.voted.length} / ${view.players.length}`;
       case 'quest':
@@ -252,6 +287,20 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
                             <span className="reject-label">否决 {view.rejectCount} / 5</span>
                           </div>
                           <p className="center-status">{status()}</p>
+                          {view.discussion && (
+                            <div className="speech-status">
+                              <div className="speech-status-main">
+                                <span className="speech-seat-number">{(byId.get(view.discussion.currentSpeaker)?.seatIndex ?? view.players.indexOf(view.discussion.currentSpeaker)) + 1}</span>
+                                <span>号玩家发言</span>
+                              </div>
+                              <strong className="speech-countdown">
+                                {Math.floor(speechSecondsRemaining / 60)}:{String(speechSecondsRemaining % 60).padStart(2, '0')}
+                              </strong>
+                              <small className="speech-progress">
+                                第 {view.discussion.currentIndex + 1} / {view.discussion.order.length} 位 · 从队长{view.discussion.direction === 'left' ? '左' : '右'}手边开始
+                              </small>
+                            </div>
+                          )}
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -264,6 +313,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
                     guess={notebook.guesses[id] ? Avalon.ROLES[notebook.guesses[id]!].name : null}
                     isMe={id === me?.id}
                     isLeader={id === shownLeader}
+                    isSpeaking={view.discussion?.currentSpeaker === id}
                     onTeam={shownTeam.includes(id)}
                     hasLady={view.lady?.holder === id}
                     acted={!voteReveal && (view.voted.includes(id) || view.played.includes(id))}
@@ -287,7 +337,21 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
                 )}
               </div>
             ) : (
-              <Dock view={view} nameOf={seatNameOf} picked={picked} />
+              <Dock
+                view={view}
+                nameOf={seatNameOf}
+                picked={picked}
+                preselectedTeam={preselectedTeam}
+                onPreselectedTeamChange={(value) => {
+                  setPreselectedTeam(value);
+                  if (!value && view.team.length) net.act({ type: 'draft_team', team: [] } satisfies Avalon.AvalonAction);
+                }}
+                leaderFirst={leaderFirst}
+                onLeaderFirstChange={setLeaderFirst}
+                direction={direction}
+                onDirectionChange={setDirection}
+                speechSecondsRemaining={speechSecondsRemaining}
+              />
             )}
           </footer>
         </>

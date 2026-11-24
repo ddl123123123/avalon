@@ -101,26 +101,23 @@
   text-align: center;
   color: var(--vellum);
 }
-.seat-crest {
+.seat-avatar {
   position: relative;
-  width: var(--crest);
-  transition: filter 0.3s;
-}
-.seat-number {
-  position: absolute;
-  z-index: 5;
-  top: -5px;
-  left: -7px;
   display: grid;
   place-items: center;
-  width: 21px;
-  height: 21px;
-  border: 1px solid rgba(214, 196, 155, 0.82);
+  width: var(--crest);
+  height: var(--crest);
+  border: 1px solid rgba(214, 196, 155, 0.76);
   border-radius: 50%;
-  background: rgba(10, 14, 22, 0.96);
-  color: #e5d9bd;
-  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.55);
-  font: 700 0.72rem/1 var(--font-numeral);
+  background: radial-gradient(circle at 36% 28%, rgba(91, 115, 153, 0.95), rgba(17, 30, 67, 0.98) 72%);
+  color: #f1e6c7;
+  box-shadow: inset 0 0 0 3px rgba(5, 8, 26, 0.72), 0 5px 14px rgba(0, 0, 0, 0.42);
+  font: 700 clamp(0.95rem, 2.2vw, 1.3rem)/1 var(--font-numeral);
+  transition: filter 0.3s;
+}
+.seat-avatar-number {
+  position: relative;
+  z-index: 1;
 }
 .seat-name {
   max-width: 100%;
@@ -149,16 +146,17 @@
 .seat-me .seat-name {
   border-color: rgba(224, 176, 74, 0.6);
 }
-.seat-offline .seat-crest {
+.seat-offline .seat-avatar {
   filter: grayscale(1) brightness(0.55);
 }
 .seat-empty {
   opacity: 0.55;
 }
-.seat-crest-empty {
-  aspect-ratio: 100 / 112;
+.seat-avatar-empty {
   border: 2px dashed rgba(224, 176, 74, 0.5);
-  border-radius: 10% 10% 50% 50% / 8% 8% 46% 46%;
+  background: rgba(184, 158, 114, 0.035);
+  box-shadow: none;
+  color: var(--vellum-dim);
 }
 .seat-open {
   border: 0;
@@ -169,8 +167,8 @@
 .seat-open:focus-visible {
   opacity: 1;
 }
-.seat-open:hover .seat-crest-empty,
-.seat-open:focus-visible .seat-crest-empty {
+.seat-open:hover .seat-avatar-empty,
+.seat-open:focus-visible .seat-avatar-empty {
   border-color: var(--gilt-bright);
   background: rgba(184, 158, 114, 0.1);
   box-shadow: 0 0 20px rgba(184, 158, 114, 0.16);
@@ -605,14 +603,8 @@
 .lobby-table .seat-empty {
   color: #8e9291;
 }
-.lobby-table .seat-crest-empty {
+.lobby-table .seat-avatar-empty {
   border-color: rgba(190, 182, 161, 0.46);
-}
-.lobby-table .seat-number {
-  top: -7px;
-  left: -9px;
-  width: 23px;
-  height: 23px;
 }
 .lobby-side.panel {
   position: relative;

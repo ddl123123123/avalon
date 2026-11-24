@@ -16,9 +16,10 @@ import {
   type Alignment,
   type AvalonOptions,
   type Role,
+  type SpeechSeconds,
 } from './rules';
 
-export type AvalonPhase = 'team' | 'vote' | 'quest' | 'lady' | 'assassin' | 'ended';
+export type AvalonPhase = 'team' | 'discussion' | 'vote' | 'quest' | 'lady' | 'assassin' | 'ended';
 
 export type WinReason =
   /** 三次任务失败 */
@@ -61,6 +62,17 @@ export interface AvalonState {
   phase: AvalonPhase;
   questIndex: number;
   leaderIndex: number;
+  /** 队长本轮已完成讨论，正在提交最终队伍。 */
+  discussionComplete: boolean;
+  discussion: null | {
+    order: PlayerId[];
+    currentIndex: number;
+    deadline: number;
+    preselectedTeam: boolean;
+    leaderFirst: boolean;
+    direction: 'left' | 'right';
+    timerSeconds: SpeechSeconds;
+  };
   /** 当前任务已经被否决的组队次数 */
   rejectCount: number;
   team: PlayerId[];
@@ -82,6 +94,12 @@ export interface AvalonState {
 export type AvalonAction =
   /** 队长调整候选队员，所有人实时可见 */
   | { type: 'draft_team'; team: PlayerId[] }
+  /** 队长设置预选队伍和发言顺序，开始本轮讨论 */
+  | { type: 'start_discussion'; preselectedTeam: boolean; leaderFirst: boolean; direction: 'left' | 'right'; now?: number }
+  /** 当前发言者提前结束自己的发言 */
+  | { type: 'finish_speech'; now?: number }
+  /** 倒计时结束后自动进入下一位；任何玩家都可触发 */
+  | { type: 'timeout_speech'; now?: number }
   /** 队长确定队伍，进入投票 */
   | { type: 'propose_team'; team: PlayerId[] }
   | { type: 'vote'; approve: boolean }
@@ -104,6 +122,17 @@ export interface AvalonView {
   phase: AvalonPhase;
   questIndex: number;
   leader: PlayerId;
+  discussionComplete: boolean;
+  discussion: null | {
+    order: PlayerId[];
+    currentIndex: number;
+    currentSpeaker: PlayerId;
+    deadline: number;
+    preselectedTeam: boolean;
+    leaderFirst: boolean;
+    direction: 'left' | 'right';
+    timerSeconds: SpeechSeconds;
+  };
   rejectCount: number;
   questSizes: number[];
   failsRequired: number[];
@@ -182,6 +211,8 @@ function setup(players: PlayerId[], options: AvalonOptions, rng: Rng): AvalonSta
     phase: 'team',
     questIndex: 0,
     leaderIndex,
+    discussionComplete: false,
+    discussion: null,
     rejectCount: 0,
     team: [],
     votes: {},
@@ -218,9 +249,27 @@ function finish(state: AvalonState, winner: Alignment, reason: WinReason) {
 
 function startTeamPhase(state: AvalonState) {
   state.phase = 'team';
+  state.discussionComplete = false;
+  state.discussion = null;
   state.team = [];
   state.votes = {};
   state.questCards = {};
+}
+
+function advanceDiscussion(state: AvalonState, now: number) {
+  const discussion = state.discussion!;
+  const nextIndex = discussion.currentIndex + 1;
+  if (nextIndex >= discussion.order.length) {
+    state.phase = 'team';
+    state.discussion = null;
+    state.discussionComplete = true;
+    return;
+  }
+  state.discussion = {
+    ...discussion,
+    currentIndex: nextIndex,
+    deadline: now + discussion.timerSeconds * 1000,
+  };
 }
 
 function resolveVote(state: AvalonState) {
@@ -298,6 +347,52 @@ function reduce(prev: AvalonState, player: PlayerId, action: AvalonAction, _rng:
       if (state.phase !== 'team') throw new GameError('现在不是组队阶段');
       if (player !== leader) throw new GameError('只有队长可以挑选队员');
       state.team = checkTeam(state, action.team, false);
+      return state;
+    }
+    case 'start_discussion': {
+      if (state.phase !== 'team' || state.discussionComplete) throw new GameError('现在不能开始讨论');
+      if (player !== leader) throw new GameError('只有队长可以设置发言顺序');
+      if (typeof action.preselectedTeam !== 'boolean' || typeof action.leaderFirst !== 'boolean') {
+        throw new GameError('发言设置不正确');
+      }
+      if (action.direction !== 'left' && action.direction !== 'right') throw new GameError('请选择发言方向');
+      const preselected = action.preselectedTeam ? checkTeam(state, state.team, true) : [];
+      const direction = action.direction;
+      const step = direction === 'left' ? 1 : -1;
+      const others = Array.from({ length: state.players.length - 1 }, (_, i) => {
+        const index = (state.leaderIndex + step * (i + 1) + state.players.length) % state.players.length;
+        return state.players[index]!;
+      });
+      const order = action.leaderFirst ? [leader, ...others] : [...others, leader];
+      const now = typeof action.now === 'number' && Number.isFinite(action.now) ? action.now : Date.now();
+      state.team = preselected;
+      state.discussionComplete = false;
+      state.discussion = {
+        order,
+        currentIndex: 0,
+        deadline: now + state.options.speechSeconds * 1000,
+        preselectedTeam: action.preselectedTeam,
+        leaderFirst: action.leaderFirst,
+        direction,
+        timerSeconds: state.options.speechSeconds,
+      };
+      state.phase = 'discussion';
+      return state;
+    }
+    case 'finish_speech': {
+      if (state.phase !== 'discussion' || !state.discussion) return state;
+      if (state.discussion.order[state.discussion.currentIndex] !== player) {
+        throw new GameError('现在还没轮到你发言');
+      }
+      const now = typeof action.now === 'number' && Number.isFinite(action.now) ? action.now : Date.now();
+      advanceDiscussion(state, now);
+      return state;
+    }
+    case 'timeout_speech': {
+      if (state.phase !== 'discussion' || !state.discussion) return state;
+      const now = typeof action.now === 'number' && Number.isFinite(action.now) ? action.now : Date.now();
+      if (now < state.discussion.deadline) return state;
+      advanceDiscussion(state, now);
       return state;
     }
     case 'propose_team': {
@@ -391,6 +486,13 @@ function view(state: AvalonState, viewer: PlayerId | null): AvalonView {
     phase: state.phase,
     questIndex: state.questIndex,
     leader: state.players[state.leaderIndex]!,
+    discussionComplete: state.discussionComplete,
+    discussion: state.discussion
+      ? {
+          ...state.discussion,
+          currentSpeaker: state.discussion.order[state.discussion.currentIndex]!,
+        }
+      : null,
     rejectCount: state.rejectCount,
     questSizes: TEAM_SIZES[count]!.slice(),
     failsRequired: TEAM_SIZES[count]!.map((_, i) => failsRequired(count, i)),
@@ -419,15 +521,21 @@ function botAction(state: AvalonState, player: PlayerId, rng: Rng): AvalonAction
   switch (state.phase) {
     case 'team': {
       if (state.players[state.leaderIndex] !== player) return null;
+      if (state.discussionComplete) return { type: 'propose_team', team: state.team };
       const size = TEAM_SIZES[state.players.length]![state.questIndex]!;
+      if (state.team.length === size) {
+        return { type: 'start_discussion', preselectedTeam: true, leaderFirst: true, direction: 'left' };
+      }
       const others = shuffle(
         state.players.filter((id) => id !== player),
         rng,
       );
       // 正义方尽量避开自己知道的邪恶方
       const preferred = evil ? others : [...others.filter((id) => known[id] !== 'evil'), ...others.filter((id) => known[id] === 'evil')];
-      return { type: 'propose_team', team: [player, ...preferred.slice(0, size - 1)] };
+      return { type: 'draft_team', team: [player, ...preferred.slice(0, size - 1)] };
     }
+    case 'discussion':
+      return state.discussion?.order[state.discussion.currentIndex] === player ? { type: 'finish_speech' } : null;
     case 'vote': {
       if (player in state.votes) return null;
       if (state.rejectCount === MAX_REJECTS - 1) return { type: 'vote', approve: !evil || rng() < 0.5 };

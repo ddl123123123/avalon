@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import { motion } from 'framer-motion';
 import { Avalon } from '@tabletop/shared';
 import { polar, sector } from '../../art/geometry';
 import { DecodedImage } from '../../art/DecodedImage';
@@ -105,14 +106,27 @@ export function RoleFace({ role, style }: { role: Role; style?: AvalonCardStyle 
   const good = info.alignment === 'good';
   const label = `${info.name}，${good ? '正义方' : '邪恶方'}`;
   return (
-    <div className="role-face role-face-raster" role="img" aria-label={label} data-card-style={cardStyle}>
+    <motion.div
+      className="role-face role-face-raster"
+      role="img"
+      aria-label={label}
+      data-card-style={cardStyle}
+      transition={{ type: 'spring', stiffness: 240, damping: 22 }}
+      whileHover={{ y: -2, scale: 1.025 }}
+      whileTap={{ scale: 0.99 }}
+    >
       <div className="role-face-fallback" aria-hidden="true">
         <ArchCard seed={role} glass={GLASS[role]} name={info.name} accent={good ? '#4c86ea' : '#d2384f'} label={label}>
           <Emblem role={role} />
         </ArchCard>
       </div>
-      <DecodedImage className="role-face-art" data-side={asset.side} src={asset.src} alt="" />
-    </div>
+      <DecodedImage className="role-face-art" src={asset.src} alt="" />
+      <span className="role-face-frame" aria-hidden="true" />
+      <span className="role-face-nameplate" aria-hidden="true">
+        <strong>{info.name}</strong>
+        <small>{role.toUpperCase()}</small>
+      </span>
+    </motion.div>
   );
 }
 

@@ -637,6 +637,23 @@
   padding-bottom: 16px;
   border-bottom: 1px solid rgba(178, 184, 186, 0.17);
 }
+.lobby-game-heading-top {
+  grid-column: 1 / -1;
+  justify-self: center;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 0;
+}
+.lobby-game-heading-top .lobby-heading-seal {
+  width: 29px;
+  height: 29px;
+}
+.lobby-game-heading-top h1 {
+  color: #e6dfd1;
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+}
 .lobby-heading-seal {
   width: 42px;
   height: 42px;

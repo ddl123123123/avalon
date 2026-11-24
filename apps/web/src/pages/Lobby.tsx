@@ -23,6 +23,16 @@ export function Lobby({ room, game }: { room: RoomSnapshot; game: GameClient }) 
   const seats: Seat[] = Array.from({ length: capacity }, (_, seatIndex) => room.players.find((p) => p.seatIndex === seatIndex) ?? null);
   const meIndex = room.players.find((p) => p.id === room.you)?.seatIndex ?? 0;
   const host = room.players.find((p) => p.id === room.hostId);
+  const showTitleInHeader = Boolean(game.LobbyCardStyles);
+  const gameHeading = (
+    <div className={`lobby-game-heading${showTitleInHeader ? ' lobby-game-heading-top' : ''}`}>
+      <span className="lobby-heading-seal" aria-hidden="true">✦</span>
+      <div>
+        <p>本局桌游 · GAME SELECTED</p>
+        <h1>{game.name}</h1>
+      </div>
+    </div>
+  );
 
   const copy = async () => {
     try {
@@ -66,7 +76,7 @@ export function Lobby({ room, game }: { room: RoomSnapshot; game: GameClient }) 
         <button type="button" className="btn btn-ghost btn-small" onClick={copy}>
           {copied ? '链接已复制' : '复制邀请链接'}
         </button>
-        {game.LobbyCardStyles && <game.LobbyCardStyles />}
+        {showTitleInHeader && gameHeading}
       </header>
 
       <div className="lobby-body">
@@ -131,13 +141,7 @@ export function Lobby({ room, game }: { room: RoomSnapshot; game: GameClient }) 
         />
 
         <aside className="panel lobby-side">
-          <div className="lobby-game-heading">
-            <span className="lobby-heading-seal" aria-hidden="true">✦</span>
-            <div>
-              <p>本局桌游 · GAME SELECTED</p>
-              <h1>{game.name}</h1>
-            </div>
-          </div>
+          {game.LobbyCardStyles ? <game.LobbyCardStyles /> : gameHeading}
           {target != null && isHost && (
             <fieldset className="lobby-size">
               <legend>本局人数</legend>

@@ -14,10 +14,10 @@ const GLASS: Record<'merlin' | 'assassin', Glass> = {
 };
 
 /** 角色牌正面使用当前牌库的图片。 */
-export function RoleFace({ role, style }: { role: Role; style?: AvalonCardStyle }) {
+export function RoleFace({ role, style, thumbnail = false }: { role: Role; style?: AvalonCardStyle; thumbnail?: boolean }) {
   const activeStyle = useAvalonCardStyle();
   const cardStyle = style ?? activeStyle;
-  const asset = getAvalonCardAsset(cardStyle, role);
+  const asset = getAvalonCardAsset(cardStyle, role, thumbnail);
   const info = Avalon.ROLES[role];
   const good = info.alignment === 'good';
   const label = `${info.name}，${good ? '正义方' : '邪恶方'}`;

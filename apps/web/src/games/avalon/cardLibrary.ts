@@ -12,8 +12,11 @@ interface CardAsset {
   src: string;
 }
 
-/** 使用角色立绘原图，避免低分辨率合成卡图在身份页放大后发糊。 */
-export function getAvalonCardAsset(style: AvalonCardStyle, role: Avalon.Role): CardAsset {
+/** 小图使用压缩版本，翻牌时使用高清原图。 */
+export function getAvalonCardAsset(style: AvalonCardStyle, role: Avalon.Role, thumbnail = false): CardAsset {
+  if (thumbnail) {
+    return { src: `${import.meta.env.BASE_URL}avalon-card-thumbnails/${style}/${role}.webp` };
+  }
   const directory = style === 'style-1' ? 'avalon-characters-style-1' : 'avalon-characters';
   return { src: `${import.meta.env.BASE_URL}${directory}/${role}.webp` };
 }

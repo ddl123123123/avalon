@@ -22,8 +22,8 @@ export function CardLibrarySettings({ compact = false }: { compact?: boolean }) 
             onClick={() => setAvalonCardStyle(style.id)}
           >
             <span className="av-card-style-preview" aria-hidden="true">
-              <RoleFace role="merlin" style={style.id} />
-              <RoleFace role="morgana" style={style.id} />
+              <RoleFace role="merlin" style={style.id} thumbnail />
+              <RoleFace role="morgana" style={style.id} thumbnail />
             </span>
             <span className="av-card-style-name">{style.name}</span>
             <small>{style.description}</small>

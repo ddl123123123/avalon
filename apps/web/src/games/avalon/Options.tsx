@@ -69,7 +69,7 @@ export function AvalonOptions({
                     .map(([role, count]) => (
                       <li key={role} title={ROLES[role].ability}>
                         <span className="av-deck-card" aria-hidden="true">
-                          <RoleFace role={role} />
+                          <RoleFace role={role} thumbnail />
                         </span>
                         <span>
                           {ROLES[role].name}{count > 1 && <small> ×{count}</small>}

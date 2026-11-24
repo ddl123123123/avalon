@@ -5,11 +5,10 @@ import type { GameClient } from '../registry';
 import { NinjaCardArt, NinjaCardStyles, NinjaIdentityCard, ninjaFactions as factionNames, useNinjaCardStyle } from './NinjaCards';
 import { PartyTable } from './PartyTable';
 
-const { ninjaNight, NIGHT_LIMIT, TARGET_SCORE, shadowCount, professions, professionIds, sites, siteOrder } = NinjaNight;
+const { ninjaNight, NIGHT_LIMIT, REQUIRED_MERIT, QUEEN_CHANCE, shadowCount, professions, professionIds, sites, siteOrder } = NinjaNight;
 type View = NinjaNight.NinjaView;
 type NightResult = View['history'][number];
 const phases = { draft: '暗选职业', night: '夜间行动', dawn: '天亮结算', ended: '对局结束' };
-const factions = ['guard', 'shadow'] as const;
 
 function ProfessionGuide() {
   return (
@@ -17,7 +16,7 @@ function ProfessionGuide() {
       <summary>查看六种职业</summary>
       <dl>
         {professionIds.map((id) => (
-          <div key={id}><dt>{professions[id].name}</dt><dd>{professions[id].detail}</dd></div>
+          <div key={id}><dt>{professions[id].name} · {professions[id].skill}</dt><dd>{professions[id].detail}</dd></div>
         ))}
       </dl>
     </details>
@@ -28,9 +27,9 @@ function NinjaOptions({ playerCount }: { playerCount: number }) {
   const shadows = shadowCount(playerCount);
   return (
     <div className="party-lobby-copy">
-      <p>{playerCount} 人局 · {playerCount - shadows} 名守夜忍，{shadows} 名影忍</p>
-      <p>暗选职业，再秘密选择山门、枫庭或钟楼。天亮后按阵眼力量结算得分。</p>
-      {playerCount % 2 === 1 && <p>奇数局里，若有影忍选中焦点，影忍在该处额外获得 1 点力量。</p>}
+      <p>{playerCount} 人局 · {playerCount - shadows} 名忠臣，{shadows} 名反贼</p>
+      <p>双方各有 1–5 号位阶，1 号最高。五夜后有皇后牌则直接定胜负，否则按列席者的位阶比较。</p>
+      {playerCount % 2 === 1 && <p>奇数局里，若有反贼选中焦点，反贼在该处额外获得 1 点力量。</p>}
       <ProfessionGuide />
       <NinjaCardStyles />
     </div>
@@ -55,6 +54,7 @@ function DraftStep({ view, style }: { view: View; style: ReturnType<typeof useNi
               aria-pressed={profession === selected} onClick={() => setSelected(profession)}>
               <span aria-hidden="true" className="ninja-profession-mark">{card.mark}</span>
               <strong>{card.name}</strong>
+              <span className="ninja-skill">{card.skill}</span>
               <small>{card.detail}</small>
             </button>
           );
@@ -77,15 +77,15 @@ function NightStep({ view }: { view: View }) {
 
   return (
     <>
-      <p><strong>你的职业是{role.name}。</strong> {role.detail}</p>
-      <p className="party-note">顺时针顺序：山门 → 枫庭 → 钟楼 → 山门。</p>
+      <p><strong>{role.name} · {role.skill}</strong>　{role.detail}</p>
+      <p className="party-note">顺时针顺序：{[...siteOrder, siteOrder[0]].map((site) => sites[site].name).join(' → ')}。</p>
       <div className="ninja-site-grid" role="group" aria-label="选择阵眼">
         {siteOrder.map((site) => (
           <button key={site} type="button" className="ninja-site" aria-pressed={selected === site}
             data-focus={view.focus === site} onClick={() => setSelected(site)}>
             <span aria-hidden="true" className="ninja-site-mark">{sites[site].mark}</span>
             <strong>{sites[site].name}</strong>
-            <small>{view.focus === site ? '焦点 · 2 分' : '1 分'}</small>
+            <small>{view.focus === site ? '焦点 · 2 功牌' : '1 功牌'}</small>
           </button>
         ))}
       </div>
@@ -99,13 +99,13 @@ function NightStep({ view }: { view: View }) {
 function SiteResults({ night }: { night: NightResult }) {
   return (
     <>
-      <p>守夜忍 +{night.earned.guard} 分 · 影忍 +{night.earned.shadow} 分</p>
+      <p>力量左侧为忠臣，右侧为反贼。到场的胜方玩家各获功牌。</p>
       <ul className="ninja-site-grid ninja-outcomes">
         {night.sites.map((result) => (
           <li key={result.site} className="ninja-site" data-focus={result.site === night.focus}>
             <strong>{sites[result.site].name}{result.site === night.focus && ' · 焦点'}</strong>
             <small>力量 {result.power.guard} : {result.power.shadow}</small>
-            <small>{result.winner ? `${factionNames[result.winner]} +${result.points} 分` : '平手 · 无人得分'}</small>
+            <small>{result.winner ? `${factionNames[result.winner]}占领 · ${result.merit} 功牌` : '平手 · 无功牌'}</small>
           </li>
         ))}
       </ul>
@@ -123,26 +123,31 @@ function NinjaBoard({ room }: { room: RoomSnapshot }) {
   const last = view.history.at(-1);
   const past = view.history.slice(0, view.phase === 'ended' || view.phase === 'dawn' ? -1 : undefined);
   const phaseKey = `${room.code}-${room.gameSeq}-${view.night}`;
+  const final = view.final;
+  const queenHolder = final?.queen ? room.players.find((player) => player.id === final.queen) : null;
 
   return (
     <PartyTable room={room} name={ninjaNight.name} theme="ninja">
       <section className="panel party-panel">
         <p className="party-kicker">第 {view.night} / {NIGHT_LIMIT} 夜 · {phases[view.phase]}</p>
-        <h2>{view.winner === 'draw' ? '双方打平' : view.winner ? `${factionNames[view.winner]}获胜` : `本夜焦点 · ${sites[view.focus].name}`}</h2>
-        <div className="ninja-scores" aria-label="双方累计得分">
-          {factions.map((faction) => (
-            <div key={faction} data-faction={faction}>
-              <span>{factionNames[faction]}</span>
-              <strong>{view.scores[faction]} <small>分</small></strong>
-            </div>
-          ))}
-        </div>
-        {!view.winner && view.faction && (
+        <h2>{final?.winner === 'draw' ? '双方打平' : final ? `${factionNames[final.winner]}获胜` : `本夜焦点 · ${sites[view.focus].name}`}</h2>
+        {final ? (
+          <p>{queenHolder ? `${queenHolder.name}亮出皇后牌，持牌者所在阵营直接获胜。`
+            : final.rank ? `比到 ${final.rank} 号位阶时，只有获胜方有人列席。`
+              : '逐级比较后，双方没有出现仅一方有人列席的位阶。'}</p>
+        ) : (
+          <p className="ninja-notice">我的功牌 {view.merit} 枚 · {view.merit >= REQUIRED_MERIT
+            ? '已取得列席资格' : `再拿 ${REQUIRED_MERIT - view.merit} 枚即可列席`}</p>
+        )}
+        {!final && view.faction && view.rank && (
           <details className="party-details ninja-identity">
             <summary>查看我的身份牌</summary>
             <div className="ninja-identity-body">
-              <NinjaIdentityCard faction={view.faction} style={cardStyle} />
-              <div><p>帮自己的阵营赢得阵眼。每个人只能看到自己的身份。</p></div>
+              <NinjaIdentityCard faction={view.faction} style={cardStyle} rank={view.rank} />
+              <div>
+                <p>1 号位阶最高。累积 {REQUIRED_MERIT} 枚功牌，终局才能以这个位阶列席。</p>
+                {view.hasQueen && <p className="ninja-queen"><strong>皇后牌</strong><br />终局公开后，你所在的阵营直接获胜。</p>}
+              </div>
             </div>
           </details>
         )}
@@ -177,14 +182,15 @@ function NinjaBoard({ room }: { room: RoomSnapshot }) {
       <section className="panel party-panel">
         <h2>玩家{actionable && <small> · 还有 {view.waiting.length} 人待提交</small>}</h2>
         <ul className="party-roster">
-          {room.players.map((player) => (
-            <li key={player.id}>
+          {room.players.map((player) => {
+            const seat = final?.seats.find(({ id }) => id === player.id);
+            return <li key={player.id}>
               <span>{player.seatIndex + 1} 号 · {player.name}{player.id === room.you && '（你）'}</span>
-              <small>{view.revealedShadows
-                ? factionNames[view.revealedShadows.includes(player.id) ? 'shadow' : 'guard']
+              <small>{seat
+                ? `${factionNames[seat.faction]} ${seat.rank} 号 · ${seat.merit >= REQUIRED_MERIT ? '列席' : '未列席'}${final?.queen === player.id ? ' · 皇后牌' : ''}`
                 : !player.connected ? '离线' : actionable ? view.waiting.includes(player.id) ? '待提交' : '已处理' : ''}</small>
-            </li>
-          ))}
+            </li>;
+          })}
         </ul>
         <ProfessionGuide />
       </section>
@@ -212,16 +218,16 @@ export const ninjaNightClient: GameClient = {
   tagline: ninjaNight.tagline,
   icon: <span className="party-tab-mark" aria-hidden="true">☾</span>,
   hero: {
-    lede: '山门、枫庭、钟楼每夜争夺一轮。你只知道自己的阵营。选一张职业牌，猜猜其他人今夜会去哪里。',
+    lede: '虚构王朝的宫城连夜封门。忠臣与反贼各领一枚位阶令，暗中争夺宫门、御花园和望楼。五夜之后，谁能列席定局？',
     Art: NinjaCardArt,
-    note: '4 到 8 人的原创阵营策略游戏，可添加机器人。奇数局里，若有影忍到达焦点，影忍在该处额外获得 1 点力量。',
+    note: '4 到 10 人，可添加机器人。奇数局有反贼到达焦点时，反贼在该处额外增加 1 点力量。',
     steps: [
-      { title: '暗选职业', text: '每人收到三张职业牌，暗选其一。六种职业的能力对所有人公开。' },
-      { title: '夜探阵眼', text: '三处阵眼任选其一，职业能力在天亮时一起结算。本夜焦点值 2 分，其他阵眼各值 1 分。' },
-      { title: '查看战报', text: '每处由力量更高的阵营得分，平手不得分。战报公开各处合计力量，个人分工保密。' },
+      { title: '领身份，选职业', text: '阵营和 1–5 号位阶保密。每夜从三张职业牌中暗选一张，再秘密决定去哪一处。' },
+      { title: '夜夺功牌', text: '天亮时，力量占优的阵营占领阵眼。亲自到场的胜方各领 1 枚功牌，焦点各领 2 枚，平手无人领取。' },
+      { title: '五夜后比位阶', text: `至少 ${REQUIRED_MERIT} 枚功牌才能列席。从 1 号起，只有一方有人列席的位阶决定胜负。两方都有或都没有，就比下一号。` },
     ],
     goals: [
-      { tone: 'gilt', title: `累计 ${TARGET_SCORE} 分并领先即可获胜`, text: `若打满 ${NIGHT_LIMIT} 夜，累计得分更高的一方获胜，同分则平局。结束后公开所有人阵营。` },
+      { tone: 'gilt', title: '皇后牌优先', text: `每局有 ${QUEEN_CHANCE * 100}% 的机会发出唯一一张皇后牌。到第 ${NIGHT_LIMIT} 夜结算时，持牌者所在阵营直接获胜，无需列席。未发出皇后牌且所有位阶比完仍相同，则平局。` },
     ],
   },
   Options: NinjaOptions,

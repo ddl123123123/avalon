@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react';
-import type { NinjaNight } from '@tabletop/shared';
+import { NinjaNight } from '@tabletop/shared';
 
-export const ninjaFactions = { guard: '守夜忍', shadow: '影忍' } as const;
+export const ninjaFactions = NinjaNight.factionNames;
 const factions = ['guard', 'shadow'] as const;
 const styles = [
   { id: 'blue-gold', name: '蓝金徽章', description: '低多边形插画与金色线框' },
@@ -53,17 +53,18 @@ function selectStyle(style: CardStyle) {
   notify();
 }
 
-export function NinjaIdentityCard({ faction, style, thumbnail = false }: {
+export function NinjaIdentityCard({ faction, style, rank, thumbnail = false }: {
   faction: NinjaNight.Faction;
   style: CardStyle;
+  rank?: NinjaNight.Rank;
   thumbnail?: boolean;
 }) {
-  const directory = thumbnail ? 'ninja-cards/thumbs' : 'ninja-cards';
+  const directory = thumbnail ? 'court-night-cards/thumbs' : 'court-night-cards';
   return (
     <span className="ninja-card" data-faction={faction} data-style={style}>
       <img src={`${import.meta.env.BASE_URL}${directory}/${style}-${faction}.webp`}
         loading={thumbnail ? 'lazy' : undefined} decoding="async" alt="" />
-      <span className="ninja-card-name">{ninjaFactions[faction]}</span>
+      <span className="ninja-card-name">{ninjaFactions[faction]}{rank && ` ${rank} 号`}</span>
     </span>
   );
 }
@@ -71,7 +72,7 @@ export function NinjaIdentityCard({ faction, style, thumbnail = false }: {
 export function NinjaCardStyles() {
   const selected = useNinjaCardStyle();
   return (
-    <section className="ninja-card-library" aria-label="忍者身份牌画风">
+    <section className="ninja-card-library" aria-label="宫门夜令身份牌画风">
       <h2>身份牌画风</h2>
       <p>只影响你在这台设备上看到的牌面。</p>
       <div className="ninja-style-options">
@@ -93,7 +94,7 @@ export function NinjaCardStyles() {
 export function NinjaCardArt() {
   const style = useNinjaCardStyle();
   return (
-    <div className="party-art party-art-ninja" role="img" aria-label="守夜忍和影忍的身份牌示意">
+    <div className="party-art party-art-ninja" role="img" aria-label="忠臣和反贼的身份牌示意">
       <div className="ninja-card-pair" aria-hidden="true">
         {factions.map((faction) => <NinjaIdentityCard key={faction} faction={faction} style={style} />)}
       </div>

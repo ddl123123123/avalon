@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { ninjaNight, NIGHT_LIMIT, TARGET_SCORE, siteOrder, type Profession, type Site } from './index';
+import { ninjaNight, NIGHT_LIMIT, type Profession, type Site } from './index';
 
 const rng = () => 0.999;
 const host = 'p0';
@@ -28,7 +28,7 @@ it('shows only the viewer’s offer, selected occupation and destination until p
   const offer = ninjaNight.view(state, host).offers;
   expect(offer).toHaveLength(3);
   expect(new Set(offer).size).toBe(3);
-  expect(ninjaNight.view(state, 'outsider')).toMatchObject({ faction: null, offers: [], revealedShadows: null });
+  expect(ninjaNight.view(state, 'outsider')).toMatchObject({ faction: null, rank: null, offers: [], final: null });
   expect(() => ninjaNight.reduce(state, host, { type: 'draft', night: 1, profession: 'seal' }, rng)).toThrow();
 
   const chosen = ninjaNight.reduce(state, host, { type: 'draft', night: 1, profession: offer[0] }, rng);
@@ -44,9 +44,9 @@ it('combines all six professions before scoring and gives no points for a tied f
   const done = visit(night, ['tower', 'tower', 'court', 'tower', 'tower', 'gate']);
   expect(done.phase).toBe('dawn');
   expect(done.history[0].sites).toEqual([
-    { site: 'gate', power: { guard: 2, shadow: 0 }, winner: 'guard', points: 1 },
-    { site: 'court', power: { guard: 0, shadow: 1 }, winner: 'shadow', points: 1 },
-    { site: 'tower', power: { guard: 4, shadow: 4 }, winner: null, points: 0 },
+    { site: 'gate', power: { guard: 2, shadow: 0 }, winner: 'guard', merit: 1 },
+    { site: 'court', power: { guard: 0, shadow: 1 }, winner: 'shadow', merit: 1 },
+    { site: 'tower', power: { guard: 4, shadow: 4 }, winner: null, merit: 0 },
   ]);
 });
 
@@ -54,29 +54,42 @@ it('adds an odd-table shadow bonus on the focus only when a shadow actually visi
   const night = draft(fresh(5), Array(5).fill('keeper'));
   const withShadow = visit(night, ['tower', 'tower', 'tower', 'tower', 'gate']);
   expect(withShadow.history[0].sites.find(({ site }) => site === 'tower')).toMatchObject({
-    power: { guard: 4, shadow: 5 }, winner: 'shadow', points: 2,
+    power: { guard: 4, shadow: 5 }, winner: 'shadow', merit: 2,
   });
   const noShadow = visit(night, ['court', 'court', 'tower', 'tower', 'gate']);
   expect(noShadow.history[0].sites.find(({ site }) => site === 'tower')?.power.shadow).toBe(0);
 });
 
-it('awards an early win at the score target and draws on a fifth-night tie', () => {
-  let state = fresh();
-  for (let night = 1; night <= 3; night++) {
-    const [secondary, other] = siteOrder.filter((site) => site !== state.focus);
-    state = visit(draft(state, Array(4).fill('keeper')), [state.focus, secondary, other, other]);
-    if (night < 3) state = nextNight(state);
-  }
+it('skips a rank held by both sides, then awards the win to the sole eligible next rank', () => {
+  const initial = { ...fresh(), night: NIGHT_LIMIT, merit: { p0: 2, p1: 1, p2: 2, p3: 2 } };
+  const state = visit(draft(initial, Array(4).fill('keeper')), Array(4).fill(initial.focus));
   expect(ninjaNight.view(state, 'p3')).toMatchObject({
-    phase: 'ended', winner: 'shadow', scores: { shadow: TARGET_SCORE }, revealedShadows: ['p0', 'p1'],
+    phase: 'ended', final: { winner: 'guard', queen: null, rank: 2 },
   });
+});
 
+it('reveals the queen only to its holder before settlement and awards their side the win without merit', () => {
+  const initial = { ...fresh(), queen: 'p1', night: NIGHT_LIMIT, merit: { p2: 2 } };
+  expect(ninjaNight.view(initial, 'p1')).toMatchObject({ rank: 2, hasQueen: true, final: null });
+  expect(ninjaNight.view(initial, 'p2')).toMatchObject({ hasQueen: false, final: null });
+  const ended = visit(draft(initial, Array(4).fill('keeper')), Array(4).fill(initial.focus));
+  expect(ninjaNight.view(ended, 'p2').final).toMatchObject({ winner: 'shadow', queen: 'p1', rank: null });
+});
+
+it('draws after five nights when all places and all eligible ranks are tied', () => {
   let tied = fresh();
   for (let night = 1; night <= NIGHT_LIMIT; night++) {
     tied = visit(draft(tied, Array(4).fill('keeper')), Array(4).fill(tied.focus));
     if (night < NIGHT_LIMIT) tied = nextNight(tied);
   }
-  expect(ninjaNight.view(tied, 'p3')).toMatchObject({ phase: 'ended', winner: 'draw' });
+  expect(ninjaNight.view(tied, 'p3')).toMatchObject({ phase: 'ended', final: { winner: 'draw' } });
+});
+
+it('deals all five ranks without duplicates on each side in a ten-player room', () => {
+  const state = fresh(10);
+  for (const side of [state.shadows, state.players.filter((player) => !state.shadows.includes(player))]) {
+    expect(side.map((player) => state.ranks[player]).sort()).toEqual([1, 2, 3, 4, 5]);
+  }
 });
 
 it('lets only the host skip outstanding offline seats without leaking their cards', () => {

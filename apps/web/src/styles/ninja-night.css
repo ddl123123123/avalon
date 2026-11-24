@@ -1,36 +1,20 @@
-.ninja-scores,
 .ninja-draft,
 .ninja-site-grid {
   display: grid;
   gap: 8px;
 }
 
-.ninja-scores {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.ninja-scores > div {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 4px 8px;
-  padding: 8px 12px;
-  border: 1px solid #a8c9e74d;
+.ninja-queen {
+  padding: 8px;
+  border: 1px solid #dbbb7e;
   border-radius: 6px;
-  background: #15305766;
-  color: #d1e6ff;
+  background: linear-gradient(145deg, #52342f, #301f31);
+  color: #ffe3a8;
 }
 
-.ninja-scores > div[data-faction='shadow'] {
-  background: #55253674;
-  border-color: #b7777f72;
-  color: #f6c5ce;
-}
-
-.ninja-scores strong {
-  font-variant-numeric: tabular-nums;
-  font-size: 1.4rem;
+.ninja-skill {
+  color: #ffdfa0;
+  font-size: 0.87rem;
 }
 
 .ninja-draft,

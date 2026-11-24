@@ -28,6 +28,20 @@
 `BUILD=remote` 时服务器从 GitHub 增量拉取这次提交（代码在 `/srv/tabletop/src`），依赖走 npmmirror，在服务器上构建镜像。
 原因是 GitHub 的 runner 在美国，到这台国内服务器只有十几 KB/s，传整个镜像要一小时；反方向的 `git fetch` 只要几秒。
 
+## DeepSeek 助手
+
+阿瓦隆 AI 助手通过服务端调用 DeepSeek。首次启用时，在服务器 `/srv/tabletop/.env` 里添加下面几项；API Key 只保存在服务器，不要放入 GitHub、前端构建参数或浏览器：
+
+```dotenv
+DEEPSEEK_API_KEY=你的完整_API_Key
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-flash
+```
+
+保存后重新发布（推送到 `main` 会自动发版），Compose 会把这些变量传入桌游服务。`.env` 中已有的 `TAG` 和其他项目配置要保留。之后可以在 DeepSeek 开放平台查看用量与余额；模型按输入和输出 token 计费，具体价格以[官方说明](https://api-docs.deepseek.com/quick_start/pricing/)为准。
+
+如果 Key 没有在创建时保存，平台列表里的遮罩内容和 Tracking ID 都不能用于调用；请在 DeepSeek 平台新建一个 Key 并安全保存完整值。
+
 CI 里没有证书目录，上传/更换证书仍在本机跑 `./deploy/ship.sh`。
 
 **证书**：腾讯云免费 DV 证书，SAN 须含 `games.anois.site`，下载「Nginx」格式，解压到仓库根目录的

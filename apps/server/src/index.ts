@@ -10,6 +10,10 @@ const PORT = Number(process.env.SERVER_PORT ?? process.env.PORT ?? 8790);
 /** 生产环境下由同一个端口提供前端构建产物（pnpm build 之后） */
 const WEB_DIST = resolve(fileURLToPath(new URL('../../web/dist', import.meta.url)));
 
+// 开发时读取仓库根目录的 .env；生产环境只使用容器显式注入的变量。
+const LOCAL_ENV_FILE = fileURLToPath(new URL('../../../.env', import.meta.url));
+if (process.env.NODE_ENV !== 'production' && existsSync(LOCAL_ENV_FILE)) process.loadEnvFile(LOCAL_ENV_FILE);
+
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',

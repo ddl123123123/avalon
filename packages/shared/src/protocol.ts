@@ -32,6 +32,13 @@ export interface RoomSnapshot {
   you: PlayerId;
 }
 
+export type AvalonAssistantFeature =
+  | 'team-comparison'
+  | 'role-coach'
+  | 'speech-prep'
+  | 'rules-qa'
+  | 'post-game-review';
+
 export type ClientMessage =
   | { type: 'hello'; clientId: string }
   | { type: 'create_room'; name: string; gameId: string; options?: unknown }
@@ -45,11 +52,20 @@ export type ClientMessage =
   | { type: 'kick'; playerId: PlayerId }
   | { type: 'start_game' }
   | { type: 'game_action'; action: unknown }
+  | {
+      type: 'avalon_assistant';
+      requestId: string;
+      feature: AvalonAssistantFeature;
+      question?: string;
+      privateNotes?: string;
+    }
   | { type: 'back_to_lobby' };
 
 export type ServerMessage =
   | { type: 'welcome'; playerId: PlayerId; roomCode: string | null }
   | { type: 'room'; room: RoomSnapshot }
+  | { type: 'avalon_assistant_result'; requestId: string; content: string }
+  | { type: 'avalon_assistant_error'; requestId: string; message: string }
   | { type: 'left'; reason: string | null }
   | { type: 'error'; message: string };
 

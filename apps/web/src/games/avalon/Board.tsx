@@ -10,6 +10,7 @@ import { AssassinReveal, LadyReveal, QuestReveal, RoleReveal } from './Reveals';
 import { Seat, type SeatProps } from './Seat';
 import { QuestRoundel } from './art';
 import { CardLibrarySettings } from './CardLibrarySettings';
+import { AvalonAssistant } from './Assistant';
 import { Notebook } from './Notebook';
 import { notebookStorageKey, readNotebook, saveNotebook } from './notebookData';
 
@@ -83,6 +84,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
   const dossierKey = notebookStorageKey(room);
   const [notebook, setNotebook] = useState(() => readNotebook(dossierKey));
   const [showNotebook, setShowNotebook] = useState(false);
+  const [showAssistant, setShowAssistant] = useState(false);
 
   const { current: reveal, next, sealedFrom } = useReveals(room, view);
   const [intro, setIntro] = useState(() => me !== null && view.proposals.length === 0 && sessionStorage.getItem(introKey(room)) === null);
@@ -228,6 +230,9 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
           </button>
           <button type="button" className="btn btn-ghost btn-small" onClick={() => setShowHistory(true)}>
             任务记录
+          </button>
+          <button type="button" className="btn btn-ghost btn-small" onClick={() => setShowAssistant(true)}>
+            AI 助手
           </button>
           {me && !ended && (
             <button type="button" className="btn btn-ghost btn-small" onClick={() => setShowRole(true)}>
@@ -394,6 +399,15 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
           />
         )}
         {showHistory && <History key="history" view={view} nameOf={seatNameOf} onClose={() => setShowHistory(false)} />}
+        {showAssistant && me && (
+          <AvalonAssistant
+            key={`assistant-${room.gameSeq}`}
+            room={room}
+            view={view}
+            notebook={notebook}
+            onClose={() => setShowAssistant(false)}
+          />
+        )}
         {showNotebook && (
           <Notebook
             key="notebook"

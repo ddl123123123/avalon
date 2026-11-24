@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import type { ClientMessage, RoomSnapshot, ServerMessage } from '@tabletop/shared';
+import type { AvalonAssistantFeature, ClientMessage, RoomSnapshot, ServerMessage } from '@tabletop/shared';
 import { navigate } from './route';
 
 /**
@@ -88,6 +88,8 @@ export interface NetState {
   /** 正在尝试进入的房间 */
   joining: string | null;
   notice: Notice | null;
+  assistantResult: { requestId: string; content: string } | null;
+  assistantError: { requestId: string; message: string } | null;
 }
 
 let state: NetState = {
@@ -98,6 +100,8 @@ let state: NetState = {
   room: null,
   joining: null,
   notice: null,
+  assistantResult: null,
+  assistantError: null,
 };
 const listeners = new Set<() => void>();
 function set(patch: Partial<NetState>) {
@@ -130,9 +134,13 @@ export function dismissNotice() {
   set({ notice: null });
 }
 
-function raw(msg: ClientMessage) {
-  if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(msg));
-  else notify('还没连上服务器，稍等一下');
+function raw(msg: ClientMessage): boolean {
+  if (socket?.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify(msg));
+    return true;
+  }
+  notify('还没连上服务器，稍等一下');
+  return false;
 }
 
 function connect() {
@@ -163,6 +171,12 @@ function connect() {
           lastRoomCode: msg.room.code,
           recentRooms: state.room?.code === msg.room.code ? state.recentRooms : rememberRoom(msg.room.code, msg.room.gameId),
         });
+        break;
+      case 'avalon_assistant_result':
+        set({ assistantResult: { requestId: msg.requestId, content: msg.content } });
+        break;
+      case 'avalon_assistant_error':
+        set({ assistantError: { requestId: msg.requestId, message: msg.message } });
         break;
       case 'left':
         intent = null;
@@ -228,6 +242,15 @@ export const net = {
   kick: (playerId: string) => raw({ type: 'kick', playerId }),
   startGame: () => raw({ type: 'start_game' }),
   act: (action: unknown) => raw({ type: 'game_action', action }),
+  askAvalonAssistant(input: {
+    requestId: string;
+    feature: AvalonAssistantFeature;
+    question?: string;
+    privateNotes?: string;
+  }) {
+    set({ assistantResult: null, assistantError: null });
+    return raw({ type: 'avalon_assistant', ...input });
+  },
   backToLobby: () => raw({ type: 'back_to_lobby' }),
 };
 

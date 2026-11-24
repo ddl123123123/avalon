@@ -7,10 +7,12 @@ import {
   type ClientMessage,
   type GameDefinition,
   type PlayerId,
+  type RoomPlayer,
   type RoomSnapshot,
   type RoomStatus,
   type ServerMessage,
 } from '@tabletop/shared';
+import { answerAvalonAssistant } from './deepseek';
 
 /** 一条到客户端的连接。服务端不关心底层是不是 WebSocket。 */
 export interface Connection {
@@ -42,12 +44,18 @@ interface Room {
   state: unknown | null;
   gameSeq: number;
   botTimers: Map<PlayerId, NodeJS.Timeout>;
+  aiRequestTimes: Map<PlayerId, number>;
+  aiRequestHistory: number[];
   emptyTimer: NodeJS.Timeout | null;
 }
 
 /** 大厅里掉线后座位保留多久。要够房主切到聊天软件发完邀请链接再回来。 */
 const LOBBY_DROP_MS = 3 * 60_000;
 const EMPTY_ROOM_MS = 10 * 60_000;
+const AI_PLAYER_COOLDOWN_MS = 6_000;
+const AI_ROOM_WINDOW_MS = 10 * 60_000;
+const AI_ROOM_REQUEST_LIMIT = 60;
+const AI_FEATURES = new Set(['team-comparison', 'role-coach', 'speech-prep', 'rules-qa', 'post-game-review']);
 /** 机器人行动间隔的倍率。调试时设 BOT_PACE=0.1 可以让机器人快十倍。 */
 const BOT_PACE = Math.max(0, Number(process.env.BOT_PACE ?? 1) || 1);
 const BOT_NAMES = ['高文', '兰斯洛特', '加拉哈德', '特里斯坦', '凯', '贝狄威尔', '格尼薇儿', '伊莲', '鲍斯'];
@@ -223,6 +231,8 @@ export class RoomManager {
         this.applyAction(room, member.id, msg.action);
         return;
       }
+      case 'avalon_assistant':
+        return this.requestAvalonAssistant(conn, room, member, msg);
       case 'back_to_lobby': {
         hostOnly();
         if (room.status !== 'ended') throw new GameError('这一局还没结束');
@@ -273,6 +283,8 @@ export class RoomManager {
       state: null,
       gameSeq: 0,
       botTimers: new Map(),
+      aiRequestTimes: new Map(),
+      aiRequestHistory: [],
       emptyTimer: null,
     };
     this.rooms.set(code, room);
@@ -414,6 +426,62 @@ export class RoomManager {
     }
     this.broadcast(room);
     this.scheduleBots(room);
+  }
+
+  private requestAvalonAssistant(
+    conn: Connection,
+    room: Room,
+    member: Member,
+    msg: Extract<ClientMessage, { type: 'avalon_assistant' }>,
+  ) {
+    const requestId = typeof msg.requestId === 'string' && /^[\w-]{1,64}$/.test(msg.requestId) ? msg.requestId : null;
+    if (!requestId) {
+      conn.send({ type: 'error', message: '助手请求编号无效，请重试' });
+      return;
+    }
+    const fail = (message: string) => conn.send({ type: 'avalon_assistant_error', requestId, message });
+    if (!AI_FEATURES.has(msg.feature)) return fail('无法识别这项助手功能。');
+    if (room.game.id !== Avalon.avalon.id) return fail('AI 助手目前只支持阿瓦隆。');
+    if (!room.state || (room.status !== 'playing' && room.status !== 'ended')) return fail('请在阿瓦隆对局开始后使用助手。');
+    if (member.isBot) return fail('机器人不能使用 AI 助手。');
+    if (msg.feature === 'post-game-review' && room.status !== 'ended') return fail('赛后复盘会在对局结束后开放。');
+    if (msg.feature === 'rules-qa' && !(typeof msg.question === 'string' && msg.question.trim())) return fail('先写下你想问的规则问题。');
+
+    // GameDefinition.view 会按当前玩家过滤身份信息；绝不把原始状态或其他人的隐藏身份交给模型。
+    const view = room.game.view(room.state, member.id) as Avalon.AvalonView;
+    if (msg.feature === 'team-comparison' && view.team.length === 0) return fail('目前没有待分析的队伍，等队长选出候选队伍后再试。');
+
+    const now = Date.now();
+    const lastRequest = room.aiRequestTimes.get(member.id) ?? 0;
+    if (now - lastRequest < AI_PLAYER_COOLDOWN_MS) return fail('请稍等几秒再发起下一次分析。');
+    room.aiRequestHistory = room.aiRequestHistory.filter((time) => now - time < AI_ROOM_WINDOW_MS);
+    if (room.aiRequestHistory.length >= AI_ROOM_REQUEST_LIMIT) return fail('本房间的助手调用较多，请稍后再试。');
+    room.aiRequestTimes.set(member.id, now);
+    room.aiRequestHistory.push(now);
+
+    const players: RoomPlayer[] = room.members.map((player) => ({
+      id: player.id,
+      name: player.name,
+      connected: player.isBot || player.connection !== null,
+      isBot: player.isBot,
+      seatIndex: player.seatIndex,
+    }));
+
+    void answerAvalonAssistant({
+      feature: msg.feature,
+      view,
+      players,
+      question: typeof msg.question === 'string' ? msg.question.slice(0, 600) : undefined,
+      privateNotes: typeof msg.privateNotes === 'string' ? msg.privateNotes.slice(0, 2600) : undefined,
+    }).then(
+      (content) => {
+        if (member.connection === conn) conn.send({ type: 'avalon_assistant_result', requestId, content });
+      },
+      (error: unknown) => {
+        const message = error instanceof Error ? error.message : 'AI 分析失败，请稍后重试。';
+        if (member.connection === conn) conn.send({ type: 'avalon_assistant_error', requestId, message });
+      },
+    );
   }
 
   private clearBotTimers(room: Room) {

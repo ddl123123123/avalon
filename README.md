@@ -37,6 +37,7 @@
 - 支持梅林、刺客、派西维尔、莫甘娜、莫德雷德、奥伯伦和湖中仙女，按人数给出推荐阵容。
 - 两套角色卡面可选（低多边形插画、写实奇幻插画），选择保存在自己的浏览器里。
 - 随手记的私人笔记，只保存在自己的浏览器里；任务记录随时可以翻看每一轮的队伍和投票。
+- 对局内 AI 助手提供队伍对比、角色教练、发言准备、规则问答和赛后复盘。你发起分析时，自己的身份线索、公开局势和主动选入的本机笔记会发送给 DeepSeek；结果仅返回给发起请求的玩家。
 
 ### 富饶之城
 
@@ -91,6 +92,20 @@ pnpm dev
 ```
 
 打开 [http://localhost:5310](http://localhost:5310)。Vite 会把 `/ws` 代理到本地的房间服务（端口 8790）。
+
+### 配置 DeepSeek AI 助手
+
+复制 `.env.example` 中的变量到服务端环境，并填写 DeepSeek API Key。密钥只放在服务端，不能写入 `apps/web`、浏览器代码或提交到 Git。当前默认使用 `deepseek-flash` 和 `https://api.deepseek.com`；模型和计费可能调整，请以 [DeepSeek 官方模型与价格说明](https://api-docs.deepseek.com/quick_start/pricing/) 为准。
+
+Windows PowerShell 本地开发时，复制模板并填写密钥。根目录 `.env` 已被 Git 忽略，启动服务时会由 Node.js 在本机读取：
+
+```powershell
+Copy-Item .env.example .env
+notepad .env
+pnpm dev
+```
+
+线上部署见 [DeepSeek 服务器配置](docs/deploy.md#deepseek-助手)。没有配置 Key 时，普通桌游功能仍可使用，助手会提示管理员配置服务端密钥。
 
 ```bash
 pnpm test        # 规则引擎的单元测试

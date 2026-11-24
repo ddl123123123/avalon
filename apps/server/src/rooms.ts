@@ -55,7 +55,7 @@ const EMPTY_ROOM_MS = 10 * 60_000;
 const AI_PLAYER_COOLDOWN_MS = 6_000;
 const AI_ROOM_WINDOW_MS = 10 * 60_000;
 const AI_ROOM_REQUEST_LIMIT = 60;
-const AI_FEATURES = new Set(['team-comparison', 'role-coach', 'speech-prep', 'rules-qa', 'post-game-review']);
+const AI_FEATURES = new Set(['team-comparison', 'role-coach', 'speech-prep', 'speech-summary', 'rules-qa', 'post-game-review']);
 /** 机器人行动间隔的倍率。调试时设 BOT_PACE=0.1 可以让机器人快十倍。 */
 const BOT_PACE = Math.max(0, Number(process.env.BOT_PACE ?? 1) || 1);
 const BOT_NAMES = ['高文', '兰斯洛特', '加拉哈德', '特里斯坦', '凯', '贝狄威尔', '格尼薇儿', '伊莲', '鲍斯'];
@@ -449,6 +449,15 @@ export class RoomManager {
 
     // GameDefinition.view 会按当前玩家过滤身份信息；绝不把原始状态或其他人的隐藏身份交给模型。
     const view = room.game.view(room.state, member.id) as Avalon.AvalonView;
+    let speech: { round: number; text: string } | undefined;
+    if (msg.feature === 'speech-summary') {
+      const entry = msg.speech;
+      if (!entry || !Number.isInteger(entry.round) || entry.round < 1 || entry.round > view.questIndex + 1 ||
+          typeof entry.text !== 'string' || !entry.text.trim() || entry.text.length > 2600) {
+        return fail('请选择已开始的任务轮次，并输入 1 至 2600 字发言。');
+      }
+      speech = { round: entry.round, text: entry.text.trim() };
+    }
     if (msg.feature === 'team-comparison' && view.team.length === 0) return fail('目前没有待分析的队伍，等队长选出候选队伍后再试。');
 
     const now = Date.now();
@@ -473,6 +482,7 @@ export class RoomManager {
       players,
       question: typeof msg.question === 'string' ? msg.question.slice(0, 600) : undefined,
       privateNotes: typeof msg.privateNotes === 'string' ? msg.privateNotes.slice(0, 2600) : undefined,
+      speech,
     }).then(
       (content) => {
         if (member.connection === conn) conn.send({ type: 'avalon_assistant_result', requestId, content });

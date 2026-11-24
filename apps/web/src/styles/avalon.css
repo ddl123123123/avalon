@@ -443,25 +443,25 @@
 }
 .av-match-panel {
   display: grid;
-  gap: clamp(8px, 1.8vw, 15px);
-  width: min(100%, 340px);
+  gap: clamp(7px, 1.6vw, 13px);
+  width: min(100%, 306px);
   min-width: 0;
-  padding: clamp(9px, 2vw, 18px);
+  padding: clamp(10px, 2vw, 16px);
   border: 1px solid rgba(214, 196, 155, 0.28);
-  border-radius: 12px;
-  background: rgba(12, 18, 28, 0.94);
+  border-radius: 10px;
+  background: linear-gradient(165deg, #182333, #101721 68%);
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.24);
 }
 .av-match-progress {
   display: grid;
-  gap: 8px;
-  padding-bottom: clamp(8px, 1.8vw, 15px);
-  border-bottom: 1px solid rgba(214, 196, 155, 0.2);
+  gap: 6px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(214, 196, 155, 0.18);
 }
 .av-match-progress h2 {
   font-size: clamp(0.76rem, 1.8vw, 0.95rem);
   font-weight: 500;
-  color: var(--gilt-bright);
+  color: var(--vellum-dim);
 }
 .av-match-rule {
   font-size: 0.7rem;
@@ -482,8 +482,8 @@
     filter 0.4s;
 }
 .quest-slot-current {
-  transform: scale(1.16);
-  animation: beacon 2.4s ease-in-out infinite;
+  transform: scale(1.08);
+  filter: drop-shadow(0 0 5px rgba(246, 217, 138, 0.55));
 }
 .quest-slot-success {
   filter: drop-shadow(0 0 12px rgba(76, 134, 234, 0.85));
@@ -491,52 +491,48 @@
 .quest-slot-fail {
   filter: drop-shadow(0 0 12px rgba(210, 56, 79, 0.85));
 }
-@keyframes beacon {
-  0%,
-  100% {
-    filter: drop-shadow(0 0 4px rgba(224, 176, 74, 0.4));
-  }
-  50% {
-    filter: drop-shadow(0 0 16px rgba(246, 217, 138, 0.95));
-  }
-}
 .center-info {
   display: grid;
-  gap: 7px;
+  gap: 3px;
   justify-items: center;
   overflow-wrap: anywhere;
 }
 .reject-track {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 6px;
+  gap: clamp(5px, 2vw, 11px);
+  font-size: 0.72rem;
+  color: var(--vellum-dim);
+  white-space: nowrap;
+}
+.reject-track strong {
+  color: var(--vellum);
+  font-variant-numeric: tabular-nums;
+}
+.reject-segments {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 3px;
 }
 .reject-pip {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(239, 230, 207, 0.45);
-  transition:
-    background 0.3s,
-    box-shadow 0.3s;
-}
-.reject-pip.is-last {
-  border-color: var(--ruby);
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(239, 230, 207, 0.17);
+  transition: background 0.3s;
 }
 .reject-pip.is-used {
-  background: var(--ruby);
-  border-color: var(--ruby-soft);
-  box-shadow: 0 0 8px var(--ruby);
+  background: var(--ruby-soft);
 }
-.reject-label {
-  margin-left: 4px;
+.center-status-label {
   font-size: 0.74rem;
-  color: var(--vellum-dim);
+  color: var(--gilt-bright);
 }
 .center-status {
   font-family: var(--font-display);
   font-size: clamp(0.95rem, 2.2vw, 1.45rem);
   color: var(--vellum);
+  line-height: 1.25;
 }
 
 .verdict {
@@ -562,12 +558,62 @@
 }
 
 /* 座位上的标记。不用 transform 定位，留给动画库使用 */
+.av-playfield .seat-avatar {
+  --plate-edge: #60728a;
+  --plate-ink: #182639;
+  --plate-cut: polygon(18% 0, 82% 0, 100% 18%, 100% 82%, 82% 100%, 18% 100%, 0 82%, 0 18%);
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.av-playfield .seat-avatar::before,
+.av-playfield .seat-avatar::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  clip-path: var(--plate-cut);
+}
+.av-playfield .seat-avatar::before {
+  inset: 0;
+  background: var(--plate-edge);
+}
+.av-playfield .seat-avatar::after {
+  inset: 2px;
+  background:
+    linear-gradient(142deg, rgba(154, 182, 220, 0.2), transparent 46%),
+    linear-gradient(166deg, var(--plate-ink), #101928);
+}
+.av-playfield .seat-avatar-number {
+  line-height: 0.95;
+  color: #f4e8ce;
+}
+.av-playfield .seat-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  border-radius: 5px;
+  background: rgba(15, 23, 36, 0.92);
+}
+.seat-player-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.av-playfield .seat-you {
+  flex: none;
+  margin-left: 0;
+  line-height: 1.15;
+}
+.av-playfield .seat-me .seat-name {
+  border-color: rgba(214, 196, 155, 0.44);
+}
 .seat-crown {
   position: absolute;
-  left: 20%;
-  top: -34%;
-  width: 60%;
-  filter: drop-shadow(0 0 8px rgba(246, 217, 138, 0.8));
+  left: 24%;
+  top: -27%;
+  width: 52%;
+  filter: drop-shadow(0 2px 3px rgba(5, 8, 18, 0.8));
   z-index: 3;
 }
 .seat-crown svg,
@@ -610,9 +656,6 @@
   z-index: 4;
   filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.7));
 }
-.seat-on-team .seat-avatar {
-  filter: drop-shadow(0 0 14px rgba(246, 217, 138, 0.9));
-}
 .seat-on-team .seat-name {
   border-color: var(--gilt);
   color: var(--gilt-bright);
@@ -643,32 +686,23 @@
 .seat-pickable {
   cursor: pointer;
 }
-.seat-pickable .seat-avatar::before {
-  content: '';
-  position: absolute;
-  inset: -14% -18% -10%;
-  border: 2px dashed rgba(246, 217, 138, 0.75);
-  border-radius: 50%;
-  animation: spin 14s linear infinite;
+.av-playfield .seat-pickable:is(:hover, :focus-visible) .seat-avatar {
+  --plate-edge: #a4b9d1;
 }
-.seat-pickable:hover .seat-avatar {
-  filter: drop-shadow(0 0 14px rgba(246, 217, 138, 0.8)) brightness(1.15);
+.av-playfield .seat-pickable:focus-visible {
+  outline: 2px solid #a4b9d1;
+  outline-offset: 2px;
+  border-radius: 5px;
 }
-.seat-picked .seat-avatar {
-  filter: drop-shadow(0 0 16px rgba(240, 141, 154, 1));
+.av-playfield :is(.seat-on-team, .seat-leader, .seat-speaking) .seat-avatar {
+  --plate-edge: #c7a976;
 }
-.seat-picked .seat-avatar::before {
-  border-style: solid;
-  border-color: var(--ruby-soft);
+.av-playfield .seat-speaking .seat-avatar {
+  --plate-ink: #35435b;
 }
-.seat-speaking .seat-avatar {
-  border-color: var(--gilt-bright);
-  color: #fff1c4;
-  box-shadow: 0 0 0 4px rgba(246, 217, 138, 0.17), 0 0 24px rgba(246, 217, 138, 0.72), inset 0 0 0 3px rgba(5, 8, 26, 0.72);
-  animation: speaker-pulse 1.8s ease-in-out infinite;
-}
-@keyframes speaker-pulse {
-  50% { box-shadow: 0 0 0 7px rgba(246, 217, 138, 0.08), 0 0 30px rgba(246, 217, 138, 0.9), inset 0 0 0 3px rgba(5, 8, 26, 0.72); }
+.av-playfield .seat-picked .seat-avatar {
+  --plate-edge: var(--ruby-soft);
+  --plate-ink: #512f44;
 }
 
 .speech-status {
@@ -1582,10 +1616,6 @@
 .end-evil .end-title {
   text-shadow: 0 0 52px rgba(143, 88, 99, 0.42);
 }
-.seat-picked .seat-avatar {
-  filter: drop-shadow(0 0 16px rgba(193, 142, 149, 0.62));
-}
-
 @media (max-width: 640px), (max-height: 500px) and (hover: none) {
   .av-board .room-bar {
     flex-wrap: wrap;

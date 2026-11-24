@@ -30,6 +30,7 @@ export function Seat(p: SeatProps) {
   const classes = [
     'seat',
     p.isMe && 'seat-me',
+    p.isLeader && 'seat-leader',
     p.isSpeaking && 'seat-speaking',
     p.onTeam && 'seat-on-team',
     p.picked && 'seat-picked',
@@ -45,7 +46,7 @@ export function Seat(p: SeatProps) {
       <motion.div
         className="seat-avatar"
         role="img"
-        aria-label={`${p.seatNumber} 号玩家`}
+        aria-label={`${p.seatNumber} 号玩家${p.isLeader ? '，车头' : ''}${p.isSpeaking ? '，正在发言' : ''}`}
         initial={{ opacity: 0, scale: 0.72, y: 8 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ type: 'spring', stiffness: 280, damping: 19, delay: Math.min(p.order, 8) * 0.035 }}
@@ -102,7 +103,7 @@ export function Seat(p: SeatProps) {
         </AnimatePresence>
       </motion.div>
       <div className="seat-name">
-        {p.player.name}
+        <span className="seat-player-name">{p.player.name}</span>
         {p.isMe && <span className="seat-you">你</span>}
       </div>
       <div className="seat-note">

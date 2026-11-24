@@ -13,7 +13,7 @@ const phases = { draft: '暗选职业', night: '夜间行动', dawn: '天亮结�
 function ProfessionGuide() {
   return (
     <details className="party-details ninja-guide">
-      <summary>查看六种职业</summary>
+      <summary>查看五种职位牌</summary>
       <dl>
         {professionIds.map((id) => (
           <div key={id}><dt>{professions[id].name} · {professions[id].skill}</dt><dd>{professions[id].detail}</dd></div>
@@ -28,6 +28,7 @@ function NinjaOptions({ playerCount }: { playerCount: number }) {
   return (
     <div className="party-lobby-copy">
       <p>{playerCount} 人局 · {playerCount - shadows} 名忠臣，{shadows} 名反贼</p>
+      <p>每夜先从三张职位牌里暗选一张，再选一处阵眼。到场就为本方加 1 点力量，技能在天亮时自动结算。所在阵眼被本方拿下时，玩家可以领取功牌。</p>
       <p>双方各有 1–5 号位阶，1 号最高。五夜后有皇后牌则直接定胜负，否则按列席者的位阶比较。</p>
       {playerCount % 2 === 1 && <p>奇数局里，若有反贼选中焦点，反贼在该处额外获得 1 点力量。</p>}
       <ProfessionGuide />
@@ -99,7 +100,7 @@ function NightStep({ view }: { view: View }) {
 function SiteResults({ night }: { night: NightResult }) {
   return (
     <>
-      <p>力量左侧为忠臣，右侧为反贼。到场的胜方玩家各获功牌。</p>
+      <p>力量左侧为忠臣，右侧为反贼。到场且未被封令的胜方玩家获得功牌。</p>
       <ul className="ninja-site-grid ninja-outcomes">
         {night.sites.map((result) => (
           <li key={result.site} className="ninja-site" data-focus={result.site === night.focus}>
@@ -152,6 +153,18 @@ function NinjaBoard({ room }: { room: RoomSnapshot }) {
           </details>
         )}
       </section>
+
+      {view.reports.length > 0 && (
+        <details className="panel party-panel party-details ninja-history">
+          <summary>我的技能结果 · 仅自己可见</summary>
+          <ol className="party-history">
+            {[...view.reports].reverse().map(({ night, text, subject }, index) => {
+              const player = subject && room.players.find(({ id }) => id === subject);
+              return <li key={index}>第 {night} 夜 · {player ? `${player.seatIndex + 1} 号 ${player.name}：` : ''}{text}</li>;
+            })}
+          </ol>
+        </details>
+      )}
 
       <section className="panel party-panel">
         <h2>{phases[view.phase]}</h2>
@@ -223,7 +236,7 @@ export const ninjaNightClient: GameClient = {
     note: '4 到 10 人，可添加机器人。奇数局有反贼到达焦点时，反贼在该处额外增加 1 点力量。',
     steps: [
       { title: '领身份，选职业', text: '阵营和 1–5 号位阶保密。每夜从三张职业牌中暗选一张，再秘密决定去哪一处。' },
-      { title: '夜夺功牌', text: '天亮时，力量占优的阵营占领阵眼。亲自到场的胜方各领 1 枚功牌，焦点各领 2 枚，平手无人领取。' },
+      { title: '夜夺功牌', text: '每位到场玩家贡献 1 点力量，技能自动结算。力量占优的阵营占领阵眼，到场且未被封令者领 1 枚功牌，焦点领 2 枚。' },
       { title: '五夜后比位阶', text: `至少 ${REQUIRED_MERIT} 枚功牌才能列席。从 1 号起，只有一方有人列席的位阶决定胜负。两方都有或都没有，就比下一号。` },
     ],
     goals: [

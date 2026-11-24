@@ -1,6 +1,6 @@
 import { GameError, pick, shuffle, type GameDefinition, type PlayerId, type Rng } from '../../framework';
 import {
-  NIGHT_LIMIT, REQUIRED_MERIT, QUEEN_CHANCE, professionIds, ranks, shadowCount, siteOrder,
+  NIGHT_LIMIT, REQUIRED_MERIT, QUEEN_CHANCE, factionNames, professions, professionIds, ranks, shadowCount, siteOrder, sites,
   type Faction, type Profession, type Rank, type Site,
 } from './rules';
 
@@ -12,6 +12,7 @@ type Phase = 'draft' | 'night' | 'dawn' | 'ended';
 type SiteResult = { site: Site; power: Score; winner: Faction | null; merit: number };
 type NightResult = { night: number; focus: Site; sites: SiteResult[] };
 type Final = { winner: Verdict; queen: PlayerId | null; rank: Rank | null };
+type Report = { night: number; text: string; subject?: PlayerId };
 
 interface NinjaState {
   players: PlayerId[];
@@ -26,6 +27,7 @@ interface NinjaState {
   drafted: Partial<Record<PlayerId, Profession | null>>;
   visits: Partial<Record<PlayerId, Site | null>>;
   history: NightResult[];
+  reports: Partial<Record<PlayerId, Report[]>>;
   final: Final | null;
 }
 
@@ -42,6 +44,7 @@ export interface NinjaView {
   target: Site | null;
   waiting: PlayerId[];
   history: NightResult[];
+  reports: Report[];
   final: (Final & { seats: { id: PlayerId; faction: Faction; rank: Rank; merit: number }[] }) | null;
 }
 
@@ -78,15 +81,14 @@ function resolveCourt(state: NinjaState, merit: NinjaState['merit']): Final {
   return { winner: 'draw', queen: null, rank: null };
 }
 
-function settle(state: NinjaState): NinjaState {
+function settle(state: NinjaState, rng: Rng): NinjaState {
   const powers = { gate: zero(), court: zero(), tower: zero() };
-  const mists = { gate: zero(), court: zero(), tower: zero() };
-  const visitors = { gate: zero(), court: zero(), tower: zero() };
-
-  for (const player of state.players) {
-    const site = state.visits[player];
-    if (site) visitors[site][factionOf(state, player)]++;
-  }
+  const sealed = new Set<PlayerId>();
+  const reports = { ...state.reports };
+  const onSite = (site: Site) => state.players.filter((player) => state.visits[player] === site);
+  const addReport = (player: PlayerId, text: string, subject?: PlayerId) => {
+    reports[player] = [...(reports[player] ?? []), { night: state.night, text, subject }];
+  };
 
   for (const player of state.players) {
     const site = state.visits[player];
@@ -94,40 +96,62 @@ function settle(state: NinjaState): NinjaState {
     if (!site || !profession) continue;
     const faction = factionOf(state, player);
     const power = powers[site];
-    const joined = visitors[site][faction] > 1;
+    const others = onSite(site).filter((id) => id !== player);
+    power[faction]++;
 
     switch (profession) {
-      case 'keeper':
-        power[faction] += 2;
-        break;
-      case 'pathfinder': {
-        const next = siteOrder[(siteOrder.indexOf(site) + 1) % siteOrder.length];
-        power[faction]++;
-        powers[next][faction]++;
+      case 'spy':
+      case 'clerk':
+      case 'inspector': {
+        if (!others.length) {
+          addReport(player, '同处没有其他玩家。');
+          break;
+        }
+        const other = pick(others, rng);
+        if (profession === 'clerk') {
+          const role = state.drafted[other]!;
+          addReport(player, `位阶 ${state.ranks[other]} 号，职业是${professions[role].name}。`, other);
+          break;
+        }
+        const otherFaction = factionOf(state, other);
+        const shouldSeal = profession === 'inspector' && otherFaction !== faction;
+        if (shouldSeal) sealed.add(other);
+        addReport(player, `阵营是${factionNames[otherFaction]}。${shouldSeal ? '已封住其本夜领功牌。' : ''}`, other);
         break;
       }
-      case 'mist':
-        power[faction]++;
-        mists[site][opponent(faction)]++;
+      case 'mystic': {
+        const trick = pick(['steady', 'spread', 'weaken'] as const, rng);
+        if (trick === 'steady') {
+          power[faction]++;
+          addReport(player, `奇招让${sites[site].name}的己方力量加了 1。`);
+        } else if (trick === 'spread') {
+          const next = siteOrder[(siteOrder.indexOf(site) + 1) % siteOrder.length];
+          powers[next][faction]++;
+          addReport(player, `奇招让${sites[next].name}的己方力量加了 1。`);
+        } else {
+          power[opponent(faction)]--;
+          addReport(player, `奇招让${sites[site].name}的对方力量减了 1。`);
+        }
         break;
-      case 'loner':
-        power[faction] += joined ? 1 : 2;
+      }
+      case 'nightwalker': {
+        const [highest] = others.filter((id) => factionOf(state, id) !== faction)
+          .sort((a, b) => state.ranks[a] - state.ranks[b]);
+        if (highest) sealed.add(highest);
+        addReport(player, highest ? '已封住同处一名对方玩家本夜领功牌的机会。' : '同处没有对方玩家可封。');
         break;
-      case 'stargazer':
-        power[faction] += site === state.focus ? 3 : 1;
-        break;
-      case 'seal':
-        power[faction] += joined ? 2 : 1;
-        break;
+      }
     }
   }
 
-  if (state.players.length % 2 === 1 && visitors[state.focus].shadow > 0) powers[state.focus].shadow++;
+  if (state.players.length % 2 === 1 && onSite(state.focus).some((id) => factionOf(state, id) === 'shadow')) {
+    powers[state.focus].shadow++;
+  }
 
-  const sites = siteOrder.map((site): SiteResult => {
+  const results = siteOrder.map((site): SiteResult => {
     const power = {
-      guard: Math.max(0, powers[site].guard - mists[site].guard),
-      shadow: Math.max(0, powers[site].shadow - mists[site].shadow),
+      guard: Math.max(0, powers[site].guard),
+      shadow: Math.max(0, powers[site].shadow),
     };
     const winner = power.guard === power.shadow ? null : power.guard > power.shadow ? 'guard' : 'shadow';
     const merit = winner ? site === state.focus ? 2 : 1 : 0;
@@ -135,26 +159,29 @@ function settle(state: NinjaState): NinjaState {
   });
   const merit = { ...state.merit };
   for (const player of state.players) {
-    const result = sites.find(({ site }) => state.visits[player] === site);
-    if (result?.winner === factionOf(state, player)) merit[player] = (merit[player] ?? 0) + result.merit;
+    const result = results.find(({ site }) => state.visits[player] === site);
+    if (result?.winner !== factionOf(state, player)) continue;
+    if (sealed.has(player)) addReport(player, '你所在的阵营赢了这里，但你本夜被封令，未领到功牌。');
+    else merit[player] = (merit[player] ?? 0) + result.merit;
   }
   const final = state.night === NIGHT_LIMIT ? resolveCourt(state, merit) : null;
   return {
     ...state,
     merit,
-    history: [...state.history, { night: state.night, focus: state.focus, sites }],
+    reports,
+    history: [...state.history, { night: state.night, focus: state.focus, sites: results }],
     phase: final ? 'ended' : 'dawn',
     final,
   };
 }
 
-function advance(state: NinjaState): NinjaState {
+function advance(state: NinjaState, rng: Rng): NinjaState {
   if (waitingPlayers(state).length > 0) return state;
   if (state.phase === 'draft') {
     const next = { ...state, phase: 'night' as const };
-    return waitingPlayers(next).length > 0 ? next : settle(next);
+    return waitingPlayers(next).length > 0 ? next : settle(next, rng);
   }
-  return settle(state);
+  return settle(state, rng);
 }
 
 export const ninjaNight: GameDefinition<NinjaState, Action, NinjaView, Record<string, never>> = {
@@ -188,6 +215,7 @@ export const ninjaNight: GameDefinition<NinjaState, Action, NinjaView, Record<st
       drafted: {},
       visits: {},
       history: [],
+      reports: {},
       final: null,
     };
   },
@@ -199,13 +227,13 @@ export const ninjaNight: GameDefinition<NinjaState, Action, NinjaView, Record<st
       case 'draft':
         if (state.phase !== 'draft' || Object.hasOwn(state.drafted, player)) throw new GameError('现在不能再选职业');
         if (!state.offers[player].includes(action.profession)) throw new GameError('请选择这夜发给你的职业');
-        return advance({ ...state, drafted: { ...state.drafted, [player]: action.profession } });
+        return advance({ ...state, drafted: { ...state.drafted, [player]: action.profession } }, rng);
       case 'visit':
         if (state.phase !== 'night' || !state.drafted[player] || Object.hasOwn(state.visits, player)) {
           throw new GameError('现在不能再选阵眼');
         }
         if (!siteOrder.includes(action.site)) throw new GameError('请选择有效的阵眼');
-        return advance({ ...state, visits: { ...state.visits, [player]: action.site } });
+        return advance({ ...state, visits: { ...state.visits, [player]: action.site } }, rng);
       case 'settle_offline': {
         if (state.phase !== action.phase || (state.phase !== 'draft' && state.phase !== 'night')) {
           throw new GameError('当前阶段已更新');
@@ -217,7 +245,7 @@ export const ninjaNight: GameDefinition<NinjaState, Action, NinjaView, Record<st
         const skipped = Object.fromEntries(waiting.map((id) => [id, null]));
         return advance(state.phase === 'draft'
           ? { ...state, drafted: { ...state.drafted, ...skipped } }
-          : { ...state, visits: { ...state.visits, ...skipped } });
+          : { ...state, visits: { ...state.visits, ...skipped } }, rng);
       }
       case 'next_night':
         if (state.phase !== 'dawn' || context?.hostId !== player) throw new GameError('请等房主开启下一夜');
@@ -249,6 +277,7 @@ export const ninjaNight: GameDefinition<NinjaState, Action, NinjaView, Record<st
       target: member ? state.visits[member] ?? null : null,
       waiting: waitingPlayers(state),
       history: state.history,
+      reports: member ? state.reports[member] ?? [] : [],
       final: state.final ? {
         ...state.final,
         seats: state.players.map((id) => ({ id, faction: factionOf(state, id), rank: state.ranks[id], merit: state.merit[id] ?? 0 })),
@@ -259,8 +288,7 @@ export const ninjaNight: GameDefinition<NinjaState, Action, NinjaView, Record<st
   botAction(state, player, rng) {
     if (!waitingPlayers(state).includes(player)) return null;
     if (state.phase === 'draft') return { type: 'draft', night: state.night, profession: pick(state.offers[player], rng) };
-    const mainChance = state.drafted[player] === 'stargazer' ? 0.75 : 0.5;
-    const site = rng() < mainChance ? state.focus : pick(siteOrder.filter((place) => place !== state.focus), rng);
+    const site = rng() < 0.5 ? state.focus : pick(siteOrder.filter((place) => place !== state.focus), rng);
     return { type: 'visit', night: state.night, site };
   },
 };

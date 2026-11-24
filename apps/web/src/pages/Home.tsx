@@ -102,7 +102,7 @@ export function Home() {
         )}
       </header>
 
-      <section className={isAvalon ? 'hero hero-avalon' : 'hero'}>
+      <section className={isAvalon ? 'hero hero-avalon' : 'hero'} data-game={game.id}>
         <div className="hero-copy">
           <div className="hero-kicker">
             <span className="hero-kicker-mark" aria-hidden="true" />
@@ -267,14 +267,16 @@ export function Home() {
             </li>
           ))}
         </ol>
-        <div className="wins">
-          {game.hero.goals.map((goal) => (
-            <div key={goal.title} className={`win win-${goal.tone}`}>
-              <strong>{goal.title}</strong>
-              {goal.text}
-            </div>
-          ))}
-        </div>
+        {game.hero.goals.length > 0 && (
+          <div className="wins">
+            {game.hero.goals.map((goal) => (
+              <div key={goal.title} className={`win win-${goal.tone}`}>
+                <strong>{goal.title}</strong>
+                {goal.text}
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {isAvalon && <AvalonRoleGuide />}

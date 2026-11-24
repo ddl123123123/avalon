@@ -419,7 +419,10 @@ export class RoomManager {
     const timedAction = room.game.id === Avalon.avalon.id && action && typeof action === 'object'
       ? { ...(action as Record<string, unknown>), now: Date.now() }
       : action;
-    room.state = room.game.reduce(room.state, playerId, timedAction, Math.random);
+    room.state = room.game.reduce(room.state, playerId, timedAction, Math.random, {
+      hostId: room.hostId,
+      offlinePlayers: room.members.filter((m) => !m.isBot && !m.connection).map((m) => m.id),
+    });
     if (room.game.isOver(room.state)) {
       room.status = 'ended';
       this.clearBotTimers(room);

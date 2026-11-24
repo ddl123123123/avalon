@@ -2,12 +2,16 @@ import type { GameDefinition } from '../framework';
 import { avalon } from './avalon';
 import { citadels } from './citadels';
 import { glassworks } from './glassworks';
+import { ninjaNight } from './ninja-night';
+import { truthOrDare } from './truth-or-dare';
 
 /** 已上线的桌游。新增桌游时在这里注册。 */
 export const GAMES: Record<string, GameDefinition> = {
   [avalon.id]: avalon,
   [citadels.id]: citadels,
   [glassworks.id]: glassworks,
+  [ninjaNight.id]: ninjaNight,
+  [truthOrDare.id]: truthOrDare,
 };
 
 export function getGame(id: string): GameDefinition | undefined {

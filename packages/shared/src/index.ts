@@ -4,3 +4,5 @@ export * from './games';
 export * as Avalon from './games/avalon';
 export * as Citadels from './games/citadels';
 export * as Glassworks from './games/glassworks';
+export * as NinjaNight from './games/ninja-night';
+export * as TruthOrDare from './games/truth-or-dare';

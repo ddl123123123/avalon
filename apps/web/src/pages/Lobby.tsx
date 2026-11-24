@@ -175,9 +175,11 @@ export function Lobby({ room, game }: { room: RoomSnapshot; game: GameClient }) 
                   开始游戏
                 </button>
                 {room.startBlocker && <p className="lobby-blocker">{room.startBlocker}</p>}
-                <button type="button" className="btn btn-ghost btn-small" disabled={count >= capacity} onClick={net.addBot}>
-                  添加机器人凑人数
-                </button>
+                {def.botAction && (
+                  <button type="button" className="btn btn-ghost btn-small" disabled={count >= capacity} onClick={net.addBot}>
+                    添加机器人凑人数
+                  </button>
+                )}
               </>
             ) : (
               <p className="lobby-waiting">等 {host?.name ?? '房主'} 开始游戏</p>

@@ -1,0 +1,226 @@
+.hero:is([data-game='ninja-night'], [data-game='truth-or-dare']) .hero-title {
+  font-size: clamp(2rem, calc(40vw / var(--chars)), 7rem);
+}
+
+.party-tab-mark {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.party-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid rgba(217, 196, 150, 0.3);
+}
+
+.party-art-ninja {
+  background:
+    repeating-linear-gradient(140deg, transparent 0 23px, #7c93ae12 24px 25px),
+    radial-gradient(ellipse at 50% 30%, #344765, #111827 64%, #0a0e18);
+}
+
+.party-art-ninja span {
+  width: 41%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 25%, #fff7d8, #d0ab72 80%);
+  box-shadow: 0 0 60px #e3bd7066;
+  transform: translateY(-22%);
+}
+
+.party-art-ninja i {
+  position: absolute;
+  inset: 32% 0 0;
+  background: linear-gradient(153deg, #3b4960, #0b101a 62%);
+  clip-path: polygon(0 49%, 16% 34%, 26% 50%, 40% 22%, 56% 56%, 74% 33%, 88% 11%, 100% 42%, 100% 100%, 0 100%);
+}
+
+.party-art-truth {
+  background: radial-gradient(ellipse at 50% 43%, #524353, #201d2b 66%, #111219);
+}
+
+.party-art-truth :is(span, i) {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 29%;
+  aspect-ratio: 5 / 7;
+  border-radius: 7%;
+  border: 1px solid #e1cca5;
+  outline: 1px solid #e1cca59e;
+  outline-offset: -7px;
+  box-shadow: 0 14px 32px #08090c90;
+  color: #f4dfb8;
+  font: 2.8rem var(--font-display);
+}
+
+.party-art-truth span {
+  background: linear-gradient(135deg, #607787, #263446);
+  transform: translate(-43%, 2%) rotate(-14deg);
+}
+
+.party-art-truth i {
+  background: linear-gradient(155deg, #a57579, #553748);
+  transform: translate(42%, -2%) rotate(13deg);
+}
+
+.party-table {
+  --party-accent: #a8c9e7;
+  min-height: 100dvh;
+  background: radial-gradient(ellipse at 50% 0, #26364b 0%, #111923 38%, #0b1017 76%);
+}
+
+.party-truth {
+  --party-accent: #f0bdc0;
+  background: radial-gradient(ellipse at 50% 0, #4b3441, #211a28 42%, #111118 84%);
+}
+
+.party-room-bar {
+  border-bottom: 1px solid #d6c49b26;
+}
+
+.party-content {
+  display: grid;
+  gap: 14px;
+  max-width: 740px;
+  margin: 0 auto;
+  padding: clamp(14px, 4vw, 32px);
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+
+.party-content > h1 {
+  font-size: clamp(1.6rem, 5vw, 2.5rem);
+  letter-spacing: 0.05em;
+  line-height: 1.25;
+}
+
+.party-panel,
+.party-lobby-copy {
+  display: grid;
+  gap: 12px;
+}
+
+.party-panel {
+  padding: clamp(14px, 4vw, 26px);
+  border-radius: 10px;
+  background: #10151dd9;
+}
+
+.party-truth .party-panel {
+  background: #1d1824ed;
+}
+
+.party-panel p,
+.party-lobby-copy p {
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.party-kicker,
+.party-note {
+  color: var(--party-accent);
+}
+
+.party-kicker,
+.party-panel small {
+  font-size: 0.85rem;
+}
+
+.party-fields,
+.party-actions {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.party-fields > label,
+.party-actions > label {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.party-content :is(.input, .btn, summary) {
+  min-height: 44px;
+}
+
+.party-details {
+  padding: 0 12px 8px;
+  border: 1px solid #a8c9e738;
+  border-radius: 8px;
+}
+
+.party-details summary {
+  padding: 10px 0;
+  cursor: pointer;
+}
+
+.party-details :is(.party-fields, .btn) {
+  margin-top: 8px;
+}
+
+.party-roster,
+.party-history {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.party-roster {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+}
+
+.party-roster li,
+.party-history li {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #a8c9e712;
+  overflow-wrap: anywhere;
+}
+
+.party-roster small {
+  display: block;
+  color: var(--party-accent);
+}
+
+.party-roster small:empty {
+  display: none;
+}
+
+.truth-prompt {
+  display: grid;
+  align-content: center;
+  gap: 12px;
+  min-height: 150px;
+  margin-top: 14px;
+  padding: clamp(16px, 5vw, 30px);
+  border: 1px solid #a8c9e766;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #223245, #181f2b);
+  font-size: clamp(1.15rem, 4vw, 1.6rem);
+}
+
+.truth-prompt[data-kind='dare'] {
+  border-color: #f0bdc066;
+  background: linear-gradient(135deg, #4b3043, #2c2232);
+}
+
+.party-end {
+  justify-self: start;
+  padding: 12px 0;
+}
+
+@media (max-width: 860px) {
+  .hero:is([data-game='ninja-night'], [data-game='truth-or-dare']) .hero-title {
+    font-size: clamp(1.7rem, calc(82vw / var(--chars)), 5rem);
+  }
+}

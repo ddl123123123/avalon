@@ -12,6 +12,12 @@ export type PlayerId = string;
 /** 返回 [0, 1) 的随机数。注入它是为了让规则可以被确定性地测试。 */
 export type Rng = () => number;
 
+/** 由房间服务器提供，用于处理离线座位和房主权限。 */
+export interface GameActionContext {
+  hostId: PlayerId;
+  offlinePlayers: readonly PlayerId[];
+}
+
 /** 玩家做了规则不允许的事。message 会直接展示给玩家。 */
 export class GameError extends Error {
   constructor(message: string) {
@@ -41,7 +47,7 @@ export interface GameDefinition<State = any, Action = any, View = any, Options =
   /** players 为座位顺序（顺时针）。 */
   setup(players: PlayerId[], options: Options, rng: Rng): State;
   /** 不得修改传入的 state；非法操作抛出 GameError。 */
-  reduce(state: State, player: PlayerId, action: Action, rng: Rng): State;
+  reduce(state: State, player: PlayerId, action: Action, rng: Rng, context?: GameActionContext): State;
   /** viewer 能看到的全部信息。隐藏信息绝不能出现在别人的视图里。 */
   view(state: State, viewer: PlayerId | null): View;
   isOver(state: State): boolean;

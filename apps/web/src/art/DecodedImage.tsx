@@ -2,7 +2,10 @@ import { useState, type ComponentPropsWithoutRef } from 'react';
 import { motion } from 'framer-motion';
 import { useReducedMotion } from '../fx/motion';
 
-type ImageProps = Omit<ComponentPropsWithoutRef<'img'>, 'src' | 'onLoad'> & {
+type ImageProps = Omit<
+  ComponentPropsWithoutRef<typeof motion.img>,
+  'src' | 'onLoad' | 'initial' | 'animate' | 'transition' | 'whileHover' | 'whileTap'
+> & {
   src: string;
   revealDuration?: number;
 };

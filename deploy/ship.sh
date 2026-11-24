@@ -32,6 +32,7 @@ CERT_DIR=${CERT_DIR:-${DOMAIN}}
 REMOTE_DIR=/srv/tabletop
 NGINX_DIR=/srv/wenpai          # 塔罗项目的 Nginx（compose project: wenpai）
 SSH="ssh -i ${SSH_KEY} -o BatchMode=yes"
+SCP_OPTIONS=()
 TAG=${TAG:-$(date +%Y%m%d-%H%M%S)}
 BUILD=${BUILD:-local}
 REF=${REF:-$(git rev-parse HEAD)}
@@ -58,6 +59,18 @@ local)
   ;;
 remote)
   REF=$(git rev-parse "${REF}^{commit}")
+  # 复用远端构建打开的连接，避免同步和验证时重复进行 SSH 握手。
+  SSH_CONTROL_DIR=$(mktemp -d /tmp/tabletop-ssh.XXXXXXXX)
+  SSH_CONTROL_PATH=${SSH_CONTROL_DIR}/connection
+  SSH+=" -o ControlMaster=auto -o ControlPersist=60 -o ControlPath=${SSH_CONTROL_PATH}"
+  SCP_OPTIONS=(-o "ControlPath=${SSH_CONTROL_PATH}")
+  cleanup_ssh() {
+    if [ -S "$SSH_CONTROL_PATH" ]; then
+      $SSH -O exit "$SERVER" >/dev/null 2>&1 || true
+    fi
+    rm -rf -- "$SSH_CONTROL_DIR"
+  }
+  trap cleanup_ssh EXIT
   say "服务器上构建镜像 tabletop:${TAG}（提交 ${REF:0:7}）"
   $SSH "$SERVER" bash -s <<REMOTE
 set -euo pipefail
@@ -91,8 +104,8 @@ if [ -d "${CERT_DIR}" ]; then
   [ -n "$BUNDLE" ] && [ -n "$KEY" ] || { echo "${CERT_DIR} 里要有 *_bundle.pem（或 .crt）和 *.key" >&2; exit 1; }
   openssl x509 -in "$BUNDLE" -noout -text | grep -q "DNS:${DOMAIN}" \
     || { echo "证书的 SAN 里没有 ${DOMAIN}，不上传" >&2; exit 1; }
-  scp -q -i "${SSH_KEY}" "$BUNDLE" "$SERVER:${NGINX_DIR}/certs/${DOMAIN}.fullchain.pem"
-  scp -q -i "${SSH_KEY}" "$KEY" "$SERVER:${NGINX_DIR}/certs/${DOMAIN}.privkey.pem"
+  scp -q -i "${SSH_KEY}" "${SCP_OPTIONS[@]}" "$BUNDLE" "$SERVER:${NGINX_DIR}/certs/${DOMAIN}.fullchain.pem"
+  scp -q -i "${SSH_KEY}" "${SCP_OPTIONS[@]}" "$KEY" "$SERVER:${NGINX_DIR}/certs/${DOMAIN}.privkey.pem"
   $SSH "$SERVER" "chmod 600 ${NGINX_DIR}/certs/${DOMAIN}.*.pem"
 fi
 

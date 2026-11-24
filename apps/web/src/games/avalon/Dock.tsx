@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useId, useState } from 'react';
 import { Avalon } from '@tabletop/shared';
 import { net } from '../../net/client';
 import { QuestCard, VoteToken } from './art';
@@ -60,9 +61,11 @@ export function Dock({
         const readyToTalk = !preselectedTeam || view.team.length === size;
         return (
           <DockShell
+            key={`setup-${questNo}-${view.rejectCount}`}
             prompt={`第 ${questNo} 次任务 · 先设置讨论顺序`}
             hint={preselectedTeam ? `在桌上选满 ${size} 人，预选名单对全桌公开。每人限时 ${view.options.speechSeconds} 秒。` : `讨论结束后再选队伍。每人限时 ${view.options.speechSeconds} 秒。`}
             stacked
+            compactLabel={preselectedTeam ? `讨论设置 · 已选 ${view.team.length}/${size}` : '讨论设置'}
           >
             <div className="speech-setup">
               <SetupGroup label="预选任务队伍">
@@ -220,23 +223,32 @@ function DockShell({
   hint,
   waiting = false,
   stacked = false,
+  compactLabel,
   children,
 }: {
   prompt: string;
   hint?: string;
   waiting?: boolean;
   stacked?: boolean;
+  compactLabel?: string;
   children?: React.ReactNode;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const actionsId = useId();
   return (
     <motion.div
       // 文案变了就重新入场，提醒玩家局面有变化
       key={prompt}
-      className={`dock-inner ${waiting ? 'dock-waiting' : 'dock-active'} ${stacked ? 'dock-inner-stacked' : ''}`}
+      className={`dock-inner ${waiting ? 'dock-waiting' : 'dock-active'} ${stacked ? 'dock-inner-stacked' : ''} ${expanded ? 'dock-expanded' : ''}`}
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: [0.2, 0.7, 0.2, 1] }}
     >
+      {compactLabel && (
+        <button type="button" className="btn btn-primary av-dock-toggle" aria-expanded={expanded} aria-controls={actionsId} onClick={() => setExpanded((open) => !open)}>
+          {expanded ? '收起讨论设置' : compactLabel}
+        </button>
+      )}
       <div className="dock-text">
         <p className="dock-prompt" aria-live="polite">
           {prompt}
@@ -244,7 +256,7 @@ function DockShell({
         </p>
         {hint && <p className="dock-hint">{hint}</p>}
       </div>
-      {children && <div className="dock-actions">{children}</div>}
+      {children && <div id={actionsId} className="dock-actions">{children}</div>}
     </motion.div>
   );
 }

@@ -109,6 +109,7 @@ export async function answerAvalonAssistant(input: AvalonAssistantInput): Promis
 
   const baseUrl = (process.env.DEEPSEEK_BASE_URL?.trim() || 'https://api.deepseek.com').replace(/\/+$/, '');
   const model = process.env.DEEPSEEK_MODEL?.trim() || 'deepseek-flash';
+  const supportsThinkingToggle = model === 'deepseek-flash' || model === 'deepseek-v4-pro';
   let endpoint: string;
   try {
     endpoint = new URL(`${baseUrl}/chat/completions`).toString();
@@ -123,6 +124,7 @@ export async function answerAvalonAssistant(input: AvalonAssistantInput): Promis
     '建议是推理辅助，不替代玩家决定；证据不足时明确说不确定。输出适合手机阅读，优先使用短段落和项目符号。',
   ].join('\n');
 
+  const signal = AbortSignal.timeout(45_000);
   let response: Response;
   try {
     response = await fetch(endpoint, {
@@ -133,17 +135,19 @@ export async function answerAvalonAssistant(input: AvalonAssistantInput): Promis
       },
       body: JSON.stringify({
         model,
+        // DeepSeek defaults to thinking mode, which shares its token budget with the answer.
+        ...(supportsThinkingToggle ? { thinking: { type: 'disabled' } } : {}),
         messages: [
           { role: 'system', content: system },
           { role: 'user', content: `${FEATURE_PROMPTS[input.feature]}\n\n本局信息（JSON）：\n${JSON.stringify(makeGameContext(input))}` },
         ],
-        max_tokens: 1200,
+        max_tokens: 2048,
         stream: false,
       }),
-      signal: AbortSignal.timeout(45_000),
+      signal,
     });
-  } catch (error) {
-    if (error instanceof Error && error.name === 'TimeoutError') throw new Error('AI 分析超时，请稍后重试。');
+  } catch {
+    if (signal.aborted) throw new Error('AI 分析超时，请稍后重试。');
     throw new Error('连接 DeepSeek 失败，请检查服务器网络后重试。');
   }
 
@@ -156,9 +160,24 @@ export async function answerAvalonAssistant(input: AvalonAssistantInput): Promis
   try {
     payload = await response.json();
   } catch {
+    if (signal.aborted) throw new Error('AI 分析超时，请稍后重试。');
     throw new Error('DeepSeek 返回了无法读取的结果，请稍后重试。');
   }
-  const content = (payload as { choices?: Array<{ message?: { content?: unknown } }> })?.choices?.[0]?.message?.content;
-  if (typeof content !== 'string' || !content.trim()) throw new Error('DeepSeek 没有返回分析内容，请稍后重试。');
-  return content.trim().slice(0, 12_000);
+  const completion = payload as { choices?: Array<{ finish_reason?: unknown; message?: { content?: unknown } }> } | null;
+  const choice = Array.isArray(completion?.choices) ? completion.choices[0] : undefined;
+  const reason = choice?.finish_reason;
+  const content = typeof choice?.message?.content === 'string' ? choice.message.content.trim() : '';
+
+  if (reason === 'content_filter') throw new Error('DeepSeek 过滤了本次回复，请调整输入后再试。');
+  if (content) {
+    const answer = content.slice(0, 12_000);
+    return reason === 'length' ? `${answer}\n\n（回复达到长度上限，内容可能不完整。）` : answer;
+  }
+
+  if (reason === 'length') throw new Error('DeepSeek 达到生成长度上限，未能输出答案。请缩短笔记或发言后重试。');
+  if (reason === 'insufficient_system_resource' || reason === 'aborted') {
+    throw new Error('DeepSeek 中断了本次生成，请稍后重试。');
+  }
+  console.warn('[ai] DeepSeek completion did not contain a final answer', { hasChoice: Boolean(choice) });
+  throw new Error('DeepSeek 未返回可显示的答案，请稍后重试。');
 }

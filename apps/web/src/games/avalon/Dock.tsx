@@ -22,7 +22,7 @@ export function Dock({
   speechSecondsRemaining,
 }: {
   view: View;
-  nameOf: (id: string) => string;
+  nameOf: (id: string | null) => string;
   /** 湖中仙女 / 刺杀时在桌上选中的目标 */
   picked: string | null;
   preselectedTeam: boolean;
@@ -43,6 +43,8 @@ export function Dock({
   if (!me) return <DockShell prompt="你正在旁观这一局" />;
 
   switch (view.phase) {
+    case 'identity':
+      return <DockShell prompt="等待全员确认身份" hint="全员确认后随机决定发车顺序" waiting />;
     case 'team': {
       const selected = `已选 ${view.team.length} / ${size}${view.team.length ? ` · ${names(view.team)}` : ''}`;
       if (view.leader !== me.id) {

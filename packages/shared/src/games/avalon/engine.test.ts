@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GameError, type PlayerId } from '../../framework';
+import { GameError, type PlayerId, type Rng } from '../../framework';
 import { avalon, type AvalonAction, type AvalonState } from './engine';
 import { EVIL_COUNT, ROLES, TEAM_SIZES, buildRoleDeck, defaultOptions, recommendedOptions, validateOptions, type AvalonOptions } from './rules';
 
@@ -9,6 +9,13 @@ function seeded(seed: number) {
     s = (s * 1664525 + 1013904223) >>> 0;
     return s / 0x100000000;
   };
+}
+
+function startGame(players: PlayerId[], options: AvalonOptions, rng: Rng) {
+  return players.reduce(
+    (state, player) => avalon.reduce(state, player, { type: 'confirm_role' }, rng),
+    avalon.setup(players, options, rng),
+  );
 }
 
 const ids = (n: number): PlayerId[] => Array.from({ length: n }, (_, i) => `p${i}`);
@@ -109,8 +116,27 @@ describe('夜晚信息', () => {
 });
 
 describe('组队与投票', () => {
+  it('只在最后一名玩家确认时随机安排发车顺序', () => {
+    const players = ids(5);
+    let s = avalon.setup(players, opts(), seeded(1));
+    const confirm = { type: 'confirm_role' } as const;
+    const noDraw = () => {
+      throw new Error('全员确认之前不应抽签');
+    };
+    for (const player of players.slice(0, -1)) s = avalon.reduce(s, player, confirm, noDraw);
+    expect(avalon.reduce(s, players[0]!, confirm, noDraw)).toBe(s);
+    expect(avalon.view(s, null)).toMatchObject({ phase: 'identity', leader: null, confirmedRoles: players.slice(0, -1) });
+    expect(() => act(s, players[0]!, { type: 'draft_team', team: [] })).toThrow(/等待所有玩家/);
+
+    s = avalon.reduce(s, players.at(-1)!, confirm, () => 0);
+    expect(s.phase).toBe('team');
+    expect(s.players).toEqual(players);
+    expect(s.leaderOrder).toEqual(['p1', 'p2', 'p3', 'p4', 'p0']);
+    expect(avalon.view(s, null).leader).toBe('p1');
+  });
+
   it('只有队长能组队，人数必须正确', () => {
-    const s = avalon.setup(ids(5), opts(), seeded(1));
+    const s = startGame(ids(5), opts(), seeded(1));
     const other = s.players.find((p) => p !== leaderOf(s))!;
     expect(() => act(s, other, { type: 'propose_team', team: ['p0', 'p1'] })).toThrow(GameError);
     expect(() => propose(s, ['p0'])).toThrow(/2 名/);
@@ -118,19 +144,19 @@ describe('组队与投票', () => {
     expect(propose(s, ['p0', 'p1']).phase).toBe('vote');
   });
 
-  it('平票算否决，队长顺时针传给下一位', () => {
-    let s = avalon.setup(ids(6), opts(), seeded(2));
-    const first = s.leaderIndex;
+  it('平票算否决，按随机发车顺序换下一位', () => {
+    let s = startGame(ids(6), opts(), seeded(2));
+    const next = s.leaderOrder[1];
     s = propose(s, ['p0', 'p1']);
     s = voteAll(s, (p) => ['p0', 'p1', 'p2'].includes(p));
     expect(s.proposals[0]!.approved).toBe(false);
     expect(s.phase).toBe('team');
     expect(s.rejectCount).toBe(1);
-    expect(s.leaderIndex).toBe((first + 1) % 6);
+    expect(leaderOf(s)).toBe(next);
   });
 
   it('投票结束前看不到别人的票，结束后公开', () => {
-    let s = avalon.setup(ids(5), opts(), seeded(3));
+    let s = startGame(ids(5), opts(), seeded(3));
     s = propose(s, ['p0', 'p1']);
     s = act(s, 'p0', { type: 'vote', approve: false });
     const v = avalon.view(s, 'p1');
@@ -142,7 +168,7 @@ describe('组队与投票', () => {
   });
 
   it('连续五次否决，邪恶方获胜', () => {
-    let s = avalon.setup(ids(5), opts(), seeded(4));
+    let s = startGame(ids(5), opts(), seeded(4));
     for (let i = 0; i < 5; i++) s = voteAll(propose(s, ['p0', 'p1']), false);
     expect(s.phase).toBe('ended');
     expect(s.winner).toBe('evil');
@@ -150,7 +176,7 @@ describe('组队与投票', () => {
   });
 
   it('任务完成后否决计数清零', () => {
-    let s = avalon.setup(ids(5), opts(), seeded(5));
+    let s = startGame(ids(5), opts(), seeded(5));
     for (let i = 0; i < 4; i++) s = voteAll(propose(s, goodTeam(s)), false);
     expect(s.rejectCount).toBe(4);
     s = runQuest(s, goodTeam(s));
@@ -161,7 +187,7 @@ describe('组队与投票', () => {
 
 describe('任务', () => {
   it('正义方不能出失败，非队员不能出牌', () => {
-    let s = avalon.setup(ids(5), opts(), seeded(6));
+    let s = startGame(ids(5), opts(), seeded(6));
     const team = goodTeam(s);
     s = voteAll(propose(s, team), true);
     expect(() => act(s, team[0]!, { type: 'quest', success: false })).toThrow(/只能出/);
@@ -170,7 +196,7 @@ describe('任务', () => {
   });
 
   it('一张失败牌即任务失败，记录里只有失败张数', () => {
-    let s = avalon.setup(ids(5), opts(), seeded(8));
+    let s = startGame(ids(5), opts(), seeded(8));
     const { team, evil } = teamWithEvil(s);
     s = runQuest(s, team, evil);
     expect(s.quests[0]).toMatchObject({ success: false, fails: 1 });
@@ -178,7 +204,7 @@ describe('任务', () => {
   });
 
   it('7 人以上第 4 次任务需要两张失败牌', () => {
-    let s = avalon.setup(ids(7), opts(), seeded(9));
+    let s = startGame(ids(7), opts(), seeded(9));
     s = runQuest(s, goodTeam(s));
     s = runQuest(s, goodTeam(s));
     let t = teamWithEvil(s);
@@ -195,7 +221,7 @@ describe('任务', () => {
   });
 
   it('三次任务失败，邪恶方直接获胜', () => {
-    let s = avalon.setup(ids(5), opts(), seeded(10));
+    let s = startGame(ids(5), opts(), seeded(10));
     for (let i = 0; i < 3; i++) {
       const t = teamWithEvil(s);
       s = runQuest(s, t.team, t.evil);
@@ -207,7 +233,7 @@ describe('任务', () => {
 
 describe('刺杀', () => {
   function threeWins(seed: number) {
-    let s = avalon.setup(ids(5), opts(), seeded(seed));
+    let s = startGame(ids(5), opts(), seeded(seed));
     for (let i = 0; i < 3; i++) s = runQuest(s, goodTeam(s));
     return s;
   }
@@ -235,7 +261,7 @@ describe('刺杀', () => {
 
 describe('湖中仙女', () => {
   it('从首任队长右手边开始，第 2、3、4 次任务后使用，持有过的人不能被查验', () => {
-    let s = avalon.setup(ids(7), opts({ ladyOfTheLake: true }), seeded(15));
+    let s = startGame(ids(7), opts({ ladyOfTheLake: true }), seeded(15));
     const first = s.lady!.holder;
     expect(first).toBe(s.players[(s.leaderIndex - 1 + 7) % 7]);
     s = runQuest(s, goodTeam(s));

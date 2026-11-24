@@ -23,8 +23,6 @@ type Reveal =
   | { kind: 'lady'; target: string; alignment: Avalon.Alignment }
   | { kind: 'assassin' };
 
-const introKey = (room: RoomSnapshot) => `avalon.intro.${room.code}.${room.gameSeq}.${room.you}`;
-
 function useReveals(room: RoomSnapshot, view: View) {
   const ladyCount = Object.keys(view.me?.ladyResults ?? {}).length;
   const snapshot = () => ({
@@ -76,8 +74,9 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
   const view = room.view as View;
   const me = view.me;
   const byId = new Map(room.players.map((p) => [p.id, p]));
-  const nameOf = (id: string) => byId.get(id)?.name ?? '？';
-  const seatNameOf = (id: string) => {
+  const nameOf = (id: string | null) => (id === null ? undefined : byId.get(id))?.name ?? '？';
+  const seatNameOf = (id: string | null) => {
+    if (id === null) return '待抽签';
     const player = byId.get(id);
     return player ? `${player.seatIndex + 1} 号 · ${player.name}` : '未知玩家';
   };
@@ -87,7 +86,8 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
   const [showAssistant, setShowAssistant] = useState(false);
 
   const { current: reveal, next, sealedFrom } = useReveals(room, view);
-  const [intro, setIntro] = useState(() => me !== null && view.proposals.length === 0 && sessionStorage.getItem(introKey(room)) === null);
+  const confirmingRoles = view.phase === 'identity';
+  const intro = confirmingRoles && me !== null && !view.confirmedRoles.includes(me.id);
   const [showRole, setShowRole] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [picked, setPicked] = useState<string | null>(null);
@@ -126,13 +126,8 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
   useEffect(() => saveNotebook(dossierKey, notebook), [dossierKey, notebook]);
 
   useEffect(() => setPicked(null), [view.phase, view.questIndex]);
-  useEffect(() => {
-    if (me && view.proposals.length === 0 && sessionStorage.getItem(introKey(room)) === null) setIntro(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [room.gameSeq]);
   const closeIntro = () => {
-    sessionStorage.setItem(introKey(room), '1');
-    setIntro(false);
+    net.act({ type: 'confirm_role' } satisfies Avalon.AvalonAction);
   };
 
   // 亮票停留几秒后自动继续
@@ -193,6 +188,8 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
   const status = (): string => {
     if (voteReveal) return '';
     switch (view.phase) {
+      case 'identity':
+        return `已确认身份 ${view.confirmedRoles.length} / ${view.players.length}`;
       case 'team':
         return `${nameOf(view.leader)} 正在组队`;
       case 'vote':

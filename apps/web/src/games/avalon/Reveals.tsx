@@ -113,7 +113,7 @@ export function RoleReveal({
     .sort((a, b) => a.player.seatIndex - b.player.seatIndex);
 
   return (
-    <Overlay tone={flipped ? me.alignment : 'plain'} onClose={onClose}>
+    <Overlay tone={flipped ? me.alignment : 'plain'} onClose={intro ? undefined : onClose}>
       <p className="overlay-kicker">{intro ? '夜幕降临，看清你的身份' : '你的身份'}</p>
       <motion.div
         initial={intro ? { y: 80, opacity: 0, scale: 0.8 } : { scale: 0.92, opacity: 0 }}
@@ -145,8 +145,8 @@ export function RoleReveal({
             </ul>
           </section>
         )}
-        <button type="button" className="btn btn-primary" onClick={onClose}>
-          {intro ? '记住了' : '收起'}
+        <button type="button" className="btn btn-primary" onClick={onClose} disabled={!flipped}>
+          {intro ? '确认身份' : '收起'}
         </button>
       </motion.div>
     </Overlay>

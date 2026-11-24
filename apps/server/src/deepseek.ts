@@ -52,7 +52,7 @@ function makeGameContext(input: AvalonAssistantInput): Record<string, unknown> {
     questSizes: view.questSizes,
     failsRequired: view.failsRequired,
     rejectCount: view.rejectCount,
-    leader: playerLabel(view.leader, playersById),
+    leader: view.leader === null ? null : playerLabel(view.leader, playersById),
     currentTeam: view.team.map((id) => playerLabel(id, playersById)),
     rolesInGame: view.roleSet.map((role) => Avalon.ROLES[role].name),
     players: input.players.map((player) => ({ seat: player.seatIndex + 1, name: player.name, bot: player.isBot })),

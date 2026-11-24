@@ -166,6 +166,11 @@
   border: 1px solid rgba(190, 190, 184, 0.12);
   background: linear-gradient(100deg, rgba(26, 35, 45, 0.68), rgba(11, 14, 19, 0.58));
 }
+.recent-rooms-toggle {
+  margin-top: 8px;
+  min-height: 44px;
+  width: 100%;
+}
 .recent-room-entry {
   display: flex;
   align-items: center;

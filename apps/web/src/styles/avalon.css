@@ -1,7 +1,4 @@
 /* 阿瓦隆：开局选项 */
-.av-board .round-table {
-  --seat-h: calc(var(--crest) * 1.12 + 60px);
-}
 .av-options {
   display: grid;
   gap: 14px;
@@ -85,7 +82,7 @@
   border: 0;
   border-radius: 6px;
   background: #111620;
-  box-shadow: 0 0 0 1px rgba(211, 192, 153, 0.68), 0 5px 18px rgba(0, 0, 0, 0.34);
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.34);
 }
 .role-face-fallback,
 .role-face-art {
@@ -108,13 +105,20 @@
   z-index: 2;
   inset: 0;
   pointer-events: none;
-  border: 1px solid rgba(230, 207, 151, 0.92);
+  color: rgba(230, 207, 151, 0.62);
+  border: 1px solid currentColor;
   border-radius: inherit;
-  box-shadow: inset 0 0 0 5px rgba(230, 207, 151, 0.62);
+}
+.role-face-frame::after {
+  content: '';
+  position: absolute;
+  inset: clamp(1px, 1.2cqw, 3px);
+  border: 1px solid currentColor;
+  border-radius: max(0px, 0.6cqw);
+  opacity: 0.5;
 }
 .role-face-raster[data-card-style='style-1'] .role-face-frame {
-  border-color: rgba(246, 203, 91, 0.98);
-  box-shadow: inset 0 0 0 5px rgba(246, 203, 91, 0.82);
+  color: rgba(246, 203, 91, 0.74);
 }
 .role-face-nameplate {
   position: absolute;
@@ -162,6 +166,12 @@
     letter-spacing: 0.04em;
   }
   .role-face-nameplate small {
+    display: none;
+  }
+}
+@container (max-width: 40px) {
+  .role-face-frame::after,
+  .role-face-nameplate {
     display: none;
   }
 }
@@ -239,13 +249,6 @@
 .av-timer-choice:disabled {
   opacity: 0.76;
   cursor: default;
-}
-.home-av-timer-setting {
-  padding: 8px 10px 10px;
-  background: rgba(5, 8, 26, 0.38);
-}
-.home-av-timer-setting .av-timer-choice {
-  min-height: 42px;
 }
 .av-options-heading {
   font-size: 1.25rem;
@@ -423,52 +426,66 @@
   overflow: visible;
   grid-template-rows: auto 1fr;
 }
+.av-board:not(.board-ended) {
+  height: auto;
+  min-height: 100dvh;
+  grid-template-rows: auto minmax(min-content, 1fr) auto;
+  overflow: visible;
+}
 .board-table {
-  min-height: 0;
+  min-height: clamp(420px, 117vw, 510px);
   display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   place-items: center;
   padding: 0 6px;
 }
-.board-table .round-table {
-  max-width: 1120px;
-  max-height: 720px;
+.av-playfield {
+  --seat-h: calc(var(--crest) * 1.12 + 60px);
+  max-width: 920px;
+  max-height: 660px;
 }
-
-.center {
+.av-playfield .round-table-center {
+  inset: 0 14%;
+}
+.av-match-panel {
   display: grid;
-  gap: clamp(6px, 1.6vh, 16px);
-  justify-items: center;
-  width: 100%;
+  gap: clamp(8px, 1.8vw, 15px);
+  width: min(100%, 340px);
+  min-width: 0;
+  padding: clamp(9px, 2vw, 18px);
+  border: 1px solid rgba(214, 196, 155, 0.28);
+  border-radius: 12px;
+  background: rgba(12, 18, 28, 0.94);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.24);
+}
+.av-match-progress {
+  display: grid;
+  gap: 8px;
+  padding-bottom: clamp(8px, 1.8vw, 15px);
+  border-bottom: 1px solid rgba(214, 196, 155, 0.2);
+}
+.av-match-progress h2 {
+  font-size: clamp(0.76rem, 1.8vw, 0.95rem);
+  font-weight: 500;
+  color: var(--gilt-bright);
+}
+.av-match-rule {
+  font-size: 0.7rem;
+  color: var(--ruby-soft);
 }
 .quest-track {
   display: flex;
   justify-content: center;
-  gap: clamp(4px, 1.2vw, 14px);
+  gap: clamp(4px, 1.4vw, 9px);
   width: 100%;
 }
 .quest-slot {
-  width: clamp(30px, 6.4vw, 70px);
+  width: clamp(24px, 7.6vw, 44px);
+  min-width: 0;
   flex: 0 1 auto;
   transition:
     transform 0.4s var(--ease-out),
     filter 0.4s;
-}
-.quest-slot {
-  position: relative;
-}
-.quest-slot-note {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  margin-top: 2px;
-  font-size: 0.62rem;
-  line-height: 1.2;
-  white-space: nowrap;
-  color: var(--ruby-soft);
-}
-.quest-track {
-  padding-bottom: 12px;
 }
 .quest-slot-current {
   transform: scale(1.16);
@@ -491,8 +508,9 @@
 }
 .center-info {
   display: grid;
-  gap: 4px;
+  gap: 7px;
   justify-items: center;
+  overflow-wrap: anywhere;
 }
 .reject-track {
   display: flex;
@@ -529,16 +547,13 @@
 
 .verdict {
   display: grid;
-  padding: 6px 18px;
-  border: 3px double currentColor;
-  border-radius: 4px;
-  background: rgba(5, 8, 26, 0.85);
+  gap: 4px;
+  overflow-wrap: anywhere;
 }
 .verdict strong {
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: clamp(1.3rem, 3.6vw, 2.3rem);
-  letter-spacing: 0.1em;
+  font-size: clamp(1.15rem, 3vw, 1.7rem);
   line-height: 1.2;
 }
 .verdict span {
@@ -688,13 +703,22 @@
 }
 .speech-countdown {
   color: var(--gilt-bright);
-  font: 700 clamp(1.1rem, 2.4vw, 1.5rem)/1.15 var(--font-numeral);
+  font: 700 clamp(1.6rem, 4.4vw, 2.2rem)/1.1 var(--font-numeral);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.08em;
 }
 .speech-progress {
   color: var(--vellum-dim);
   font-size: 0.72rem;
+}
+.public-preselected-team {
+  max-width: min(36vw, 13rem);
+  margin-inline: auto;
+  color: var(--gilt-bright);
+  font-size: clamp(0.69rem, 1.6vw, 0.83rem);
+  line-height: 1.45;
+  text-align: center;
+  text-wrap: balance;
 }
 
 /* 行动区 */
@@ -1414,12 +1438,6 @@
 }
 
 @media (max-width: 640px), (max-height: 500px) and (hover: none) {
-  .av-board:not(.board-ended) {
-    height: auto;
-    min-height: 100dvh;
-    grid-template-rows: auto minmax(300px, 1fr) auto;
-    overflow: visible;
-  }
   .av-board .room-bar {
     flex-wrap: wrap;
     gap: 8px;
@@ -1434,7 +1452,7 @@
   .av-board .room-bar :is(.link, .btn) {
     min-height: 44px;
   }
-  .av-board .round-table {
+  .av-playfield {
     --crest: clamp(34px, 9vw, 44px);
     --seat-w: clamp(66px, 18vw, 84px);
     --seat-h: calc(var(--crest) * 1.12 + 60px);
@@ -1442,7 +1460,7 @@
   .av-board .seat-name {
     padding-inline: 5px;
   }
-  .av-board .round-table-center {
+  .av-playfield .round-table-center {
     inset-inline: 12%;
   }
   .av-board .seat-pickable {

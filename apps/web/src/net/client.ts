@@ -71,7 +71,7 @@ function loadRecentRooms(): RecentRoom[] {
           typeof room.lastJoinedAt === 'number' &&
           Number.isFinite(room.lastJoinedAt),
       )
-      .slice(0, 8);
+      .sort((a, b) => b.lastJoinedAt - a.lastJoinedAt);
   } catch {
     return [];
   }
@@ -106,7 +106,7 @@ function set(patch: Partial<NetState>) {
 }
 
 function rememberRoom(code: string, gameId: string): RecentRoom[] {
-  const recentRooms = [{ code, gameId, lastJoinedAt: Date.now() }, ...state.recentRooms.filter((room) => room.code !== code)].slice(0, 8);
+  const recentRooms = [{ code, gameId, lastJoinedAt: Date.now() }, ...state.recentRooms.filter((room) => room.code !== code)];
   store(RECENT_ROOM_KEY, JSON.stringify(recentRooms));
   return recentRooms;
 }

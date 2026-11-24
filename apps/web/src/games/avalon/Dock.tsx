@@ -59,7 +59,7 @@ export function Dock({
         return (
           <DockShell
             prompt={`第 ${questNo} 次任务 · 先设置讨论顺序`}
-            hint={preselectedTeam ? `先在桌上选满 ${size} 人作为预选队伍。每人限时 ${view.options.speechSeconds} 秒。` : `讨论结束后再选队伍。每人限时 ${view.options.speechSeconds} 秒。`}
+            hint={preselectedTeam ? `在桌上选满 ${size} 人，预选名单对全桌公开。每人限时 ${view.options.speechSeconds} 秒。` : `讨论结束后再选队伍。每人限时 ${view.options.speechSeconds} 秒。`}
             stacked
           >
             <div className="speech-setup">

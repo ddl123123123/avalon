@@ -8,7 +8,6 @@ import { EndScreen } from './EndScreen';
 import { History } from './History';
 import { AssassinReveal, LadyReveal, QuestReveal, RoleReveal } from './Reveals';
 import { Seat, type SeatProps } from './Seat';
-import { TableSurface } from '../../art/glass';
 import { QuestRoundel } from './art';
 import { CardLibrarySettings } from './CardLibrarySettings';
 import { Notebook } from './Notebook';
@@ -148,6 +147,13 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
 
   // 亮票期间牌桌停留在被表决的那支队伍上
   const shownTeam = voteReveal ? voteReveal.team : view.phase === 'lady' || view.phase === 'assassin' ? [] : view.team;
+  const showPublicPreselection = view.team.length > 0 && (
+    (view.phase === 'team' && !view.discussionComplete) ||
+    (view.phase === 'discussion' && view.discussion?.preselectedTeam)
+  );
+  const publicPreselection = showPublicPreselection
+    ? view.team.map((id) => (byId.get(id)?.seatIndex ?? view.players.indexOf(id)) + 1).join('、')
+    : null;
   const shownLeader = voteReveal ? voteReveal.leader : view.leader;
   const size = view.questSizes[view.questIndex]!;
   const iLead = me?.id === view.leader;
@@ -187,8 +193,6 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
     switch (view.phase) {
       case 'team':
         return `${nameOf(view.leader)} 正在组队`;
-      case 'discussion':
-        return '按顺序发言';
       case 'vote':
         return `投票中 ${view.voted.length} / ${view.players.length}`;
       case 'quest':
@@ -240,37 +244,41 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
           <div className="board-table">
             <LayoutGroup>
               <RoundTable
+                className="av-playfield"
                 seats={view.players}
                 meIndex={me ? view.players.indexOf(me.id) : 0}
                 seatKey={(id) => id}
-                surface={<TableSurface seats={view.players.length} />}
                 center={
-                  <div className="center">
-                    <div className="quest-track" role="list" aria-label="任务进度">
-                      {view.questSizes.map((questSize, i) => {
-                        const done = view.quests.find((q) => q.questIndex === i);
-                        // 翻牌动画还没播完时，圆章先不亮结果
-                        const hidden = i >= sealedFrom;
-                        const state = done && !hidden ? (done.success ? 'success' : 'fail') : i === view.questIndex && !ended ? 'current' : 'pending';
-                        return (
-                          <div key={i} className={`quest-slot quest-slot-${state}`} role="listitem" aria-label={`第 ${i + 1} 次任务，${questSize} 人`}>
-                            <QuestRoundel state={state} size={questSize} twoFails={view.failsRequired[i] === 2} />
-                            {view.failsRequired[i] === 2 && state !== 'success' && state !== 'fail' && (
-                              <span className="quest-slot-note">两张失败才算败</span>
-                            )}
-                          </div>
-                        );
-                      })}
+                  <section className="av-match-panel" aria-label="对局信息">
+                    <div className="av-match-progress">
+                      <h2>任务进度</h2>
+                      <div className="quest-track" role="list" aria-label="五次任务">
+                        {view.questSizes.map((questSize, i) => {
+                          const done = view.quests.find((q) => q.questIndex === i);
+                          // 翻牌动画还没播完时，圆章先不亮结果
+                          const hidden = i >= sealedFrom;
+                          const state = done && !hidden ? (done.success ? 'success' : 'fail') : i === view.questIndex && !ended ? 'current' : 'pending';
+                          const label = { success: '成功', fail: '失败', current: '当前任务', pending: '未开始' }[state];
+                          return (
+                            <div key={i} className={`quest-slot quest-slot-${state}`} role="listitem" aria-label={`第 ${i + 1} 次任务，${questSize} 人，${label}`}>
+                              <QuestRoundel state={state} size={questSize} twoFails={view.failsRequired[i] === 2} />
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {view.failsRequired[view.questIndex] === 2 && (
+                        <p className="av-match-rule">本次任务需两张失败牌才算失败</p>
+                      )}
                     </div>
                     <AnimatePresence mode="wait">
                       {voteReveal ? (
                         <motion.div
                           key="verdict"
                           className={`verdict ${voteReveal.approved ? 'verdict-yes' : 'verdict-no'}`}
-                          initial={{ opacity: 0, scale: 2.2, rotate: -8 }}
-                          animate={{ opacity: 1, scale: 1, rotate: -3 }}
-                          exit={{ opacity: 0, scale: 0.8 }}
-                          transition={{ delay: 0.5 + view.players.length * 0.11, type: 'spring', stiffness: 300, damping: 16 }}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ delay: 0.5 + view.players.length * 0.11, duration: 0.22 }}
                         >
                           <strong>{voteReveal.approved ? '组队通过' : '组队被否决'}</strong>
                           <span>
@@ -286,10 +294,9 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
                             ))}
                             <span className="reject-label">否决 {view.rejectCount} / 5</span>
                           </div>
-                          <p className="center-status">{status()}</p>
                           {view.discussion && (
                             <div className="speech-status">
-                              <div className="speech-status-main">
+                              <div className="speech-status-main" role="status">
                                 <span className="speech-seat-number">{(byId.get(view.discussion.currentSpeaker)?.seatIndex ?? view.players.indexOf(view.discussion.currentSpeaker)) + 1}</span>
                                 <span>号玩家发言</span>
                               </div>
@@ -301,10 +308,16 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
                               </small>
                             </div>
                           )}
+                          {!view.discussion && <p className="center-status" role="status">{status()}</p>}
+                          {publicPreselection && (
+                            <p className="public-preselected-team" aria-live="polite">
+                              公开预组车 · {publicPreselection} 号
+                            </p>
+                          )}
                         </motion.div>
                       )}
                     </AnimatePresence>
-                  </div>
+                  </section>
                 }
                 renderSeat={(id, i) => (
                   <Seat

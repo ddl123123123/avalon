@@ -30,7 +30,8 @@ export function Home() {
   const [gameId, setGameId] = useState(rememberedGame);
   const [name, setNameInput] = useState(getName);
   const [code, setCode] = useState('');
-  const [speechSeconds, setSpeechSeconds] = useState<Avalon.SpeechSeconds>(90);
+  const [showAllRooms, setShowAllRooms] = useState(false);
+  const visibleRooms = showAllRooms ? recentRooms : recentRooms.slice(0, 3);
   const nameRef = useRef<HTMLInputElement>(null);
   const resumeCode = room?.code ?? lastRoomCode;
   const game = GAME_CLIENTS[gameId]!;
@@ -56,7 +57,7 @@ export function Home() {
 
   const create = () => {
     const who = requireName();
-    if (who) net.createRoom(who, game.id, isAvalon ? { speechSeconds } : undefined);
+    if (who) net.createRoom(who, game.id);
   };
 
   const join = (e: FormEvent) => {
@@ -119,25 +120,6 @@ export function Home() {
                 autoComplete="nickname"
               />
             </label>
-            {isAvalon && (
-              <fieldset className="av-timer-setting home-av-timer-setting">
-                <legend>发言倒计时</legend>
-                <p>每位玩家的发言时间，可在房间内调整</p>
-                <div className="av-timer-options" role="group" aria-label="选择发言时长">
-                  {Avalon.SPEECH_TIMERS.map((seconds) => (
-                    <button
-                      key={seconds}
-                      type="button"
-                      className="av-timer-choice"
-                      aria-pressed={speechSeconds === seconds}
-                      onClick={() => setSpeechSeconds(seconds)}
-                    >
-                      {seconds} 秒
-                    </button>
-                  ))}
-                </div>
-              </fieldset>
-            )}
             <div className="entry-actions">
               <button type="button" className="btn btn-primary" onClick={create}>
                 开一间{game.name}的房
@@ -172,8 +154,8 @@ export function Home() {
                 </div>
                 <span>保存在本机</span>
               </header>
-              <ul>
-                {recentRooms.map((recent) => (
+              <ul id="recent-room-list">
+                {visibleRooms.map((recent) => (
                   <li key={recent.code}>
                     <button type="button" className="recent-room-entry" onClick={() => resume(recent.code)}>
                       <span className="recent-room-main">
@@ -188,6 +170,17 @@ export function Home() {
                   </li>
                 ))}
               </ul>
+              {recentRooms.length > 3 && (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-small recent-rooms-toggle"
+                  aria-controls="recent-room-list"
+                  aria-expanded={showAllRooms}
+                  onClick={() => setShowAllRooms((expanded) => !expanded)}
+                >
+                  {showAllRooms ? '收起历史记录' : `展开全部 ${recentRooms.length} 条记录`}
+                </button>
+              )}
             </section>
           )}
         </div>
@@ -221,7 +214,7 @@ export function Home() {
               transition: { type: 'spring', stiffness: 300, damping: 20 },
             }}
           >
-            <Tilt className="hero-art-tilt" max={3}>
+            <Tilt className="hero-art-tilt" max={3} glare={false}>
               {isAvalon ? (
                 <div className="avalon-hero-portrait">
                   <DecodedImage

@@ -9,11 +9,13 @@ export function Tilt({
   children,
   className = '',
   max = 10,
+  glare = true,
   style,
 }: {
   children: ReactNode;
   className?: string;
   max?: number;
+  glare?: boolean;
   style?: CSSProperties;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -27,9 +29,11 @@ export function Tilt({
     const py = (e.clientY - rect.top) / rect.height;
     el.style.setProperty('--rx', `${(0.5 - py) * max * 2}deg`);
     el.style.setProperty('--ry', `${(px - 0.5) * max * 2}deg`);
-    el.style.setProperty('--mx', `${px * 100}%`);
-    el.style.setProperty('--my', `${py * 100}%`);
-    el.style.setProperty('--glare', '1');
+    if (glare) {
+      el.style.setProperty('--mx', `${px * 100}%`);
+      el.style.setProperty('--my', `${py * 100}%`);
+      el.style.setProperty('--glare', '1');
+    }
   };
   const onLeave = () => {
     const el = ref.current;
@@ -42,7 +46,7 @@ export function Tilt({
   return (
     <div ref={ref} className={`tilt ${className}`} style={style} onPointerMove={onMove} onPointerLeave={onLeave}>
       {children}
-      <span className="glare" aria-hidden="true" />
+      {glare && <span className="glare" aria-hidden="true" />}
     </div>
   );
 }

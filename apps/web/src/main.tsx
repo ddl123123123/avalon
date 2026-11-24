@@ -11,6 +11,7 @@ import './styles/party.css';
 import './styles/ninja-night.css';
 import './styles/grey-tide.css';
 import './styles/citadels-pig.css';
+import './styles/seven-sins.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

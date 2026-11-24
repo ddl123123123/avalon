@@ -3,6 +3,7 @@ import {
   Avalon,
   GameError,
   NAME_MAX_LENGTH,
+  SevenSins,
   getGame,
   type ClientMessage,
   type GameDefinition,
@@ -212,8 +213,8 @@ export class RoomManager {
         lobbyOnly();
         const blocker = this.startBlocker(room);
         if (blocker) throw new GameError(blocker);
-        // 阿瓦隆沿用 Fisher–Yates 洗牌，每次开局由服务端提供随机数。
-        const rng = room.game.id === Avalon.avalon.id
+        // 隐藏身份游戏开局时由服务器提供安全随机数。
+        const rng = room.game.id === Avalon.avalon.id || room.game.id === SevenSins.sevenSins.id
           ? () => randomInt(2 ** 46) / 2 ** 46
           : Math.random;
         room.state = room.game.setup(

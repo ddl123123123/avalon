@@ -1,6 +1,7 @@
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { Avalon, NAME_MAX_LENGTH } from '@tabletop/shared';
+import { useReducedMotion } from '../fx/motion';
 import { SplitText } from '../fx/SplitText';
 import { AvalonRoleGuide } from '../games/avalon/RoleGuide';
 import { GAME_CLIENTS } from '../games/registry';
@@ -21,6 +22,7 @@ function rememberedGame(): string {
 }
 
 export function Home() {
+  const reducedMotion = useReducedMotion();
   const { room, lastRoomCode, recentRooms } = useNet();
   const [gameId, setGameId] = useState(rememberedGame);
   const [name, setNameInput] = useState(getName);
@@ -98,18 +100,7 @@ export function Home() {
           <h1 className="hero-title" style={{ '--chars': [...game.name].length } as CSSProperties}>
             <SplitText key={game.id} text={game.name} delay={0.1} stagger={0.12} />
           </h1>
-          <AnimatePresence mode="wait">
-            <motion.p
-              key={game.id}
-              className="hero-lede"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              {game.hero.lede}
-            </motion.p>
-          </AnimatePresence>
+          <p className="hero-lede">{game.hero.lede}</p>
 
           <div className="entry">
             <label className="field">
@@ -185,27 +176,24 @@ export function Home() {
               <strong>{String(GAMES.indexOf(game) + 1).padStart(2, '0')}</strong>
             </div>
           )}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={game.id}
-              className="hero-art"
-              initial={{ opacity: 0, scale: 0.94, filter: 'blur(14px)' }}
-              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, scale: 1.04, filter: 'blur(14px)' }}
-              transition={{ duration: 0.45, ease: [0.2, 0.7, 0.2, 1] }}
-            >
-              {isAvalon ? (
-                <div className="avalon-hero-portrait">
-                  <img
-                    src={`${import.meta.env.BASE_URL}avalon-cards/home-duel-v2.png`}
-                    width={1254}
-                    height={1254}
-                    alt="蓝袍与红袍的两位角色隔着金框相对"
-                  />
-                </div>
-              ) : <game.hero.Art />}
-            </motion.div>
-          </AnimatePresence>
+          <motion.div
+            key={game.id}
+            className="hero-art"
+            initial={reducedMotion ? false : { opacity: 0.85 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.16 }}
+          >
+            {isAvalon ? (
+              <div className="avalon-hero-portrait">
+                <img
+                  src={`${import.meta.env.BASE_URL}avalon-cards/home-duel-v2.png`}
+                  width={1254}
+                  height={1254}
+                  alt="蓝袍与红袍的两位角色隔着金框相对"
+                />
+              </div>
+            ) : <game.hero.Art />}
+          </motion.div>
         </div>
       </section>
 

@@ -50,6 +50,15 @@ body,
   height: 100%;
 }
 
+html {
+  background-color: var(--abyss);
+}
+
+html,
+body {
+  overscroll-behavior-y: none;
+}
+
 body {
   margin: 0;
   background:
@@ -64,6 +73,12 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  body {
+    background-attachment: scroll;
+  }
 }
 
 h1,

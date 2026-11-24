@@ -1,5 +1,6 @@
 import { randomBytes, randomInt } from 'node:crypto';
 import {
+  Avalon,
   GameError,
   NAME_MAX_LENGTH,
   getGame,
@@ -203,10 +204,14 @@ export class RoomManager {
         lobbyOnly();
         const blocker = this.startBlocker(room);
         if (blocker) throw new GameError(blocker);
+        // 阿瓦隆沿用 Fisher–Yates 洗牌，每次开局由服务端提供随机数。
+        const rng = room.game.id === Avalon.avalon.id
+          ? () => randomInt(2 ** 46) / 2 ** 46
+          : Math.random;
         room.state = room.game.setup(
           [...room.members].sort((a, b) => a.seatIndex - b.seatIndex).map((m) => m.id),
           room.options,
-          Math.random,
+          rng,
         );
         room.status = 'playing';
         room.gameSeq += 1;

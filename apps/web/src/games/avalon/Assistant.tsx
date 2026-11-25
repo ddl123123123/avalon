@@ -18,12 +18,14 @@ export function AvalonAssistant({
   notebook,
   onClose,
   onUseSpeech,
+  inline = false,
 }: {
   room: RoomSnapshot;
   view: Avalon.AvalonView;
   notebook: AvalonNotebookData;
   onClose: () => void;
   onUseSpeech?: (text: string) => void;
+  inline?: boolean;
 }) {
   const { assistantResult, assistantError } = useNet();
   const [feature, setFeature] = useState<AvalonAssistantFeature>('role-coach');
@@ -39,10 +41,11 @@ export function AvalonAssistant({
       : true;
 
   useEffect(() => {
+    if (inline) return;
     const onKey = (event: KeyboardEvent) => event.key === 'Escape' && onClose();
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [inline, onClose]);
 
   useEffect(() => {
     if (pending && assistantResult?.requestId === pending.id) {
@@ -88,6 +91,80 @@ export function AvalonAssistant({
     if (sent) setPending({ id: requestId, feature });
   };
 
+  const content = (
+    <>
+      <p className="assistant-privacy">
+        发起分析后，你的身份、本人任务牌、已知线索、公开局势及本机预判和笔记会发送给 DeepSeek；用量计入网站配置的 API Key 账户，其他玩家看不到结果。建议仅供推理参考。
+      </p>
+
+      <nav className="assistant-feature-grid" aria-label="助手功能">
+        {FEATURES.map((item) => {
+          const disabled = item.id === 'post-game-review' && view.phase !== 'ended';
+          return (
+            <button
+              key={item.id}
+              type="button"
+              className="assistant-feature"
+              aria-pressed={feature === item.id}
+              disabled={disabled}
+              onClick={() => {
+                setFeature(item.id);
+                setError(null);
+              }}
+            >
+              {item.title}
+              {disabled && <small>对局结束后开放</small>}
+            </button>
+          );
+        })}
+      </nav>
+
+      <section className="assistant-selected">
+        <h3>{selected.title}</h3>
+        <p>{selected.description}</p>
+        {feature === 'team-comparison' && view.team.length === 0 && (
+          <p className="assistant-inline-hint">等队长选出候选队伍后，就能比较这支队伍。</p>
+        )}
+        {feature === 'rules-qa' && (
+          <label className="assistant-question">
+            <span>你想问什么？</span>
+            <textarea
+              value={question}
+              onChange={(event) => setQuestion(event.target.value)}
+              placeholder="例如：7 人局第四次任务需要几张失败牌？"
+              maxLength={600}
+              rows={3}
+            />
+          </label>
+        )}
+        <button type="button" className="btn btn-primary assistant-submit" disabled={!featureReady || Boolean(pending)} onClick={request}>
+          {pending ? '正在分析…' : feature === 'rules-qa' ? '提交问题' : '开始分析'}
+        </button>
+      </section>
+
+      {error && <p className="assistant-error" role="alert">{error}</p>}
+      {pending && (
+        <p className="assistant-pending" role="status">
+          正在整理可见线索并请求 DeepSeek 分析，请稍候…
+        </p>
+      )}
+      {answer && (
+        <section className="assistant-answer" aria-live="polite">
+          <h3>{FEATURES.find((item) => item.id === answer.feature)?.title} · 分析结果</h3>
+          <pre>{answer.content}</pre>
+          {answer.feature === 'speech-prep' && onUseSpeech && (
+            <button type="button" className="btn btn-primary btn-small" onClick={() => onUseSpeech(answer.content)}>
+              复制到我的发言
+            </button>
+          )}
+          <small>分析基于发起请求时的局面。</small>
+        </section>
+      )}
+    </>
+  );
+
+  if (inline) return <section aria-label="AI 助手">{content}</section>;
+
   return (
     <motion.div className="drawer-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
       <motion.aside
@@ -109,73 +186,7 @@ export function AvalonAssistant({
           <button type="button" className="btn btn-ghost btn-small" onClick={onClose}>关闭</button>
         </header>
 
-        <p className="assistant-privacy">
-          发起分析后，你的身份、本人任务牌、已知线索、公开局势及本机预判和笔记会发送给 DeepSeek；用量计入网站配置的 API Key 账户，其他玩家看不到结果。建议仅供推理参考。
-        </p>
-
-        <nav className="assistant-feature-grid" aria-label="助手功能">
-          {FEATURES.map((item) => {
-            const disabled = item.id === 'post-game-review' && view.phase !== 'ended';
-            return (
-              <button
-                key={item.id}
-                type="button"
-                className="assistant-feature"
-                aria-pressed={feature === item.id}
-                disabled={disabled}
-                onClick={() => {
-                  setFeature(item.id);
-                  setError(null);
-                }}
-              >
-                {item.title}
-                {disabled && <small>对局结束后开放</small>}
-              </button>
-            );
-          })}
-        </nav>
-
-        <section className="assistant-selected">
-          <h3>{selected.title}</h3>
-          <p>{selected.description}</p>
-          {feature === 'team-comparison' && view.team.length === 0 && (
-            <p className="assistant-inline-hint">等队长选出候选队伍后，就能比较这支队伍。</p>
-          )}
-          {feature === 'rules-qa' && (
-            <label className="assistant-question">
-              <span>你想问什么？</span>
-              <textarea
-                value={question}
-                onChange={(event) => setQuestion(event.target.value)}
-                placeholder="例如：7 人局第四次任务需要几张失败牌？"
-                maxLength={600}
-                rows={3}
-              />
-            </label>
-          )}
-          <button type="button" className="btn btn-primary assistant-submit" disabled={!featureReady || Boolean(pending)} onClick={request}>
-            {pending ? '正在分析…' : feature === 'rules-qa' ? '提交问题' : '开始分析'}
-          </button>
-        </section>
-
-        {error && <p className="assistant-error" role="alert">{error}</p>}
-        {pending && (
-          <p className="assistant-pending" role="status">
-            正在整理可见线索并请求 DeepSeek 分析，请稍候…
-          </p>
-        )}
-        {answer && (
-          <section className="assistant-answer" aria-live="polite">
-            <h3>{FEATURES.find((item) => item.id === answer.feature)?.title} · 分析结果</h3>
-            <pre>{answer.content}</pre>
-            {answer.feature === 'speech-prep' && onUseSpeech && (
-              <button type="button" className="btn btn-primary btn-small" onClick={() => onUseSpeech(answer.content)}>
-                复制到我的发言
-              </button>
-            )}
-            <small>分析基于发起请求时的局面。</small>
-          </section>
-        )}
+        {content}
       </motion.aside>
     </motion.div>
   );

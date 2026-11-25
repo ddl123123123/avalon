@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react';
+import { memo, useRef, useState, type ReactNode } from 'react';
 import type { Avalon, PlayerId, RoomPlayer } from '@tabletop/shared';
 import { SeatIdentity, TeamRoster } from './SeatIdentity';
 
@@ -7,6 +7,27 @@ const speechStatus = {
   timed_out: '发言时间已结束',
   unavailable: '机器人未能生成发言',
 };
+
+const seatNumber = String.raw`(?:[0-9０-９]{1,2}|[一二两三四五六七八九十])`;
+const seatMention = new RegExp(
+  String.raw`(${seatNumber}(?:[ \t　]*[、,，和与跟][ \t　]*${seatNumber})*)[ \t　]*号(?!码)`,
+  'g',
+);
+const chineseSeats: Record<string, number> = { 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };
+
+function SpeechText({ text, seats }: { text: string; seats: ReadonlySet<number> }) {
+  const parts: ReactNode[] = [];
+  let offset = 0;
+  for (const match of text.matchAll(seatMention)) {
+    const index = match.index!;
+    if (/[0-9０-９一二两三四五六七八九十百千万．.月]/.test(text[index - 1] ?? '')) continue;
+    const numbers = match[1].split(/[、,，和与跟]/).map((number) => number.trim());
+    if (!numbers.every((number) => seats.has(chineseSeats[number] ?? Number(number.normalize('NFKC'))))) continue;
+    parts.push(text.slice(offset, index), <mark key={index} className="av-mention">{match[0]}</mark>);
+    offset = index + match[0].length;
+  }
+  return <>{parts}{text.slice(offset)}</>;
+}
 
 interface Attempt {
   questIndex: number;
@@ -61,12 +82,12 @@ function Votes({ votes, players, approve }: {
   );
 }
 
-export function SpeechLog({ view, players }: { view: Avalon.AvalonView; players: RoomPlayer[] }) {
-  const heading = useId();
+export const SpeechLog = memo(function SpeechLog({ view, players }: { view: Avalon.AvalonView; players: RoomPlayer[] }) {
   const [speaker, setSpeaker] = useState('');
   const [quest, setQuest] = useState('');
   const scroll = useRef<HTMLDivElement>(null);
   const byId = new Map(players.map((player) => [player.id, player]));
+  const seats = new Set(players.map(({ seatIndex }) => seatIndex + 1));
   const attempts = attemptsFor(view);
   const results = attempts.filter((group) =>
     (!quest || group.questIndex === Number(quest)) &&
@@ -74,9 +95,8 @@ export function SpeechLog({ view, players }: { view: Avalon.AvalonView; players:
   );
 
   return (
-    <section className="av-speech-log" aria-labelledby={heading}>
+    <section className="av-speech-log" aria-label="发言记录">
       <header className="av-log-head">
-        <h2 id={heading} tabIndex={-1}>发言记录</h2>
         <div className="av-log-filters" role="group" aria-label="检索发言">
           <label><span>发言人</span>
             <select className="input" value={speaker} onChange={(event) => {
@@ -104,6 +124,8 @@ export function SpeechLog({ view, players }: { view: Avalon.AvalonView; players:
           const leader = proposal?.leader ?? active?.leader;
           const team = proposal?.team ?? active?.team;
           const mission = proposal?.approved ? view.quests.find((item) => item.questIndex === questIndex) : undefined;
+          const inspection = mission && view.lady?.inspections.find(({ afterQuest }) => afterQuest === questIndex);
+          const inspectedAlignment = inspection && view.me?.ladyResults[inspection.target];
           const matching = speaker ? speeches.filter((speech) => speech.player === speaker) : speeches;
           return (
             <article key={`${questIndex}:${attempt}`} className="av-log-attempt">
@@ -123,11 +145,17 @@ export function SpeechLog({ view, players }: { view: Avalon.AvalonView; players:
                   </p>}
                 </div>
               )}
+              {inspection && (
+                <div className="av-log-ballot">
+                  <p>湖中仙女 <SeatIdentity player={byId.get(inspection.by)} /> 查验了 <SeatIdentity player={byId.get(inspection.target)} /></p>
+                  {inspectedAlignment && <p className={`tone-${inspectedAlignment}`}>{inspectedAlignment === 'good' ? '正义方' : '邪恶方'}（仅你可见）</p>}
+                </div>
+              )}
               {[...matching].reverse().map((record) => (
                 <div className="av-log-message" key={record.player}>
                   <SeatIdentity player={byId.get(record.player)} />
                   <p className={`av-speech-body${record.result === 'spoken' ? '' : ' av-log-muted'}`}>
-                    {record.result === 'spoken' ? record.text : speechStatus[record.result]}
+                    {record.result === 'spoken' ? <SpeechText text={record.text} seats={seats} /> : speechStatus[record.result]}
                   </p>
                 </div>
               ))}
@@ -137,4 +165,4 @@ export function SpeechLog({ view, players }: { view: Avalon.AvalonView; players:
       </div>
     </section>
   );
-}
+});

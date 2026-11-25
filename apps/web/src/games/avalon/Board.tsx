@@ -1,5 +1,5 @@
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Avalon, type RoomSnapshot } from '@tabletop/shared';
 import { net } from '../../net/client';
 import { RoundTable } from '../../ui/RoundTable';
@@ -17,6 +17,13 @@ import { SpeechDesk } from './SpeechDesk';
 import { SpeechLog } from './SpeechLog';
 
 type View = Avalon.AvalonView;
+
+const WORKSPACE_VIEWS = [
+  { id: 'log', label: '发言与票型' },
+  { id: 'assistant', label: 'AI 助手' },
+  { id: 'notebook', label: '笔记' },
+] as const;
+type WorkspaceView = (typeof WORKSPACE_VIEWS)[number]['id'];
 
 /** 需要停下来给所有人看的时刻，按发生顺序排队播放。 */
 type Reveal =
@@ -100,6 +107,8 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
   const [showRole, setShowRole] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [speechDraft, setSpeechDraft] = useState('');
+  const [workspaceView, setWorkspaceView] = useState<WorkspaceView>('log');
+  const workspaceId = useId();
   const speechInput = useRef<HTMLTextAreaElement>(null);
   const speechWorkspace = useRef<HTMLElement>(null);
   const [picked, setPicked] = useState<string | null>(null);
@@ -146,16 +155,16 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
 
   const openSpeechLog = () => {
     setShowTools(false);
-    const heading = speechWorkspace.current?.querySelector('h2');
-    heading?.focus({ preventScroll: true });
-    heading?.scrollIntoView({ block: 'start' });
+    setWorkspaceView('log');
+    speechWorkspace.current?.focus({ preventScroll: true });
+    speechWorkspace.current?.scrollIntoView({ block: 'start' });
   };
 
   const useAssistantSpeech = (content: string) => {
     const suggestion = content.trim();
     if (!suggestion) return;
     setSpeechDraft((draft) => draft.trim() ? `${draft.trimEnd()}\n\n${suggestion}` : suggestion);
-    setShowAssistant(false);
+    setWorkspaceView('log');
     const input = speechInput.current;
     input?.focus({ preventScroll: true });
     requestAnimationFrame(() => {
@@ -227,6 +236,10 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
   };
 
   const approvals = voteReveal ? Object.values(voteReveal.votes).filter(Boolean).length : 0;
+  const notebookProps = {
+    currentRound: view.questIndex + 1, players: room.players, you: room.you, roleSet: view.roleSet,
+    notebook, onChange: setNotebook, onClose: () => setShowNotebook(false),
+  };
 
   return (
     <main className={`board av-board${textMode ? ' av-text-board' : ''}${ended && !reveal ? ' board-ended' : ''}${pigTheme ? ' ct-pig-theme' : ''}`}>
@@ -248,19 +261,14 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
             工具 <span aria-hidden="true">{showTools ? '−' : '+'}</span>
           </button>
           <div id="av-room-tools" className="room-bar-actions av-tools-menu" data-expanded={showTools} role="group" aria-label="对局工具">
-            <button type="button" className="btn btn-ghost btn-small" onClick={() => openTool(setShowNotebook)}>
-              笔记
-            </button>
-            <button type="button" className="btn btn-ghost btn-small" onClick={() => openTool(setShowHistory)}>
-              任务记录
-            </button>
-            {textMode && (
+            {textMode ? (
               <button type="button" className="btn btn-ghost btn-small" onClick={openSpeechLog}>发言记录</button>
-            )}
-            {me && (
-              <button type="button" className="btn btn-ghost btn-small" onClick={() => openTool(setShowAssistant)}>
-                AI 助手
-              </button>
+            ) : (
+              <>
+                <button type="button" className="btn btn-ghost btn-small" onClick={() => openTool(setShowNotebook)}>笔记</button>
+                <button type="button" className="btn btn-ghost btn-small" onClick={() => openTool(setShowHistory)}>任务记录</button>
+                {me && <button type="button" className="btn btn-ghost btn-small" onClick={() => openTool(setShowAssistant)}>AI 助手</button>}
+              </>
             )}
             {me && !ended && (
               <button type="button" className="btn btn-ghost btn-small" onClick={() => openTool(setShowRole)}>
@@ -272,7 +280,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
       </header>
 
       {ended && !reveal ? (
-        <EndScreen room={room} view={view} onHistory={() => setShowHistory(true)} />
+        <EndScreen room={room} view={view} onHistory={textMode ? openSpeechLog : () => setShowHistory(true)} />
       ) : (
         <>
           <div className="board-table">
@@ -415,8 +423,27 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
       )}
 
       {textMode && (
-        <aside ref={speechWorkspace} className="av-discussion-workspace" aria-label="圆桌文字发言">
-          <SpeechLog view={view} players={room.players} />
+        <aside ref={speechWorkspace} className="av-discussion-workspace" aria-label="圆桌文字发言" tabIndex={-1}>
+          <div className="av-workspace-nav" role="group" aria-label="文字对局工具">
+            {WORKSPACE_VIEWS.filter(({ id }) => me || id === 'log').map(({ id, label }) => (
+              <button key={id} type="button" aria-pressed={workspaceView === id} aria-controls={`${workspaceId}-${id}`}
+                onClick={() => setWorkspaceView(id)}>{label}</button>
+            ))}
+          </div>
+          <div id={`${workspaceId}-log`} className="av-workspace-view" hidden={workspaceView !== 'log'}>
+            <SpeechLog view={view} players={room.players} />
+          </div>
+          {me && (
+            <>
+              <div id={`${workspaceId}-assistant`} className="av-workspace-view av-workspace-tool" hidden={workspaceView !== 'assistant'}>
+                <AvalonAssistant inline room={room} view={view} notebook={notebook}
+                  onClose={() => setWorkspaceView('log')} onUseSpeech={ended ? undefined : useAssistantSpeech} />
+              </div>
+              <div id={`${workspaceId}-notebook`} className="av-workspace-view av-workspace-tool" hidden={workspaceView !== 'notebook'}>
+                <Notebook inline open={workspaceView === 'notebook'} {...notebookProps} />
+              </div>
+            </>
+          )}
           {me && !ended && <SpeechDesk view={view} gameSeq={room.gameSeq} speechSecondsRemaining={speechSecondsRemaining}
             text={speechDraft} setText={setSpeechDraft} inputRef={speechInput} />}
         </aside>
@@ -445,28 +472,18 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
             onDone={next}
           />
         )}
-        {showHistory && <History key="history" view={view} nameOf={seatNameOf} onClose={() => setShowHistory(false)} />}
-        {showAssistant && me && (
+        {!textMode && showHistory && <History key="history" view={view} nameOf={seatNameOf} onClose={() => setShowHistory(false)} />}
+        {!textMode && showAssistant && me && (
           <AvalonAssistant
             key={`assistant-${room.gameSeq}`}
             room={room}
             view={view}
             notebook={notebook}
             onClose={() => setShowAssistant(false)}
-            onUseSpeech={textMode && !ended ? useAssistantSpeech : undefined}
           />
         )}
       </AnimatePresence>
-      <Notebook
-        open={showNotebook}
-        currentRound={view.questIndex + 1}
-        players={room.players}
-        you={room.you}
-        roleSet={view.roleSet}
-        notebook={notebook}
-        onChange={setNotebook}
-        onClose={() => setShowNotebook(false)}
-      />
+      {!textMode && <Notebook open={showNotebook} {...notebookProps} />}
     </main>
   );
 }

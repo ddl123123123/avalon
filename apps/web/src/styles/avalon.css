@@ -1899,12 +1899,52 @@
 
 .av-discussion-workspace {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   min-width: 0;
   min-height: 0;
   border: 1px solid #d6c49b45;
   border-radius: 10px;
   background: #141e2d;
+}
+
+.av-workspace-nav {
+  display: flex;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 1px solid #d6c49b30;
+}
+
+.av-workspace-nav button {
+  flex: 1 1 auto;
+  min-height: 36px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--vellum-dim);
+  font-size: 0.9rem;
+}
+
+.av-workspace-nav button[aria-pressed='true'] {
+  border-color: #d6c49b45;
+  background: #d6c49b12;
+  color: var(--vellum);
+}
+
+.av-workspace-view {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+
+.av-workspace-view[hidden] { display: none; }
+
+.av-workspace-tool {
+  display: block;
+  padding: 10px 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: var(--gilt) transparent;
 }
 
 .av-speech-log {
@@ -1919,12 +1959,6 @@
   gap: 8px;
   padding: 12px;
   border-bottom: 1px solid #d6c49b30;
-}
-
-.av-log-head h2 {
-  margin: 0;
-  color: var(--gilt-bright);
-  font-size: 1.2rem;
 }
 
 .av-log-filters {
@@ -2026,6 +2060,14 @@
 
 .av-log-message > .av-seat-identity { justify-self: start; }
 .av-log-message .av-speech-body { margin: 0; line-height: 1.55; }
+.av-mention {
+  padding-inline: 0.12em;
+  border-radius: 3px;
+  background: rgba(214, 196, 155, 0.14);
+  color: inherit;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
 
 .av-discussion-workspace .av-speech-composer {
   border-top: 1px solid #d6c49b30;
@@ -2075,7 +2117,7 @@
     margin: 0 12px;
     align-self: start;
   }
-  .av-text-board:not(.board-ended) .av-log-scroll {
-    height: clamp(210px, 37dvh, 370px);
+  .av-text-board:not(.board-ended) .av-workspace-view {
+    height: clamp(240px, 42dvh, 420px);
   }
 }

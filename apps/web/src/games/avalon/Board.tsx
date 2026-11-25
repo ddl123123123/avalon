@@ -159,7 +159,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
       view.players.filter((id) => !view.lady!.pastHolders.includes(id)).forEach((id) => pickableIds.add(id));
     }
     if (view.phase === 'assassin' && view.assassin === me.id) {
-      view.players.filter((id) => id !== me.id && me.sightings[id] !== 'evil').forEach((id) => pickableIds.add(id));
+      me.assassinationTargets.forEach((id) => pickableIds.add(id));
     }
   }
 
@@ -366,6 +366,8 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
             ) : (
               <Dock
                 view={view}
+                players={room.players}
+                gameSeq={room.gameSeq}
                 nameOf={seatNameOf}
                 picked={picked}
                 preselectedTeam={preselectedTeam}
@@ -409,7 +411,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
           />
         )}
         {showHistory && <History key="history" view={view} nameOf={seatNameOf} onClose={() => setShowHistory(false)} />}
-        {showSpeeches && <SpeechLog key="speeches" speeches={view.speeches} nameOf={seatNameOf} onClose={() => setShowSpeeches(false)} />}
+        {showSpeeches && <SpeechLog key="speeches" speeches={view.speeches} players={room.players} onClose={() => setShowSpeeches(false)} />}
         {showAssistant && me && (
           <AvalonAssistant
             key={`assistant-${room.gameSeq}`}

@@ -15,7 +15,7 @@ import {
 } from '@tabletop/shared';
 import { answerAvalonAssistant } from './deepseek';
 import {
-  askAvalonBot, botModelDirectory, decisionToken, localBotModel, modelFor, needsAvalonModel, rememberAction,
+  askAvalonBot, botModelDirectory, decisionToken, localBotModel, modelFor, needsAvalonModel, rememberAction, speechEditorFor,
   type BotMemory,
 } from './avalon-bot';
 
@@ -34,6 +34,7 @@ interface Member {
   name: string;
   isBot: boolean;
   avalonProfile?: string;
+  polishRequest?: AbortController;
   connection: Connection | null;
   /** 大厅里断线后的清理定时器 */
   dropTimer: NodeJS.Timeout | null;
@@ -47,6 +48,7 @@ interface Room {
   status: RoomStatus;
   options: unknown;
   targetPlayers: number | null;
+  defaultAvalonProfile?: string;
   state: unknown | null;
   gameSeq: number;
   botTimers: Map<PlayerId, NodeJS.Timeout>;
@@ -67,7 +69,7 @@ const EMPTY_ROOM_MS = 10 * 60_000;
 const AI_PLAYER_COOLDOWN_MS = 6_000;
 const AI_ROOM_WINDOW_MS = 10 * 60_000;
 const AI_ROOM_REQUEST_LIMIT = 60;
-const AI_FEATURES = new Set(['team-comparison', 'role-coach', 'speech-prep', 'speech-summary', 'rules-qa', 'post-game-review']);
+const AI_FEATURES = new Set(['team-comparison', 'role-coach', 'speech-prep', 'speech-polish', 'speech-summary', 'rules-qa', 'post-game-review']);
 /** 机器人行动间隔的倍率。调试时设 BOT_PACE=0.1 可以让机器人快十倍。 */
 const BOT_PACE = Math.max(0, Number(process.env.BOT_PACE ?? 1) || 1);
 const BOT_NAMES = ['高文', '兰斯洛特', '加拉哈德', '特里斯坦', '凯', '贝狄威尔', '格尼薇儿', '伊莲', '鲍斯'];
@@ -211,19 +213,22 @@ export class RoomManager {
         if (room.members.length >= (room.targetPlayers ?? room.game.maxPlayers)) throw new GameError('房间已满');
         const used = new Set(room.members.map((m) => m.name));
         const name = BOT_NAMES.find((n) => !used.has(n)) ?? `骑士${room.members.length + 1}`;
-        room.members.push({ id: newId(), seatIndex: this.firstFreeSeat(room), clientId: null, name, isBot: true, connection: null, dropTimer: null });
+        room.members.push({ id: newId(), seatIndex: this.firstFreeSeat(room), clientId: null, name, isBot: true, avalonProfile: room.defaultAvalonProfile, connection: null, dropTimer: null });
         return this.broadcast(room);
       }
-      case 'set_avalon_bot_model': {
+      case 'set_avalon_bot_model':
+      case 'set_avalon_bot_models': {
         hostOnly();
         lobbyOnly();
         if (room.game.id !== Avalon.avalon.id) throw new GameError('当前桌游没有阿瓦隆模型设置');
-        const bot = room.members.find((m) => m.id === msg.playerId && m.isBot);
-        if (!bot) throw new GameError('请选择有效的机器人座位');
+        const bots = room.members.filter((m) => m.isBot && (msg.type === 'set_avalon_bot_models' || m.id === msg.playerId));
+        if (!bots.length) throw new GameError('请选择有效的机器人座位');
         if (msg.profile !== null && msg.profile !== localBotModel && !this.botModels.profiles.has(msg.profile)) {
           throw new GameError('请选择服务器已配置的模型');
         }
-        bot.avalonProfile = msg.profile ?? undefined;
+        const profile = msg.profile ?? undefined;
+        for (const bot of bots) bot.avalonProfile = profile;
+        if (msg.type === 'set_avalon_bot_models') room.defaultAvalonProfile = profile;
         return this.broadcast(room);
       }
       case 'kick': {
@@ -331,6 +336,8 @@ export class RoomManager {
 
     const already = room.members.find((m) => m.clientId === conn.clientId);
     if (already) {
+      const elsewhere = this.find(conn);
+      if (elsewhere && elsewhere.room !== room) this.leave(elsewhere.room, elsewhere.member);
       if (typeof rawName === 'string' && rawName.trim() && room.status === 'lobby') already.name = cleanName(rawName);
       return this.attach(room, already, conn);
     }
@@ -356,10 +363,12 @@ export class RoomManager {
 
   private attach(room: Room, member: Member, conn: Connection) {
     if (member.connection && member.connection !== conn) {
+      this.cancelPolish(member);
       member.connection.send({ type: 'left', reason: '你在另一个窗口打开了这个房间' });
       member.connection.clientId = null;
     }
     member.connection = conn;
+    if (member.clientId) this.seats.set(member.clientId, room.code);
     if (member.dropTimer) clearTimeout(member.dropTimer);
     member.dropTimer = null;
     this.touch(room);
@@ -380,6 +389,7 @@ export class RoomManager {
     const seat = this.find(conn);
     if (!seat || seat.member.connection !== conn) return;
     const { room, member } = seat;
+    this.cancelPolish(member);
     member.connection = null;
     if (room.status === 'lobby') {
       member.dropTimer = setTimeout(() => {
@@ -395,6 +405,7 @@ export class RoomManager {
 
   private leave(room: Room, member: Member) {
     const conn = member.connection;
+    this.cancelPolish(member);
     if (room.status === 'lobby') {
       this.remove(room, member, null);
     } else {
@@ -409,6 +420,7 @@ export class RoomManager {
   }
 
   private remove(room: Room, member: Member, reason: string | null) {
+    this.cancelPolish(member);
     room.members = room.members.filter((m) => m !== member);
     if (member.dropTimer) clearTimeout(member.dropTimer);
     if (member.clientId && this.seats.get(member.clientId) === room.code) this.seats.delete(member.clientId);
@@ -506,6 +518,19 @@ export class RoomManager {
 
     // GameDefinition.view 会按当前玩家过滤身份信息；绝不把原始状态或其他人的隐藏身份交给模型。
     const view = room.game.view(room.state, member.id) as Avalon.AvalonView;
+    let draft: string | undefined;
+    const editor = msg.feature === 'speech-polish' ? speechEditorFor(this.botModels) : undefined;
+    if (msg.feature === 'speech-polish') {
+      if (!editor) return fail('服务端尚未配置润色模型。');
+      if (member.polishRequest) return fail('上一条发言还在润色。');
+      const source = msg.draft;
+      if (!source || source.gameSeq !== room.gameSeq || view.speechMode !== 'text' ||
+          view.discussion?.currentSpeaker !== member.id || source.turn !== view.discussion.turn || Date.now() >= view.discussion.deadline) {
+        return fail('当前文字发言轮次已更新。');
+      }
+      if (typeof source.text !== 'string' || !source.text.trim()) return fail('请先输入发言原文。');
+      draft = source.text.trim();
+    }
     let speech: { round: number; text: string } | undefined;
     if (msg.feature === 'speech-summary') {
       const entry = msg.speech;
@@ -524,6 +549,21 @@ export class RoomManager {
     if (room.aiRequestHistory.length >= AI_ROOM_REQUEST_LIMIT) return fail('本房间的助手调用较多，请稍后再试。');
     room.aiRequestTimes.set(member.id, now);
     room.aiRequestHistory.push(now);
+
+    if (msg.feature === 'speech-polish') {
+      const controller = new AbortController();
+      member.polishRequest = controller;
+      const reply = (message: ServerMessage) => {
+        if (member.polishRequest !== controller) return;
+        member.polishRequest = undefined;
+        if (member.connection === conn) conn.send(message);
+      };
+      void answerAvalonAssistant({ feature: msg.feature, draft: draft!, profile: editor!, signal: controller.signal }).then(
+        (content) => reply({ type: 'avalon_assistant_result', requestId, content }),
+        (error: unknown) => reply({ type: 'avalon_assistant_error', requestId, message: error instanceof Error ? error.message : 'AI 润色暂时不可用。' }),
+      );
+      return;
+    }
 
     const players: RoomPlayer[] = room.members.map((player) => ({
       id: player.id,
@@ -558,6 +598,12 @@ export class RoomManager {
     room.speechTimer = undefined;
     for (const controller of room.avalonAgents?.running.values() ?? []) controller.abort();
     room.avalonAgents?.running.clear();
+    for (const member of room.members) this.cancelPolish(member);
+  }
+
+  private cancelPolish(member: Member) {
+    member.polishRequest?.abort();
+    member.polishRequest = undefined;
   }
 
   private playerViews(room: Room): RoomPlayer[] {
@@ -685,6 +731,7 @@ export class RoomManager {
         avalonModels: {
           profiles: [...this.botModels.profiles.values()].map(({ id, label }) => ({ id, label })),
           seats: Object.fromEntries(room.members.filter((m) => m.isBot).map((m) => [m.id, m.avalonProfile ?? null])),
+          defaultForNewBots: room.defaultAvalonProfile ?? null,
         },
       } : {}),
     };

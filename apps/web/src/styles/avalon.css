@@ -1811,3 +1811,104 @@
     font-size: 0.85rem;
   }
 }
+
+.av-model-bulk,
+.av-model-individual {
+  display: grid;
+  gap: 8px;
+}
+.av-model-bulk {
+  padding: 10px;
+  border: 1px solid #d6c49b45;
+  border-radius: 6px;
+  background: #d6c49b0e;
+}
+.av-model-bulk .btn { justify-self: end; }
+.av-model-individual .av-seat-identity { justify-self: start; }
+
+.av-seat-identity {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  max-width: 100%;
+  min-width: 0;
+  padding: 2px 7px 2px 3px;
+  vertical-align: middle;
+  color: var(--vellum);
+  background: #d6c49b16;
+  border: 1px solid #d6c49b50;
+  border-radius: 999px;
+}
+.av-seat-number {
+  flex: none;
+  padding: 0 0.38em;
+  color: #181710;
+  background: var(--gilt-bright);
+  border-radius: 999px;
+  font-weight: 700;
+  line-height: 1.42;
+}
+.av-seat-handle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.av-playfield .seat-name .av-seat-identity {
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+.av-playfield .seat-name .seat-you { flex: none; }
+.av-team-roster,
+.av-speech-author {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 9px;
+  min-width: 0;
+}
+.av-team-roster { margin-top: 6px; font-size: 0.85rem; }
+.av-team-roster ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.av-team-roster li { min-width: 0; max-width: 100%; }
+.av-team-label,
+.av-polish-heading { color: var(--gilt-bright); font-weight: 600; }
+.av-team-empty,
+.av-speech-author small { color: var(--vellum-dim); }
+.dock-waiting .av-team-roster,
+.dock-waiting .av-team-roster ul { justify-content: center; }
+
+.av-polish-preview {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #d6c49b55;
+  background: #d6c49b12;
+}
+.av-polish-text {
+  max-height: 19vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+.av-polish-preview .btn { min-height: 32px; }
+.av-polish-preview .btn[aria-pressed='true'] {
+  background: #d6c49b33;
+  box-shadow: inset 0 0 0 1px var(--gilt);
+}
+.av-polish-error { color: var(--ruby-soft); }
+
+@media (max-width: 700px) {
+  .av-team-roster,
+  .av-team-roster ul { justify-content: center; }
+}

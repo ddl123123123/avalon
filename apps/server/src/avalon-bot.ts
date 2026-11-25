@@ -1,7 +1,7 @@
 import { Avalon, type PlayerId, type RoomPlayer } from '@tabletop/shared';
 import { avalonBotSystem } from './avalon-skills';
 
-interface Profile {
+export interface BotModelProfile {
   id: string;
   label: string;
   model: string;
@@ -11,7 +11,7 @@ interface Profile {
 }
 
 export interface BotModelDirectory {
-  profiles: Map<string, Profile>;
+  profiles: Map<string, BotModelProfile>;
   roles: Partial<Record<Avalon.Role, string>>;
 }
 
@@ -32,7 +32,7 @@ function endpointFor(base: unknown): string | null {
 }
 
 export function botModelDirectory(env: NodeJS.ProcessEnv): BotModelDirectory {
-  const profiles = new Map<string, Profile>();
+  const profiles = new Map<string, BotModelProfile>();
   const key = env.DEEPSEEK_API_KEY?.trim();
   const endpoint = endpointFor(env.DEEPSEEK_BASE_URL?.trim() || 'https://api.deepseek.com');
   if (key && endpoint) {
@@ -76,7 +76,11 @@ export function botModelDirectory(env: NodeJS.ProcessEnv): BotModelDirectory {
 
 export function modelFor(directory: BotModelDirectory, role: Avalon.Role, override?: string) {
   const selected = override ?? directory.roles[role];
-  return selected ? directory.profiles.get(selected) : directory.profiles.get(defaultProfile) ?? directory.profiles.values().next().value;
+  return selected ? directory.profiles.get(selected) : speechEditorFor(directory);
+}
+
+export function speechEditorFor(directory: BotModelDirectory) {
+  return directory.profiles.get(defaultProfile) ?? directory.profiles.values().next().value;
 }
 
 export type BotAction = Avalon.AvalonAction;
@@ -111,10 +115,8 @@ export function rememberAction(memory: BotMemory, view: Avalon.AvalonView, actio
 }
 
 function targets(type: 'lady' | 'assassinate', view: Avalon.AvalonView) {
-  const me = view.me!;
-  return view.players.filter((player) => player !== me.id && (
-    type === 'lady' ? !view.lady?.pastHolders.includes(player) : me.sightings[player] !== 'evil'
-  ));
+  return type === 'assassinate' ? view.me!.assassinationTargets
+    : view.players.filter((player) => player !== view.me!.id && !view.lady?.pastHolders.includes(player));
 }
 
 function instructions(view: Avalon.AvalonView, action: Decision, players: RoomPlayer[]) {
@@ -215,7 +217,7 @@ export function decodeAvalonBotReply(content: string, view: Avalon.AvalonView, p
 }
 
 export async function askAvalonBot(
-  profile: Profile, view: Avalon.AvalonView, players: RoomPlayer[], memory: BotMemory,
+  profile: BotModelProfile, view: Avalon.AvalonView, players: RoomPlayer[], memory: BotMemory,
   action: Decision, signal: AbortSignal,
 ) {
   if (!view.me) return null;

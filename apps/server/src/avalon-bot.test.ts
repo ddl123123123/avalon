@@ -18,7 +18,7 @@ function fixtures() {
 }
 
 test('agents receive only their legal identity clues and decoder rejects illegal actions', () => {
-  const state = fixtures();
+  const state = { ...fixtures(), phase: 'assassin' as const };
   const assassin = Avalon.avalon.view(state, 'a');
   const merlin = Avalon.avalon.view(state, 'm');
   const memory = { actions: [], note: '' };
@@ -55,9 +55,15 @@ test('a room runs an entire discussion with independently routed bots and one hu
   const previous = Object.fromEntries(Object.keys(env).map((key) => [key, process.env[key]]));
   Object.assign(process.env, env);
   const requests: { seat: number; model: string; prompt: string; memory: { note: string } }[] = [];
+  const drafts: unknown[] = [];
+  const polished = '我先看这支队伍的投票，下一轮再考虑换人。';
   t.mock.method(globalThis, 'fetch', async (_url: string, init: RequestInit) => {
     const body = JSON.parse(init.body as string);
     const context = JSON.parse(body.messages[1].content);
+    if ('draft' in context) {
+      drafts.push(context);
+      return Response.json({ choices: [{ message: { content: polished } }] });
+    }
     const seat = context.self.seat as number;
     requests.push({ seat, model: body.model, prompt: body.messages[0].content, memory: context.memory });
     const action = context.instruction.action;
@@ -69,12 +75,14 @@ test('a room runs an entire discussion with independently routed bots and one hu
     const { RoomManager } = await import('./rooms');
     const rooms: RoomManager = new RoomManager();
     let snapshot: Extract<ServerMessage, { type: 'room' }>['room'] | undefined;
+    let preview: Extract<ServerMessage, { type: 'avalon_assistant_result' }> | undefined;
     const errors: string[] = [];
     const conn: Connection = {
       clientId: null,
       send(message) {
         if (message.type === 'room') snapshot = message.room;
         if (message.type === 'error') errors.push(message.message);
+        if (message.type === 'avalon_assistant_result') preview = message;
       },
     };
     const send = (msg: ClientMessage) => rooms.handle(conn, msg);
@@ -82,7 +90,11 @@ test('a room runs an entire discussion with independently routed bots and one hu
     send({ type: 'hello', clientId: 'mock-avalon-seat-one' });
     send({ type: 'create_room', name: '测试信号', gameId: 'avalon' });
     send({ type: 'set_options', options: { botDifficulty: 'advanced' } });
-    for (let i = 0; i < 4; i++) send({ type: 'add_bot' });
+    for (let i = 0; i < 3; i++) send({ type: 'add_bot' });
+    send({ type: 'set_avalon_bot_models', profile: 'deepseek' });
+    send({ type: 'add_bot' });
+    assert.deepEqual(Object.values(snapshot!.avalonModels!.seats), Array(4).fill('deepseek'));
+    assert.equal(snapshot!.avalonModels!.defaultForNewBots, 'deepseek');
     const seatTwo = snapshot!.players[1];
     send({ type: 'set_avalon_bot_model', playerId: seatTwo.id, profile: 'alt' });
     send({ type: 'start_game' });
@@ -103,7 +115,14 @@ test('a room runs an entire discussion with independently routed bots and one hu
       }
       if (view.phase === 'discussion' && view.discussion?.currentSpeaker === room.you && !acted.has(view.discussion.turn)) {
         acted.add(view.discussion.turn);
-        act({ type: 'submit_speech', turn: view.discussion.turn, text: '这队先留一轮票，后面再换。' });
+        const original = '这队先留一轮票，后面再换。';
+        send({ type: 'avalon_assistant', feature: 'speech-polish', requestId: 'test-polish',
+          draft: { gameSeq: room.gameSeq, turn: view.discussion.turn, text: original } });
+        for (let attempt = 0; !preview && attempt < 50; attempt++) await pause(10);
+        assert.deepEqual(drafts, [{ draft: original }]);
+        assert.deepEqual(preview, { type: 'avalon_assistant_result', requestId: 'test-polish', content: polished });
+        assert.equal((snapshot!.view as Avalon.AvalonView).speeches.length, view.speeches.length);
+        act({ type: 'submit_speech', turn: view.discussion.turn, text: polished });
       }
       await pause(10);
     }
@@ -112,6 +131,7 @@ test('a room runs an entire discussion with independently routed bots and one hu
     assert.equal(view.speechMode, 'text');
     assert.equal(view.phase, 'vote');
     assert.equal(view.speeches.filter((speech) => speech.result === 'spoken').length, 5);
+    assert.equal(view.speeches.find((speech) => speech.player === snapshot!.you)?.text, polished);
     assert.equal(view.voted.length, 4);
     for (const call of requests) {
       assert.equal(call.model, call.seat === 2 ? 'alternate' : 'deepseek-flash');

@@ -183,10 +183,13 @@ export interface AvalonView {
     myQuestCard: boolean | null;
     /** 我用湖中仙女查验到的阵营 */
     ladyResults: Record<PlayerId, Alignment>;
+    /** 仅在刺杀阶段给刺客下发合法的正义方目标。 */
+    assassinationTargets: PlayerId[];
   };
 }
 
 const alignmentOf = (role: Role): Alignment => ROLES[role].alignment;
+const assassinationTargets = (state: AvalonState) => state.players.filter((id) => alignmentOf(state.roles[id]!) === 'good');
 
 function sightingsFor(state: AvalonState, viewer: PlayerId): Record<PlayerId, Sighting> {
   const role = state.roles[viewer]!;
@@ -515,14 +518,9 @@ function reduce(prev: AvalonState, player: PlayerId, action: AvalonAction, rng: 
     case 'assassinate': {
       if (state.phase !== 'assassin') throw new GameError('现在不是刺杀阶段');
       if (state.roles[player] !== 'assassin') throw new GameError('只有刺客可以动手');
-      const targetRole = state.roles[action.target];
-      if (!targetRole) throw new GameError('目标必须是本局玩家');
-      if (alignmentOf(targetRole) === 'evil' && targetRole !== 'oberon') {
-        throw new GameError('不能刺杀你认识的同伴');
-      }
-      if (action.target === player) throw new GameError('不能刺杀自己');
+      if (!assassinationTargets(state).includes(action.target)) throw new GameError('只能指认一名正义方玩家');
       state.assassinTarget = action.target;
-      if (targetRole === 'merlin') finish(state, 'evil', 'assassinated');
+      if (state.roles[action.target] === 'merlin') finish(state, 'evil', 'assassinated');
       else finish(state, 'good', 'merlin_safe');
       return state;
     }
@@ -553,6 +551,7 @@ function view(state: AvalonState, viewer: PlayerId | null): AvalonView {
       myVote: viewer in state.votes ? state.votes[viewer]! : null,
       myQuestCard: viewer in state.questCards ? state.questCards[viewer]! : null,
       ladyResults,
+      assassinationTargets: state.phase === 'assassin' && role === 'assassin' ? assassinationTargets(state) : [],
     };
   }
 
@@ -638,8 +637,7 @@ function botAction(state: AvalonState, player: PlayerId, rng: Rng): AvalonAction
     }
     case 'assassin': {
       if (role !== 'assassin') return null;
-      const targets = state.players.filter((id) => id !== player && known[id] !== 'evil');
-      return { type: 'assassinate', target: pick(targets, rng) };
+      return { type: 'assassinate', target: pick(assassinationTargets(state), rng) };
     }
     default:
       return null;

@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import type { RoomPlayer } from '@tabletop/shared';
 import { Crown } from '../../art/glass';
+import { SeatIdentity } from './SeatIdentity';
 import { LadyToken, TeamMark, VoteToken } from './art';
 
 export interface SeatProps {
@@ -103,7 +104,7 @@ export function Seat(p: SeatProps) {
         </AnimatePresence>
       </motion.div>
       <div className="seat-name">
-        <span className="seat-player-name">{p.player.name}</span>
+        <SeatIdentity player={p.player} />
         {p.isMe && <span className="seat-you">你</span>}
       </div>
       <div className="seat-note">
@@ -116,7 +117,7 @@ export function Seat(p: SeatProps) {
 
   if (p.pickable) {
     return (
-      <button type="button" className={classes} aria-pressed={p.picked} onClick={p.onPick}>
+      <button type="button" className={classes} aria-pressed={p.picked || p.onTeam} onClick={p.onPick}>
         {body}
       </button>
     );

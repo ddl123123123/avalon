@@ -124,6 +124,7 @@ export function forgetRecentRoom(code: string) {
 let socket: WebSocket | null = null;
 let retry = 0;
 let noticeId = 0;
+let pendingPolish: { id: string; finish: (result: { content: string } | { message: string }) => void } | null = null;
 /** 断线重连后要回到的房间 */
 let intent: { code: string; name: string } | null = null;
 
@@ -169,6 +170,9 @@ function connect() {
         }
         break;
       case 'room':
+        if (state.room?.code !== msg.room.code || state.room?.gameSeq !== msg.room.gameSeq || msg.room.status !== 'playing') {
+          pendingPolish?.finish({ message: '原发言轮次已结束。' });
+        }
         intent = { code: msg.room.code, name: getName() };
         set({
           room: msg.room,
@@ -178,12 +182,15 @@ function connect() {
         });
         break;
       case 'avalon_assistant_result':
-        set({ assistantResult: { requestId: msg.requestId, content: msg.content } });
+        if (pendingPolish?.id === msg.requestId) pendingPolish.finish({ content: msg.content });
+        else set({ assistantResult: { requestId: msg.requestId, content: msg.content } });
         break;
       case 'avalon_assistant_error':
-        set({ assistantError: { requestId: msg.requestId, message: msg.message } });
+        if (pendingPolish?.id === msg.requestId) pendingPolish.finish({ message: msg.message });
+        else set({ assistantError: { requestId: msg.requestId, message: msg.message } });
         break;
       case 'left':
+        pendingPolish?.finish({ message: '已离开当前对局。' });
         intent = null;
         set({ room: null, joining: null, lastRoomCode: null });
         navigate('/');
@@ -202,6 +209,7 @@ function connect() {
   ws.onclose = () => {
     if (socket !== ws) return;
     socket = null;
+    pendingPolish?.finish({ message: '连接已断开，原稿仍可继续编辑。' });
     set({ link: 'offline' });
     retry += 1;
     setTimeout(connect, Math.min(4000, 400 * 2 ** Math.min(retry, 4)));
@@ -245,12 +253,30 @@ export const net = {
   setPlayerCount: (playerCount: number) => raw({ type: 'set_player_count', playerCount }),
   addBot: () => raw({ type: 'add_bot' }),
   setAvalonBotModel: (playerId: string, profile: string | null) => raw({ type: 'set_avalon_bot_model', playerId, profile }),
+  setAvalonBotModels: (profile: string | null) => raw({ type: 'set_avalon_bot_models', profile }),
   kick: (playerId: string) => raw({ type: 'kick', playerId }),
   startGame: () => raw({ type: 'start_game' }),
   act: (action: unknown) => raw({ type: 'game_action', action }),
   askAvalonAssistant(input: Omit<Extract<ClientMessage, { type: 'avalon_assistant' }>, 'type'>) {
     set({ assistantResult: null, assistantError: null });
     return raw({ type: 'avalon_assistant', ...input });
+  },
+  polishAvalonSpeech(draft: { gameSeq: number; turn: string; text: string }): Promise<string> {
+    if (pendingPolish) return Promise.reject(new Error('上一条发言还在润色。'));
+    const id = `polish-${crypto.randomUUID?.() ?? crypto.getRandomValues(new Uint32Array(4)).join('-')}`;
+    return new Promise((resolve, reject) => {
+      const finish = (result: { content: string } | { message: string }) => {
+        clearTimeout(timer);
+        pendingPolish = null;
+        if ('message' in result) reject(new Error(result.message));
+        else resolve(result.content);
+      };
+      const timer = window.setTimeout(() => finish({ message: '润色超时，你仍可以发送原文。' }), 20_000);
+      pendingPolish = { id, finish };
+      if (!raw({ type: 'avalon_assistant', feature: 'speech-polish', requestId: id, draft })) {
+        finish({ message: '未能发起润色，你仍可以发送原文。' });
+      }
+    });
   },
   backToLobby: () => raw({ type: 'back_to_lobby' }),
 };

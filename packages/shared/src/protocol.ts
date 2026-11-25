@@ -34,6 +34,7 @@ export interface RoomSnapshot {
   avalonModels?: {
     profiles: { id: string; label: string }[];
     seats: Record<PlayerId, string | null>;
+    defaultForNewBots: string | null;
   };
 }
 
@@ -41,6 +42,7 @@ export type AvalonAssistantFeature =
   | 'team-comparison'
   | 'role-coach'
   | 'speech-prep'
+  | 'speech-polish'
   | 'speech-summary'
   | 'rules-qa'
   | 'post-game-review';
@@ -56,6 +58,7 @@ export type ClientMessage =
   | { type: 'set_player_count'; playerCount: number }
   | { type: 'add_bot' }
   | { type: 'set_avalon_bot_model'; playerId: PlayerId; profile: string | null }
+  | { type: 'set_avalon_bot_models'; profile: string | null }
   | { type: 'kick'; playerId: PlayerId }
   | { type: 'start_game' }
   | { type: 'game_action'; action: unknown }
@@ -66,6 +69,7 @@ export type ClientMessage =
       question?: string;
       privateNotes?: string;
       speech?: { round: number; text: string };
+      draft?: { gameSeq: number; turn: string; text: string };
     }
   | { type: 'back_to_lobby' };
 

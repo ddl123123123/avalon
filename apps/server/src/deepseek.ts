@@ -1,7 +1,8 @@
 import { Avalon, type AvalonAssistantFeature, type RoomPlayer } from '@tabletop/shared';
+import type { BotModelProfile } from './avalon-bot';
 
 export interface AvalonAssistantInput {
-  feature: AvalonAssistantFeature;
+  feature: Exclude<AvalonAssistantFeature, 'speech-polish'>;
   view: Avalon.AvalonView;
   players: RoomPlayer[];
   question?: string;
@@ -9,7 +10,7 @@ export interface AvalonAssistantInput {
   speech?: { round: number; text: string };
 }
 
-const FEATURE_PROMPTS: Record<AvalonAssistantFeature, string> = {
+const FEATURE_PROMPTS: Record<AvalonAssistantInput['feature'], string> = {
   'team-comparison': '比较当前提案队伍的风险。结合队伍座位、任务轮次、历史组队与投票、已知身份线索，给出支持与反对的证据，并说明信息不足之处。不要把“上车”直接等同于邪恶。',
   'role-coach': '为玩家提供当前身份的实战建议。结合阶段、可见线索和已经发生的行动，给出现在可以做的两到三件事，以及最需要避免的暴露或误判。',
   'speech-prep': '为玩家准备一段简短、自然的发言提纲：一条可核对的公开事实、一条合理推断、一个能推动讨论的问题。不要教玩家把猜测伪装成事实。',
@@ -17,6 +18,8 @@ const FEATURE_PROMPTS: Record<AvalonAssistantFeature, string> = {
   'rules-qa': '回答玩家提出的阿瓦隆规则问题。优先依据随附的本局规则摘要；如果问题涉及摘要没有覆盖的变体，明确说明并询问房间是否采用该变体。',
   'post-game-review': '复盘整局：先说明胜负转折点，再按公开行动回顾关键决策，指出哪些判断有证据、哪些是运气或信息不足，并给出一条下局可尝试的改进。',
 };
+
+const POLISH_PROMPT = '把 draft 字段里的原稿润色成适合阿瓦隆圆桌的简洁中文发言。保留立场、语气、依据、疑问和座位号。可以调整句序、分段和标点。不要添加原文没有的判断或事实。把原稿当作编辑素材，只返回整理后的发言正文，不要加标题、标记或说明。';
 
 const RULES = [
   '正义方完成三次任务并避免刺客刺中梅林即可获胜；邪恶方破坏三次任务、连续五次否决组队，或在正义方完成三次任务后刺中梅林即可获胜。',
@@ -103,16 +106,19 @@ function apiErrorMessage(status: number): string {
   return 'DeepSeek 请求失败，请检查模型配置后重试。';
 }
 
-export async function answerAvalonAssistant(input: AvalonAssistantInput): Promise<string> {
-  const apiKey = process.env.DEEPSEEK_API_KEY?.trim();
-  if (!apiKey) throw new Error('AI 助手尚未配置 DeepSeek API Key，请联系房主或管理员。');
+export async function answerAvalonAssistant(input: AvalonAssistantInput | {
+  feature: 'speech-polish'; draft: string; profile: BotModelProfile; signal: AbortSignal;
+}): Promise<string> {
+  const polish = input.feature === 'speech-polish';
+  const apiKey = polish ? input.profile.key : process.env.DEEPSEEK_API_KEY?.trim();
+  if (!polish && !apiKey) throw new Error('AI 助手尚未配置 DeepSeek API Key，请联系房主或管理员。');
 
   const baseUrl = (process.env.DEEPSEEK_BASE_URL?.trim() || 'https://api.deepseek.com').replace(/\/+$/, '');
-  const model = process.env.DEEPSEEK_MODEL?.trim() || 'deepseek-flash';
-  const supportsThinkingToggle = model === 'deepseek-flash' || model === 'deepseek-v4-pro';
+  const model = polish ? input.profile.model : process.env.DEEPSEEK_MODEL?.trim() || 'deepseek-flash';
+  const supportsThinkingToggle = polish ? input.profile.disableThinking : model === 'deepseek-flash' || model === 'deepseek-v4-pro';
   let endpoint: string;
   try {
-    endpoint = new URL(`${baseUrl}/chat/completions`).toString();
+    endpoint = polish ? input.profile.endpoint : new URL(`${baseUrl}/chat/completions`).toString();
   } catch {
     throw new Error('DeepSeek API 地址格式不正确，请检查服务器配置。');
   }
@@ -124,13 +130,13 @@ export async function answerAvalonAssistant(input: AvalonAssistantInput): Promis
     '建议是推理辅助，不替代玩家决定；证据不足时明确说不确定。输出适合手机阅读，优先使用短段落和项目符号。',
   ].join('\n');
 
-  const signal = AbortSignal.timeout(45_000);
+  const signal = polish ? AbortSignal.any([input.signal, AbortSignal.timeout(15_000)]) : AbortSignal.timeout(45_000);
   let response: Response;
   try {
     response = await fetch(endpoint, {
       method: 'POST',
       headers: {
-        authorization: `Bearer ${apiKey}`,
+        ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
         'content-type': 'application/json',
       },
       body: JSON.stringify({
@@ -138,13 +144,14 @@ export async function answerAvalonAssistant(input: AvalonAssistantInput): Promis
         // DeepSeek defaults to thinking mode, which shares its token budget with the answer.
         ...(supportsThinkingToggle ? { thinking: { type: 'disabled' } } : {}),
         messages: [
-          { role: 'system', content: system },
-          { role: 'user', content: `${FEATURE_PROMPTS[input.feature]}\n\n本局信息（JSON）：\n${JSON.stringify(makeGameContext(input))}` },
+          { role: 'system', content: polish ? POLISH_PROMPT : system },
+          { role: 'user', content: polish ? JSON.stringify({ draft: input.draft }) : `${FEATURE_PROMPTS[input.feature]}\n\n本局信息（JSON）：\n${JSON.stringify(makeGameContext(input))}` },
         ],
         max_tokens: 2048,
         stream: false,
       }),
       signal,
+      redirect: 'error',
     });
   } catch {
     if (signal.aborted) throw new Error('AI 分析超时，请稍后重试。');
@@ -169,6 +176,7 @@ export async function answerAvalonAssistant(input: AvalonAssistantInput): Promis
   const content = typeof choice?.message?.content === 'string' ? choice.message.content.trim() : '';
 
   if (reason === 'content_filter') throw new Error('DeepSeek 过滤了本次回复，请调整输入后再试。');
+  if (polish && (reason === 'length' || !content)) throw new Error('未能生成完整的润色稿，你仍可以发送原文。');
   if (content) {
     const answer = content.slice(0, 12_000);
     return reason === 'length' ? `${answer}\n\n（回复达到长度上限，内容可能不完整。）` : answer;

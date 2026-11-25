@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion';
-import { useId, useState } from 'react';
-import { Avalon } from '@tabletop/shared';
+import { useId, useState, type ReactNode } from 'react';
+import { Avalon, type RoomPlayer } from '@tabletop/shared';
 import { net } from '../../net/client';
+import { TeamRoster } from './SeatIdentity';
 import { QuestCard, VoteToken } from './art';
 import { SpeechDesk } from './SpeechDesk';
 
@@ -13,6 +14,8 @@ type View = Avalon.AvalonView;
  */
 export function Dock({
   view,
+  players,
+  gameSeq,
   nameOf,
   picked,
   preselectedTeam,
@@ -25,6 +28,8 @@ export function Dock({
   onShowSpeechLog,
 }: {
   view: View;
+  players: RoomPlayer[];
+  gameSeq: number;
   nameOf: (id: string | null) => string;
   /** 湖中仙女 / 刺杀时在桌上选中的目标 */
   picked: string | null;
@@ -41,7 +46,6 @@ export function Dock({
   const n = view.players.length;
   const size = view.questSizes[view.questIndex]!;
   const questNo = view.questIndex + 1;
-  const names = (ids: string[]) => ids.map(nameOf).join('、');
   const send = (action: Avalon.AvalonAction) => net.act(action);
 
   if (!me) return <DockShell prompt="你正在旁观这一局" />;
@@ -50,12 +54,12 @@ export function Dock({
     case 'identity':
       return <DockShell prompt="等待全员确认身份" hint="全员确认后随机决定发车顺序" waiting />;
     case 'team': {
-      const selected = `已选 ${view.team.length} / ${size}${view.team.length ? ` · ${names(view.team)}` : ''}`;
+      const roster = <TeamRoster players={players} team={view.team} label="候选队伍" size={size} />;
       if (view.leader !== me.id) {
         return (
           <DockShell
             prompt={view.discussionComplete ? `${nameOf(view.leader)} 是队长，正在确定第 ${questNo} 次任务队伍` : `${nameOf(view.leader)} 是队长，正在设置预选队伍和发言顺序`}
-            hint={selected}
+            roster={roster}
             waiting
           />
         );
@@ -68,7 +72,8 @@ export function Dock({
             prompt={`第 ${questNo} 次任务 · 先设置讨论顺序`}
             hint={`${preselectedTeam ? `在桌上选满 ${size} 人，预选名单对全桌公开。` : '讨论结束后再选队伍。'}每人${view.speechMode === 'text' ? '文字' : ''}发言限时 ${view.options.speechSeconds} 秒。`}
             stacked
-            compactLabel={preselectedTeam ? `讨论设置 · 已选 ${view.team.length}/${size}` : '讨论设置'}
+            compactLabel="讨论设置"
+            roster={preselectedTeam ? roster : undefined}
           >
             <div className="speech-setup">
               <SetupGroup label="预选任务队伍">
@@ -99,7 +104,8 @@ export function Dock({
       return (
         <DockShell
           prompt={`讨论结束。你是队长，确认第 ${questNo} 次任务队伍`}
-          hint={`${selected}${view.rejectCount === 4 ? '。这是本轮最后一次组队，再被否决邪恶方直接获胜' : ''}`}
+          hint={view.rejectCount === Avalon.MAX_REJECTS - 1 ? '这是本轮最后一次组队，再被否决邪恶方直接获胜' : undefined}
+          roster={roster}
         >
           <button type="button" className="btn btn-primary" disabled={!ready} onClick={() => send({ type: 'propose_team', team: view.team })}>
             就这支队伍
@@ -118,10 +124,11 @@ export function Dock({
         <DockShell
           prompt={current ? (view.speechMode === 'text' ? '现在轮到你打字发言' : '现在轮到你发言') : `现在由 ${speakerNumber} 号玩家发言`}
           hint={`第 ${discussion.currentIndex + 1} / ${discussion.order.length} 位 · ${timer} · ${nameOf(speaker)}`}
+          roster={view.team.length ? <TeamRoster players={players} team={view.team} label="预选队伍" /> : undefined}
           waiting={!current}
         >
           {view.speechMode === 'text' ? (
-            <SpeechDesk key={discussion.turn} view={view} canSpeak={current} nameOf={nameOf} onOpenLog={onShowSpeechLog} />
+            <SpeechDesk key={discussion.turn} view={view} gameSeq={gameSeq} canSpeak={current} players={players} onOpenLog={onShowSpeechLog} />
           ) : current && (
             <button type="button" className="btn btn-primary speech-finish" onClick={() => send({ type: 'finish_speech' })}>
               我说完了
@@ -133,9 +140,10 @@ export function Dock({
 
     case 'vote': {
       const last = view.rejectCount === 4 ? '这是本轮最后一次组队，再被否决邪恶方直接获胜。' : '';
+      const roster = <TeamRoster players={players} team={view.team} label="提议队伍" />;
       if (me.myVote !== null) {
         return (
-          <DockShell prompt={`你投了${me.myVote ? '赞成' : '反对'}。等其他人表态`} hint={`${view.voted.length} / ${n} 人已投票 · 队伍：${names(view.team)}`} waiting>
+          <DockShell prompt={`你投了${me.myVote ? '赞成' : '反对'}。等其他人表态`} hint={`${view.voted.length} / ${n} 人已投票`} roster={roster} waiting>
             <div className="dock-mine">
               <VoteToken approve={me.myVote} />
             </div>
@@ -143,7 +151,7 @@ export function Dock({
         );
       }
       return (
-        <DockShell prompt={`${nameOf(view.leader)} 提议由 ${names(view.team)} 出任务。你同意吗？`} hint={`${last}所有人投完后同时亮票`}>
+        <DockShell prompt={`你同意 ${nameOf(view.leader)} 提出的队伍吗？`} hint={`${last}所有人投完后同时亮票`} roster={roster}>
           <div className="dock-choices">
             <ChoiceButton label="赞成" onClick={() => send({ type: 'vote', approve: true })}>
               <VoteToken approve />
@@ -159,7 +167,7 @@ export function Dock({
     case 'quest': {
       const progress = `${view.played.length} / ${view.team.length} 人已出牌 · 出齐后自动翻牌`;
       if (!view.team.includes(me.id)) {
-        return <DockShell prompt={`${names(view.team)} 正在执行第 ${questNo} 次任务`} hint={progress} waiting />;
+        return <DockShell prompt={`正在执行第 ${questNo} 次任务`} hint={progress} roster={<TeamRoster players={players} team={view.team} label="任务队伍" />} waiting />;
       }
       if (me.myQuestCard !== null) {
         return <DockShell prompt="你的牌已经盖下。等队友出牌" hint={progress} waiting />;
@@ -229,6 +237,7 @@ function DockShell({
   waiting = false,
   stacked = false,
   compactLabel,
+  roster,
   children,
 }: {
   prompt: string;
@@ -236,7 +245,8 @@ function DockShell({
   waiting?: boolean;
   stacked?: boolean;
   compactLabel?: string;
-  children?: React.ReactNode;
+  roster?: ReactNode;
+  children?: ReactNode;
 }) {
   const [expanded, setExpanded] = useState(false);
   const actionsId = useId();
@@ -260,7 +270,9 @@ function DockShell({
           {waiting && <span className="dots" aria-hidden="true" />}
         </p>
         {hint && <p className="dock-hint">{hint}</p>}
+        {!compactLabel && roster}
       </div>
+      {compactLabel && roster}
       {children && <div id={actionsId} className="dock-actions">{children}</div>}
     </motion.div>
   );

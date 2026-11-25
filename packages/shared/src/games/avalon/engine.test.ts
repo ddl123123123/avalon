@@ -276,6 +276,17 @@ describe('刺杀', () => {
     const s = threeWins(14);
     expect(() => act(s, who(s, 'merlin'), { type: 'assassinate', target: who(s, 'servant') })).toThrow(/刺客/);
   });
+  it('刺客只可以从正义方指认一人，包括排除奥伯伦', () => {
+    let s = startGame(ids(5), opts({ oberon: true }), seeded(15));
+    const assassin = who(s, 'assassin');
+    const oberon = who(s, 'oberon');
+    expect(avalon.view(s, assassin).me?.sightings[oberon]).toBeUndefined();
+    expect(avalon.view(s, assassin).me?.assassinationTargets).toEqual([]);
+    for (let i = 0; i < 3; i++) s = runQuest(s, goodTeam(s));
+    expect(avalon.view(s, assassin).me?.assassinationTargets).toEqual(s.players.filter((id) => !isEvil(s, id)));
+    expect(avalon.view(s, oberon).me?.assassinationTargets).toEqual([]);
+    expect(() => act(s, assassin, { type: 'assassinate', target: oberon })).toThrow(/正义方/);
+  });
 });
 
 describe('湖中仙女', () => {

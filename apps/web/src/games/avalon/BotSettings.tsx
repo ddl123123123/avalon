@@ -1,5 +1,47 @@
+import { useState } from 'react';
 import { Avalon, type RoomSnapshot } from '@tabletop/shared';
 import { net } from '../../net/client';
+import { SeatIdentity } from './SeatIdentity';
+
+function ModelOptions({ profiles }: { profiles: NonNullable<RoomSnapshot['avalonModels']>['profiles'] }) {
+  return <>
+    <option value="">跟随服务器默认模型</option>
+    <option value="local">本地规则</option>
+    {profiles.map(({ id, label }) => <option key={id} value={id}>{label}</option>)}
+  </>;
+}
+
+function BotModels({ models, bots }: {
+  models: NonNullable<RoomSnapshot['avalonModels']>;
+  bots: RoomSnapshot['players'];
+}) {
+  const [bulk, setBulk] = useState(models.defaultForNewBots ?? '');
+  const applied = bulk === (models.defaultForNewBots ?? '') && bots.every((bot) => (models.seats[bot.id] ?? '') === bulk);
+  return <>
+    <div className="av-model-bulk">
+      <label className="field">
+        统一模型
+        <select className="input" value={bulk} onChange={(event) => setBulk(event.currentTarget.value)}>
+          <ModelOptions profiles={models.profiles} />
+        </select>
+      </label>
+      <button type="button" className="btn btn-ghost btn-small" disabled={applied} onClick={() => net.setAvalonBotModels(bulk || null)}>
+        应用到全部机器人
+      </button>
+    </div>
+    <div className="av-model-individual" role="group" aria-label="单独调整机器人模型">
+      {bots.map((bot) => (
+        <label key={bot.id} className="field">
+          <SeatIdentity player={bot} />
+          <select className="input" value={models.seats[bot.id] ?? ''}
+            onChange={(event) => net.setAvalonBotModel(bot.id, event.currentTarget.value || null)}>
+            <ModelOptions profiles={models.profiles} />
+          </select>
+        </label>
+      ))}
+    </div>
+  </>;
+}
 
 export function AvalonBotSettings({ room }: { room: RoomSnapshot }) {
   const bots = room.players.filter((player) => player.isBot);
@@ -23,17 +65,7 @@ export function AvalonBotSettings({ room }: { room: RoomSnapshot }) {
             ))}
           </div>
           {!models.profiles.length && <p>服务器暂无可用的外部模型。机器人使用本地规则行动，自己的发言轮次会跳过。</p>}
-          {bots.map((bot) => (
-            <label key={bot.id} className="field">
-              {bot.seatIndex + 1} 号 · {bot.name}
-              <select className="input" value={models.seats[bot.id] ?? ''}
-                onChange={(e) => net.setAvalonBotModel(bot.id, e.currentTarget.value || null)}>
-                <option value="">跟随服务器默认模型</option>
-                <option value="local">本地规则</option>
-                {models.profiles.map(({ id, label }) => <option key={id} value={id}>{label}</option>)}
-              </select>
-            </label>
-          ))}
+          <BotModels key={room.code} models={models} bots={bots} />
         </>
       ) : <p>本局难度：{options.botDifficulty === 'advanced' ? '高阶博弈' : '常规'}。</p>}
     </fieldset>

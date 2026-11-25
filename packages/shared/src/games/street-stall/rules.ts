@@ -7,11 +7,21 @@ export type DuelMode = Extract<Mode, 'duel-a' | 'duel-b'>;
 export type StallId = 'a' | 'b';
 export const stallIds = ['a', 'b'] as const;
 export const stallNames = { a: '① 小摊', b: '② 小摊' } as const;
-export const modes: Record<Mode, { name: string; seats: readonly string[] }> = {
-  standard: { name: '3 人标准局', seats: ['顾客', '城管', '老板 · 控两个摊'] },
-  split: { name: '4 人欢乐局', seats: ['顾客', '城管', '① 小摊', '② 小摊'] },
-  'duel-a': { name: '2 人 A · 顾客对双控', seats: ['顾客', '城管和两个小摊'] },
-  'duel-b': { name: '2 人 B · 城管对双控', seats: ['城管', '顾客和两个小摊'] },
+export const roles = {
+  customer: '顾客',
+  officer: '城管',
+  vendor: '摊主（两个摊）',
+  westVendor: '① 号摊主',
+  eastVendor: '② 号摊主',
+  officerVendor: '城管和两个小摊',
+  customerVendor: '顾客和两个小摊',
+} as const;
+export type Role = keyof typeof roles;
+export const modes: Record<Mode, { name: string; seats: readonly Role[] }> = {
+  standard: { name: '3 人标准局', seats: ['customer', 'officer', 'vendor'] },
+  split: { name: '4 人欢乐局', seats: ['customer', 'officer', 'westVendor', 'eastVendor'] },
+  'duel-a': { name: '2 人 A · 顾客对双控', seats: ['customer', 'officerVendor'] },
+  'duel-b': { name: '2 人 B · 城管对双控', seats: ['officer', 'customerVendor'] },
 };
 
 export function modeFor(count: number, duel: DuelMode): Mode {

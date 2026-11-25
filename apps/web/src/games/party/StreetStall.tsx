@@ -4,7 +4,7 @@ import { net } from '../../net/client';
 import type { GameClient } from '../registry';
 import { PartyTable } from './PartyTable';
 
-const { cellName, modes, modeFor, street, streetStall, stallIds, stallNames, ROUND_LIMIT, ENFORCEMENT_LIMIT, MEAL_TARGET } = StreetStall;
+const { cellName, fixedRoles, modes, modeFor, roles, street, streetStall, stallIds, stallNames, ROUND_LIMIT, ENFORCEMENT_LIMIT, MEAL_TARGET } = StreetStall;
 const art = `${import.meta.env.BASE_URL}street-stall/night-market`;
 type View = StreetStall.StallView;
 const outcomes = {
@@ -15,10 +15,13 @@ const outcomes = {
   none: '全员落败',
 };
 
-function StreetOptions({ options, playerCount, editable, onChange }: {
-  options: StreetStall.StallOptions; playerCount: number; editable: boolean; onChange: (patch: unknown) => void;
+function StreetOptions({ options, playerCount, players, editable, onChange }: {
+  options: StreetStall.StallOptions; playerCount: number; players: RoomSnapshot['players']; editable: boolean;
+  onChange: (patch: unknown) => void;
 }) {
   const mode = modeFor(playerCount, options.duel);
+  const fixed = fixedRoles(options, mode, players.map(({ id }) => id));
+  const taken = new Set(Object.values(fixed));
   return (
     <div className="party-lobby-copy">
       <h2>{modes[mode].name}</h2>
@@ -35,9 +38,24 @@ function StreetOptions({ options, playerCount, editable, onChange }: {
           </div>
         </fieldset>
       )}
-      <ul className="party-roster">
-        {modes[mode].seats.map((role, index) => <li key={role}>{index + 1} 号 · {role}</li>)}
-      </ul>
+      <fieldset className="lobby-size street-role-options">
+        <legend>角色分配</legend>
+        {editable && <p>可以指定真人或机器人，留空的角色开局时随机抽取。</p>}
+        {modes[mode].seats.map((role) => (
+          <label key={role} className="street-role-option">
+            <span>{roles[role]}</span>
+            <select className="input" value={fixed[role] ?? ''} disabled={!editable}
+              onChange={(event) => onChange({ [role]: event.target.value || null })}>
+              <option value="">随机</option>
+              {players.map(({ id, name, seatIndex, isBot }) => (
+                <option key={id} value={id} disabled={taken.has(id) && fixed[role] !== id}>
+                  {seatIndex + 1} 号 · {name}{isBot ? '（机器人）' : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+        ))}
+      </fieldset>
       <p>{mode === 'split' ? '每个摊主有一次拒售。到第 10 回合，卖过食物且仍在场的摊主各自获胜。'
         : '两摊共享一次拒售。到第 10 回合，卖过食物且至少守住一摊即可获胜。'}</p>
       {mode === 'duel-b' && <p>城管有一次「突击」，可移动 5 格。</p>}
@@ -142,6 +160,12 @@ function StreetBoard({ room }: { room: RoomSnapshot }) {
       <section className="panel party-panel street-status">
         <p className="party-kicker">{modes[view.mode].name} · 第 {view.round} / {ROUND_LIMIT} 回合</p>
         <h2>{view.result ? view.result.winners.length ? `${view.result.winners.map(label).join('、')}获胜` : '全员落败' : '顾客 → 小摊 → 城管'}</h2>
+        <ul className="party-roster street-role-list" aria-label="本局角色">
+          {modes[view.mode].seats.map((role) => {
+            const player = room.players.find(({ id }) => id === view.roleOwners[role]);
+            return <li key={role}>{roles[role]} · {player?.name ?? '玩家'}{player?.id === room.you ? '（你）' : player?.isBot ? '（机器人）' : ''}</li>;
+          })}
+        </ul>
         <p>顾客已买 {view.meals} / {MEAL_TARGET} 份 · {view.round <= ENFORCEMENT_LIMIT ? `执法窗口还剩 ${ENFORCEMENT_LIMIT - view.round + 1} 回合` : '执法窗口已过'}</p>
         <ul className="street-shops">
           {stallIds.map((id) => {

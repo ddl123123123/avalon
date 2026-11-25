@@ -1,8 +1,12 @@
 import { expect, it } from 'vitest';
-import { reachable, street, streetStall, type DuelMode } from './index';
+import { modeFor, modes, reachable, street, streetStall, type DuelMode, type StallOptions } from './index';
 
 const rng = () => 0;
-const fresh = (count = 3, duel: DuelMode = 'duel-a') => streetStall.setup(['p1', 'p2', 'p3', 'p4'].slice(0, count), { duel }, rng);
+const players = ['p1', 'p2', 'p3', 'p4'];
+const fresh = (count = 3, duel: DuelMode = 'duel-a') => {
+  const options = { duel, ...Object.fromEntries(modes[modeFor(count, duel)].seats.map((role, i) => [role, players[i]])) };
+  return streetStall.setup(players.slice(0, count), options, rng);
+};
 type State = ReturnType<typeof fresh>;
 type Action = Parameters<typeof streetStall.reduce>[2];
 
@@ -101,4 +105,49 @@ it('maps both duel controllers and validates a single five-step rush in mode B',
   const rushed = act(police, 'p1', { type: 'move', to: 'm11', rush: true });
   expect(rushed.rushed).toBe(true);
   expect(() => act(act(rushed, 'p2', wait), 'p1', { type: 'move', to: 'm10', rush: true })).toThrow();
+});
+
+it('keeps fixed players and randomizes the remaining roles without duplication', () => {
+  const options: StallOptions = { duel: 'duel-a', officer: 'p3', westVendor: 'former-player', eastVendor: 'p3' };
+  const first = streetStall.setup(players, options, () => 0).roleOwners;
+  const second = streetStall.setup(players, options, () => 0.99).roleOwners;
+  for (const dealt of [first, second]) {
+    expect(dealt.officer).toBe('p3');
+    expect(Object.values(dealt).sort()).toEqual(players);
+  }
+  expect(first.customer).not.toBe(second.customer);
+  expect(streetStall.normalizeOptions({ duel: 'duel-b', officer: null, customerVendor: 'p1', customer: false }))
+    .toEqual({ duel: 'duel-b', customerVendor: 'p1' });
+  expect(streetStall.setup(players.slice(0, 2), { duel: 'duel-b', customerVendor: 'p1' }, rng).owners)
+    .toEqual({ officer: 'p2', customer: 'p1', stalls: { a: 'p1', b: 'p1' } });
+});
+
+it('lets a bot sell its first meal and refuse a rival customer about to win', () => {
+  const state = act({ ...fresh(), customerCell: 'a2', ready: 'a' }, 'p1', buy);
+  expect(streetStall.botAction!(state, 'p1', rng)).toBeNull();
+  expect(streetStall.botAction!(state, 'p3', rng)?.type).toBe('sell');
+  expect(streetStall.botAction!({ ...state, meals: 1 }, 'p3', rng)?.type).toBe('refuse');
+  const duel = act({ ...fresh(2, 'duel-b'), customerCell: 'a2', ready: 'a', meals: 1 }, 'p2', buy);
+  expect(streetStall.botAction!(duel, 'p2', rng)?.type).toBe('sell');
+});
+
+it('runs legal robot turns through an entire game in all four configurations', () => {
+  for (const [count, duel] of [[2, 'duel-a'], [2, 'duel-b'], [3, 'duel-a'], [4, 'duel-a']] as const) {
+    for (let seed = 1; seed <= 12; seed++) {
+      let random = seed;
+      const roll = () => ((random = (Math.imul(random, 1664525) + 1013904223) >>> 0) / 2 ** 32);
+      const seated = players.slice(0, count);
+      let state = streetStall.setup(seated, { duel }, roll);
+      for (let turn = 0; !state.result && turn < 30; turn++) {
+        const choices = seated.flatMap((player) => {
+          const action = streetStall.botAction!(state, player, roll);
+          return action ? [{ player, action }] : [];
+        });
+        expect(choices).toHaveLength(1);
+        state = streetStall.reduce(state, choices[0].player, choices[0].action, roll);
+      }
+      expect(state.result).not.toBeNull();
+      expect(state.round).toBeLessThanOrEqual(10);
+    }
+  }
 });

@@ -1,21 +1,23 @@
-import { GameError, type GameDefinition, type PlayerId } from '../../framework';
+import { GameError, shuffle, type GameDefinition, type PlayerId } from '../../framework';
 import {
-  ENFORCEMENT_LIMIT, MEAL_TARGET, ROUND_LIMIT, cellName, modeFor, reachable, stallIds, stallNames, startCells,
-  type DuelMode, type Mode, type StallId,
+  ENFORCEMENT_LIMIT, MEAL_TARGET, ROUND_LIMIT, cellName, modeFor, modes, reachable, roles, stallIds, stallNames, startCells,
+  type DuelMode, type Mode, type Role, type StallId,
 } from './rules';
+import { chooseBotAction } from './bot';
 
 export * from './rules';
 
-export type StallOptions = { duel: DuelMode };
+export type StallOptions = { duel: DuelMode } & Partial<Record<Role, PlayerId>>;
 export type Turn = 'customer' | 'stall' | 'officer';
 type Stall = { cell: string; sold: number; clearedRound: number | null };
 type ResultReason = 'customer' | 'officer' | 'late-clear' | 'stalls' | 'none';
 type Result = { reason: ResultReason; winners: PlayerId[]; stalls: StallId[] };
 
-interface StallState {
+export interface StallState {
   mode: Mode;
   round: number;
   turn: Turn;
+  roleOwners: Partial<Record<Role, PlayerId>>;
   owners: { customer: PlayerId; officer: PlayerId; stalls: Record<StallId, PlayerId> };
   customerCell: string;
   officerCell: string;
@@ -38,10 +40,21 @@ export interface StallView extends StallState {
   canBuy: boolean;
 }
 
-type Action = { round: number; actor: Turn } & (
+export type StallAction = { round: number; actor: Turn } & (
   | { type: 'move'; to: string; rush?: boolean }
   | { type: 'wait' | 'buy' | 'sell' | 'refuse' }
 );
+
+/** A vacant or no longer occupied choice returns to the random pool. */
+export function fixedRoles(options: StallOptions, mode: Mode, players: readonly PlayerId[]) {
+  const assigned: Partial<Record<Role, PlayerId>> = {};
+  const available = new Set(players);
+  for (const role of modes[mode].seats) {
+    const player = options[role];
+    if (player && available.delete(player)) assigned[role] = player;
+  }
+  return assigned;
+}
 
 function ownerAt(players: PlayerId[], mode: Mode): StallState['owners'] {
   const [first, second, third, fourth] = players;
@@ -116,7 +129,7 @@ function settle(state: StallState): StallState {
   return state;
 }
 
-export const streetStall: GameDefinition<StallState, Action, StallView, StallOptions> = {
+export const streetStall: GameDefinition<StallState, StallAction, StallView, StallOptions> = {
   id: 'street-stall',
   name: '路边摊',
   tagline: '买吃的、守摊位、赶在五回合内清摊',
@@ -124,15 +137,28 @@ export const streetStall: GameDefinition<StallState, Action, StallView, StallOpt
   maxPlayers: 4,
   playerCountOptions: { defaultCount: 3, recommendedOptions: () => ({}) },
   defaultOptions: () => ({ duel: 'duel-a' }),
-  normalizeOptions: (raw) => ({ duel: (raw as Partial<StallOptions> | null)?.duel === 'duel-b' ? 'duel-b' : 'duel-a' }),
+  normalizeOptions(raw) {
+    const input = raw as Partial<StallOptions> | null;
+    const options: StallOptions = { duel: input?.duel === 'duel-b' ? 'duel-b' : 'duel-a' };
+    for (const role of Object.keys(roles) as Role[]) {
+      const player = input?.[role];
+      if (typeof player === 'string' && player.length > 0 && player.length <= 64) options[role] = player;
+    }
+    return options;
+  },
   validateOptions: (_, count) => count >= 2 && count <= 4 ? null : '需要 2 到 4 人才能开局',
-  setup: (players, options) => {
+  setup: (players, options, rng) => {
     const mode = modeFor(players.length, options.duel);
+    const roleOwners = fixedRoles(options, mode, players);
+    const assigned = new Set(Object.values(roleOwners));
+    const random = shuffle(players.filter((id) => !assigned.has(id)), rng);
+    const ordered = modes[mode].seats.map((role) => roleOwners[role] ??= random.pop()!);
     return {
       mode,
       round: 1,
       turn: 'customer',
-      owners: ownerAt(players, mode),
+      roleOwners,
+      owners: ownerAt(ordered, mode),
       customerCell: startCells.customer,
       officerCell: startCells.officer,
       stalls: { a: { cell: startCells.a, sold: 0, clearedRound: null }, b: { cell: startCells.b, sold: 0, clearedRound: null } },
@@ -229,4 +255,8 @@ export const streetStall: GameDefinition<StallState, Action, StallView, StallOpt
     };
   },
   isOver: (state) => state.result !== null,
+  botAction(state, player, rng) {
+    if (activePlayer(state) !== player) return null;
+    return chooseBotAction(state, player, eligiblePurchase(state) !== null, rng);
+  },
 };

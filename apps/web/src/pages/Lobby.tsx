@@ -168,7 +168,8 @@ export function Lobby({ room, game }: { room: RoomSnapshot; game: GameClient }) 
               {humanCount > def.minPlayers && <p>已入座 {humanCount} 位真人</p>}
             </fieldset>
           )}
-          <game.Options options={room.options} playerCount={target ?? count} editable={isHost} onChange={net.setOptions} />
+          <game.Options options={room.options} playerCount={target ?? count} players={room.players}
+            editable={isHost} onChange={net.setOptions} />
           {room.gameId === Avalon.avalon.id && <AvalonBotSettings room={room} />}
           <div className="lobby-actions">
             {isHost ? (

@@ -35,6 +35,7 @@ export interface GameClient {
     options: any;
     /** 已设置的开局人数，或未限定人数时的当前入座人数。 */
     playerCount: number;
+    players: RoomSnapshot['players'];
     editable: boolean;
     /** 提交选项的改动（增量），由服务器合并后广播回来 */
     onChange: (patch: unknown) => void;

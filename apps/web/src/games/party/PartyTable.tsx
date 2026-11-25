@@ -5,7 +5,7 @@ import { net } from '../../net/client';
 export function PartyTable({ room, name, theme, children }: {
   room: RoomSnapshot;
   name: string;
-  theme: 'ninja' | 'truth' | 'lighthouse';
+  theme: 'ninja' | 'truth' | 'lighthouse' | 'street';
   children: ReactNode;
 }) {
   return (

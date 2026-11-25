@@ -1,0 +1,157 @@
+.street-tab-mark {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: #ffcc8a;
+  font-size: 1.15rem;
+}
+
+.street-hero {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border: 1px solid #d4a47680;
+}
+
+.party-street {
+  --party-accent: #f2c68f;
+  background: radial-gradient(ellipse at 45% 0%, #44312b, #17252b 42%, #0b151c 85%);
+}
+
+.party-street .party-content {
+  max-width: 940px;
+}
+
+.party-street .party-panel {
+  border-color: #d4aa7845;
+  background: #142128ed;
+}
+
+.party-street .street-status {
+  border-top: 2px solid #ebb478;
+  background: linear-gradient(145deg, #322922, #18272d 72%);
+}
+
+.street-shops, .street-play, .street-map {
+  display: grid;
+  gap: 8px;
+}
+
+.street-shops {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.street-shops li {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  border: 1px solid #e6ac774d;
+  border-radius: 6px;
+  padding: 8px;
+  background: #cc7a4024;
+  overflow-wrap: anywhere;
+}
+
+.street-shops small {
+  color: #eac5a0;
+}
+
+.street-play {
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.street-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  font-size: 0.88rem;
+}
+
+.street-map {
+  width: min(100%, 340px);
+  justify-self: center;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  grid-template-rows: repeat(13, auto);
+  gap: 2px;
+  padding: 4px;
+  border-radius: 8px;
+  background: #0c191e;
+}
+
+.street-cell {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid #465258;
+  border-radius: 3px;
+  background: #243137;
+  color: #a4b3b8;
+  font: 700 clamp(0.62rem, 2vw, 0.94rem)/1 var(--font-display);
+}
+
+.street-cell:disabled {
+  opacity: 1;
+}
+
+.street-cell[data-shop='true'] {
+  background: #4b342e;
+  border-color: #b88c63;
+}
+
+.street-cell:not(:disabled) {
+  border-color: #e2b176;
+  background: #563b29;
+  color: #ffdeb1;
+  cursor: pointer;
+}
+
+.street-cell[aria-pressed='true'] {
+  border-color: #fff2d7;
+  box-shadow: inset 0 0 0 1px #fff2d7;
+  background: #94653e;
+}
+
+.street-cell:focus-visible {
+  outline: 2px solid #fff2d7;
+  outline-offset: 1px;
+}
+
+.street-cell-marks {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1px 2px;
+}
+
+.street-cell-marks i {
+  font-style: normal;
+}
+
+.party-street [data-unit='stall'] { color: #ffc083; }
+.party-street [data-unit='customer'] { color: #a5e6cf; }
+.party-street [data-unit='officer'] { color: #b2d8ff; }
+.party-street [data-unit='closed'] { color: #9a9b99; text-decoration: line-through; }
+
+.street-map-panel > .btn {
+  width: 100%;
+}
+
+.street-events {
+  padding-left: 1.1em;
+  margin: 2px 0 0;
+  color: var(--vellum-dim);
+  line-height: 1.5;
+}
+
+@media (max-width: 680px) {
+  .street-play { grid-template-columns: minmax(0, 1fr); }
+  .street-play:is([data-turn='stall'], [data-can-buy='true'], [data-turn='officer']) .street-actions { grid-row: 1; }
+}

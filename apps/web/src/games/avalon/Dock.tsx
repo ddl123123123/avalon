@@ -23,7 +23,6 @@ export function Dock({
   direction,
   onDirectionChange,
   speechSecondsRemaining,
-  onShowSpeechLog,
 }: {
   view: View;
   players: RoomPlayer[];
@@ -37,7 +36,6 @@ export function Dock({
   direction: 'left' | 'right';
   onDirectionChange: (value: 'left' | 'right') => void;
   speechSecondsRemaining: number;
-  onShowSpeechLog: () => void;
 }) {
   const me = view.me;
   const n = view.players.length;
@@ -125,9 +123,7 @@ export function Dock({
           roster={view.team.length ? <TeamRoster players={players} team={view.team} label="预选队伍" /> : undefined}
           waiting={!current}
         >
-          {view.speechMode === 'text' ? (
-            <button type="button" className="btn btn-ghost btn-small av-open-speech-log" onClick={onShowSpeechLog}>发言与记录</button>
-          ) : current && (
+          {view.speechMode === 'voice' && current && (
             <button type="button" className="btn btn-primary speech-finish" onClick={() => send({ type: 'finish_speech' })}>
               我说完了
             </button>

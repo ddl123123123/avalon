@@ -2071,6 +2071,8 @@
 
 .av-discussion-workspace .av-speech-composer {
   border-top: 1px solid #d6c49b30;
+  max-height: calc(var(--av-viewport-height, 100dvh) * 0.45);
+  overflow-y: auto;
   padding: 10px 12px;
 }
 
@@ -2078,46 +2080,107 @@
 .av-discussion-workspace .av-speech-composer .input { max-height: 20dvh; }
 .assistant-answer .btn { justify-self: start; }
 
-.av-text-board.board-ended .av-discussion-workspace {
-  width: min(740px, calc(100% - 24px));
-  max-height: min(660px, 80dvh);
-  margin: 0 auto 28px;
+.av-board.av-text-board {
+  height: var(--av-viewport-height, 100dvh);
+  min-height: 0;
+  overflow: hidden;
+  padding-bottom: env(safe-area-inset-bottom);
+  grid-template-rows: auto minmax(0, 1fr) auto;
 }
 
+.av-text-board > .av-game-dock {
+  min-height: 0;
+  max-height: calc(var(--av-viewport-height, 100dvh) * 0.38);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.av-text-board > .av-end-pane {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.av-text-board .av-compact-pane-toggle { display: none; }
+
 @media (min-width: 951px) and (min-height: 580px) {
-  .av-board.av-text-board:not(.board-ended) {
-    height: 100dvh;
+  .av-board.av-text-board {
     grid-template-columns: minmax(0, 1fr) minmax(352px, 32vw);
-    grid-template-rows: auto minmax(0, 1fr) auto;
   }
-  .av-text-board:not(.board-ended) > .room-bar { grid-column: 1 / -1; }
-  .av-text-board > .board-table { grid-area: 2 / 1; min-height: min(420px, 50dvh); }
+  .av-text-board > .room-bar { grid-column: 1 / -1; }
+  .av-board.av-text-board > .board-table { grid-area: 2 / 1; min-height: 0; }
+  .av-text-board > .av-end-pane { grid-area: 2 / 1; }
   .av-text-board > .av-game-dock { grid-area: 3 / 1; }
-  .av-text-board:not(.board-ended) > .av-discussion-workspace {
+  .av-text-board > .av-discussion-workspace {
     grid-area: 2 / 2 / 4;
     margin: 6px 18px 12px 8px;
   }
-  .av-text-board .av-open-speech-log { display: none; }
 }
 
 @media (max-width: 950px), (max-height: 579px) {
-  .av-board.av-text-board:not(.board-ended) {
-    grid-template-rows: auto auto auto auto;
-    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  .av-text-board .av-room-tools {
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
+  .av-text-board .av-compact-pane-toggle { display: inline-flex; }
+  .av-text-board .av-workspace-jump { display: none; }
+
+  .av-board.av-text-board > .board-table {
+    grid-area: 2 / 1;
+    min-height: 0;
+    grid-template-rows: minmax(300px, 1fr);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .av-text-board > .av-end-pane { grid-area: 2 / 1; }
   .av-board.av-text-board > .av-game-dock {
+    grid-area: 3 / 1;
     position: static;
     inset: auto;
     width: auto;
     max-width: none;
-    max-height: none;
-    margin: 0 12px 10px;
+    max-height: calc(var(--av-viewport-height, 100dvh) * 0.32);
+    margin: 6px 10px 8px;
+    padding: 6px 10px;
   }
-  .av-text-board:not(.board-ended) > .av-discussion-workspace {
-    margin: 0 12px;
-    align-self: start;
+  .av-text-board > .av-discussion-workspace {
+    grid-area: 2 / 1;
+    margin: 0 10px;
   }
-  .av-text-board:not(.board-ended) .av-workspace-view {
-    height: clamp(240px, 42dvh, 420px);
+  .av-text-board.board-ended > .av-discussion-workspace { margin-bottom: 8px; }
+  .av-text-board[data-compact-pane='workspace'] > :is(.board-table, .av-end-pane),
+  .av-text-board[data-compact-pane='table'] > .av-discussion-workspace,
+  .av-text-board .av-text-discussion .av-team-roster {
+    display: none;
+  }
+  .av-text-board .av-speech-composer .input {
+    height: clamp(52px, 10dvh, 78px);
+    min-height: 52px;
+  }
+  .av-text-board .av-speech-composer { gap: 6px; padding: 7px 9px; }
+  .av-text-board .av-polish-text { max-height: 12dvh; }
+  .av-text-board .av-workspace-nav { padding: 4px 6px; }
+  .av-text-board .av-log-head { padding: 7px 9px; }
+}
+
+@media (max-width: 480px) {
+  .av-text-board .room-bar { gap: 6px; }
+  .av-text-board .room-code > span { display: none; }
+  .av-text-board .room-code > strong { font-size: 1.5rem; }
+  .av-text-board .av-room-tools > .btn { padding-inline: 8px; }
+}
+
+@media (max-height: 520px) {
+  .av-text-board .av-workspace-nav button { min-height: 30px; }
+  .av-text-board .av-log-filters label {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+  }
+  .av-text-board .av-log-filters select { padding-block: 3px; }
+  .av-text-board .av-editor-head > span { display: none; }
+  .av-text-board .av-speech-composer .input {
+    height: 44px;
+    min-height: 44px;
   }
 }

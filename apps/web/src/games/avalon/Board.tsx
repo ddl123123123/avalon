@@ -24,6 +24,7 @@ const WORKSPACE_VIEWS = [
   { id: 'notebook', label: '笔记' },
 ] as const;
 type WorkspaceView = (typeof WORKSPACE_VIEWS)[number]['id'];
+type CompactPane = 'table' | 'workspace';
 
 /** 需要停下来给所有人看的时刻，按发生顺序排队播放。 */
 type Reveal =
@@ -108,7 +109,11 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
   const [showHistory, setShowHistory] = useState(false);
   const [speechDraft, setSpeechDraft] = useState('');
   const [workspaceView, setWorkspaceView] = useState<WorkspaceView>('log');
+  const [compactOverride, setCompactOverride] = useState<{ stage: string; pane: CompactPane } | null>(null);
+  const compactStage = `${view.phase}:${view.questIndex}:${view.rejectCount}:${view.discussionComplete}`;
   const workspaceId = useId();
+  const tableId = `${workspaceId}-table`;
+  const boardRef = useRef<HTMLElement>(null);
   const speechInput = useRef<HTMLTextAreaElement>(null);
   const speechWorkspace = useRef<HTMLElement>(null);
   const [picked, setPicked] = useState<string | null>(null);
@@ -117,6 +122,23 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
   const [direction, setDirection] = useState<'left' | 'right'>('left');
   const [, setClockTick] = useState(0);
   const speechDeadline = view.discussion?.deadline ?? null;
+
+  useEffect(() => {
+    const board = boardRef.current;
+    const viewport = window.visualViewport;
+    if (!textMode || !board || !viewport) return;
+    const update = () => {
+      // 手机键盘可能只缩小可视区域。保留浏览器的缩放行为。
+      if (viewport.scale === 1) board.style.setProperty('--av-viewport-height', `${viewport.height}px`);
+      else board.style.removeProperty('--av-viewport-height');
+    };
+    update();
+    viewport.addEventListener('resize', update);
+    return () => {
+      viewport.removeEventListener('resize', update);
+      board.style.removeProperty('--av-viewport-height');
+    };
+  }, [textMode]);
 
   useEffect(() => {
     if (speechDeadline === null) return;
@@ -150,21 +172,16 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
   const voteReveal = reveal?.kind === 'vote' ? reveal.proposal : null;
   const busy = reveal !== null || intro;
   const ended = view.phase === 'ended';
+  const showEndScreen = ended && !reveal;
   const speechSecondsRemaining = speechDeadline === null ? 0 : Math.max(0, Math.ceil((speechDeadline - Date.now()) / 1000));
   const botSpeaking = view.discussion && byId.get(view.discussion.currentSpeaker)?.isBot;
-
-  const openSpeechLog = () => {
-    setShowTools(false);
-    setWorkspaceView('log');
-    speechWorkspace.current?.focus({ preventScroll: true });
-    speechWorkspace.current?.scrollIntoView({ block: 'start' });
-  };
 
   const useAssistantSpeech = (content: string) => {
     const suggestion = content.trim();
     if (!suggestion) return;
     setSpeechDraft((draft) => draft.trim() ? `${draft.trimEnd()}\n\n${suggestion}` : suggestion);
     setWorkspaceView('log');
+    setCompactOverride({ stage: compactStage, pane: 'workspace' });
     const input = speechInput.current;
     input?.focus({ preventScroll: true });
     requestAnimationFrame(() => {
@@ -197,6 +214,15 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
       me.assassinationTargets.forEach((id) => pickableIds.add(id));
     }
   }
+
+  const compactPane = compactOverride?.stage === compactStage ? compactOverride.pane
+    : showEndScreen || voteReveal || pickableIds.size > 0 ? 'table' : 'workspace';
+  const openSpeechLog = () => {
+    setShowTools(false);
+    setWorkspaceView('log');
+    setCompactOverride({ stage: compactStage, pane: 'workspace' });
+    requestAnimationFrame(() => speechWorkspace.current?.focus({ preventScroll: true }));
+  };
 
   const onPick = (id: string) => {
     if (view.phase === 'team') {
@@ -242,7 +268,8 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
   };
 
   return (
-    <main className={`board av-board${textMode ? ' av-text-board' : ''}${ended && !reveal ? ' board-ended' : ''}${pigTheme ? ' ct-pig-theme' : ''}`}>
+    <main ref={boardRef} className={`board av-board${textMode ? ' av-text-board' : ''}${showEndScreen ? ' board-ended' : ''}${pigTheme ? ' ct-pig-theme' : ''}`}
+      data-compact-pane={textMode ? compactPane : undefined}>
       <header className="room-bar">
         <button type="button" className="link" onClick={net.leaveRoom}>
           离开
@@ -257,12 +284,21 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
             toolsButton.current?.focus();
           }
         }}>
-          <button ref={toolsButton} type="button" className="btn btn-ghost btn-small av-tools-toggle" aria-controls="av-room-tools" aria-expanded={showTools} onClick={() => setShowTools((open) => !open)}>
-            工具 <span aria-hidden="true">{showTools ? '−' : '+'}</span>
-          </button>
+          {textMode && (
+            <button type="button" className="btn btn-ghost btn-small av-compact-pane-toggle"
+              aria-controls={compactPane === 'table' ? workspaceId : tableId}
+              onClick={() => setCompactOverride({ stage: compactStage, pane: compactPane === 'table' ? 'workspace' : 'table' })}>
+              {compactPane === 'table' ? '文字面板' : showEndScreen ? '结算' : '圆桌'}
+            </button>
+          )}
+          {(!textMode || (me && !ended)) && (
+            <button ref={toolsButton} type="button" className="btn btn-ghost btn-small av-tools-toggle" aria-controls="av-room-tools" aria-expanded={showTools} onClick={() => setShowTools((open) => !open)}>
+              工具 <span aria-hidden="true">{showTools ? '−' : '+'}</span>
+            </button>
+          )}
           <div id="av-room-tools" className="room-bar-actions av-tools-menu" data-expanded={showTools} role="group" aria-label="对局工具">
             {textMode ? (
-              <button type="button" className="btn btn-ghost btn-small" onClick={openSpeechLog}>发言记录</button>
+              <button type="button" className="btn btn-ghost btn-small av-workspace-jump" onClick={openSpeechLog}>发言记录</button>
             ) : (
               <>
                 <button type="button" className="btn btn-ghost btn-small" onClick={() => openTool(setShowNotebook)}>笔记</button>
@@ -279,11 +315,13 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
         </div>
       </header>
 
-      {ended && !reveal ? (
-        <EndScreen room={room} view={view} onHistory={textMode ? openSpeechLog : () => setShowHistory(true)} />
+      {showEndScreen ? (
+        <div id={tableId} className="av-end-pane">
+          <EndScreen room={room} view={view} onHistory={textMode ? openSpeechLog : () => setShowHistory(true)} />
+        </div>
       ) : (
         <>
-          <div className="board-table">
+          <div id={tableId} className="board-table">
             <LayoutGroup>
               <RoundTable
                 className="av-playfield"
@@ -415,7 +453,6 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
                 direction={direction}
                 onDirectionChange={setDirection}
                 speechSecondsRemaining={speechSecondsRemaining}
-                onShowSpeechLog={openSpeechLog}
               />
             )}
           </footer>
@@ -423,7 +460,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
       )}
 
       {textMode && (
-        <aside ref={speechWorkspace} className="av-discussion-workspace" aria-label="圆桌文字发言" tabIndex={-1}>
+        <aside id={workspaceId} ref={speechWorkspace} className="av-discussion-workspace" aria-label="圆桌文字发言" tabIndex={-1}>
           <div className="av-workspace-nav" role="group" aria-label="文字对局工具">
             {WORKSPACE_VIEWS.filter(({ id }) => me || id === 'log').map(({ id, label }) => (
               <button key={id} type="button" aria-pressed={workspaceView === id} aria-controls={`${workspaceId}-${id}`}

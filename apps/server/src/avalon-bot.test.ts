@@ -77,10 +77,19 @@ test('a room runs an entire discussion with independently routed bots and one hu
     let snapshot: Extract<ServerMessage, { type: 'room' }>['room'] | undefined;
     let preview: Extract<ServerMessage, { type: 'avalon_assistant_result' }> | undefined;
     const errors: string[] = [];
+    const botSpeechDurations: number[] = [];
     const conn: Connection = {
       clientId: null,
       send(message) {
-        if (message.type === 'room') snapshot = message.room;
+        if (message.type === 'room') {
+          const previous = snapshot?.view as Avalon.AvalonView | undefined;
+          const current = message.room.view as Avalon.AvalonView | null;
+          if (previous?.discussion && current && current.speeches.length > previous.speeches.length) {
+            const { deadline, timerSeconds, currentSpeaker } = previous.discussion;
+            if (currentSpeaker !== message.room.you) botSpeechDurations.push(Date.now() - (deadline - timerSeconds * 1000));
+          }
+          snapshot = message.room;
+        }
         if (message.type === 'error') errors.push(message.message);
         if (message.type === 'avalon_assistant_result') preview = message;
       },
@@ -133,6 +142,8 @@ test('a room runs an entire discussion with independently routed bots and one hu
     assert.equal(view.speeches.filter((speech) => speech.result === 'spoken').length, 5);
     assert.equal(view.speeches.find((speech) => speech.player === snapshot!.you)?.text, polished);
     assert.equal(view.voted.length, 4);
+    assert.equal(botSpeechDurations.length, 4);
+    assert.ok(botSpeechDurations.every((ms) => ms >= 140), 'BOT_PACE scales the ten-second speech interval');
     for (const call of requests) {
       assert.equal(call.model, call.seat === 2 ? 'alternate' : 'deepseek-flash');
       if (call.memory.note) assert.equal(call.memory.note, `seat-${call.seat}`);

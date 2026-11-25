@@ -1,4 +1,5 @@
 import { randomBytes, randomInt } from 'node:crypto';
+import { setTimeout as wait } from 'node:timers/promises';
 import {
   Avalon,
   GameError,
@@ -72,6 +73,7 @@ const AI_ROOM_REQUEST_LIMIT = 60;
 const AI_FEATURES = new Set(['team-comparison', 'role-coach', 'speech-prep', 'speech-polish', 'speech-summary', 'rules-qa', 'post-game-review']);
 /** 机器人行动间隔的倍率。调试时设 BOT_PACE=0.1 可以让机器人快十倍。 */
 const BOT_PACE = Math.max(0, Number(process.env.BOT_PACE ?? 1) || 1);
+const AVALON_BOT_SPEECH_MS = 10_000;
 const BOT_NAMES = ['高文', '兰斯洛特', '加拉哈德', '特里斯坦', '凯', '贝狄威尔', '格尼薇儿', '伊莲', '鲍斯'];
 
 const newId = () => randomBytes(6).toString('base64url');
@@ -624,25 +626,38 @@ export class RoomManager {
     const ts = Date.now();
     this.botModelCalls = this.botModelCalls.filter((time) => ts - time < 60_000);
 
+    const controller = new AbortController();
+    session.running.set(bot.id, controller);
     let reply: Awaited<ReturnType<typeof askAvalonBot>> = null;
-    if (model && needsAvalonModel(action) && session.requests < 600 &&
-        this.botModelInFlight < 12 && this.botModelCalls.length < 180) {
-      const controller = new AbortController();
-      session.running.set(bot.id, controller);
-      session.requests++;
-      this.botModelInFlight++;
-      this.botModelCalls.push(ts);
-      try {
-        reply = await askAvalonBot(model, view, players, memory, action,
-          AbortSignal.any([controller.signal, AbortSignal.timeout(12_000)]));
-      } catch {
-        // 断线、超时或模型格式异常，按游戏规则继续。
-      } finally {
-        this.botModelInFlight--;
-        session.running.delete(bot.id);
+    try {
+      if (model && needsAvalonModel(action) && session.requests < 600 &&
+          this.botModelInFlight < 12 && this.botModelCalls.length < 180) {
+        session.requests++;
+        this.botModelInFlight++;
+        this.botModelCalls.push(ts);
+        try {
+          reply = await askAvalonBot(model, view, players, memory, action,
+            AbortSignal.any([controller.signal, AbortSignal.timeout(12_000)]));
+        } catch {
+          // 断线、超时或模型格式异常，按游戏规则继续。
+        } finally {
+          this.botModelInFlight--;
+        }
       }
+      if (reply?.action.type === 'submit_speech' && view.discussion) {
+        const { deadline, timerSeconds } = view.discussion;
+        // 生成和等待并行计时，从该座位开始发言时算约十秒。
+        const publishAt = Math.min(deadline - 100, deadline - timerSeconds * 1000 + AVALON_BOT_SPEECH_MS * BOT_PACE);
+        const remaining = publishAt - Date.now();
+        if (remaining > 0) await wait(remaining, undefined, { signal: controller.signal });
+      }
+    } catch (error) {
+      if (!controller.signal.aborted) throw error;
+      return;
+    } finally {
+      session.running.delete(bot.id);
     }
-    if (!this.rooms.has(room.code) || room.status !== 'playing' || room.avalonAgents !== session) return;
+    if (controller.signal.aborted || !this.rooms.has(room.code) || room.status !== 'playing' || room.avalonAgents !== session) return;
     const fallback = room.game.botAction?.(room.state, bot.id, Math.random) as Avalon.AvalonAction | null;
     const latest = room.game.view(room.state, bot.id) as Avalon.AvalonView;
     if (!fallback || decisionToken(latest, fallback.type) !== token) {
@@ -678,8 +693,10 @@ export class RoomManager {
     if (room.status !== 'playing' || !game.botAction) return;
     for (const bot of room.members.filter((m) => m.isBot)) {
       if (room.botTimers.has(bot.id) || room.avalonAgents?.running.has(bot.id)) continue;
-      if (game.botAction(room.state, bot.id, Math.random) === null) continue;
-      const delay = (900 + Math.random() * 1600) * BOT_PACE;
+      const action = game.botAction(room.state, bot.id, Math.random);
+      if (action === null) continue;
+      const isTextSpeaker = room.avalonAgents && (action as Avalon.AvalonAction).type === 'finish_speech';
+      const delay = isTextSpeaker ? 0 : (900 + Math.random() * 1600) * BOT_PACE;
       room.botTimers.set(
         bot.id,
         setTimeout(() => {

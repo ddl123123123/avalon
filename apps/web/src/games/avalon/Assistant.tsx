@@ -17,11 +17,13 @@ export function AvalonAssistant({
   view,
   notebook,
   onClose,
+  onUseSpeech,
 }: {
   room: RoomSnapshot;
   view: Avalon.AvalonView;
   notebook: AvalonNotebookData;
   onClose: () => void;
+  onUseSpeech?: (text: string) => void;
 }) {
   const { assistantResult, assistantError } = useNet();
   const [feature, setFeature] = useState<AvalonAssistantFeature>('role-coach');
@@ -166,6 +168,11 @@ export function AvalonAssistant({
           <section className="assistant-answer" aria-live="polite">
             <h3>{FEATURES.find((item) => item.id === answer.feature)?.title} · 分析结果</h3>
             <pre>{answer.content}</pre>
+            {answer.feature === 'speech-prep' && onUseSpeech && (
+              <button type="button" className="btn btn-primary btn-small" onClick={() => onUseSpeech(answer.content)}>
+                复制到我的发言
+              </button>
+            )}
             <small>分析基于发起请求时的局面。</small>
           </section>
         )}

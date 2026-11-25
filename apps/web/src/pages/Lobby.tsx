@@ -17,7 +17,8 @@ export function Lobby({ room, game }: { room: RoomSnapshot; game: GameClient }) 
   const def = getGame(room.gameId)!;
   const citadelsPig = useCitadelsPigTheme();
   const avalonPig = useAvalonCardStyle() === 'pig';
-  const pigTheme = room.gameId === Avalon.avalon.id ? avalonPig : room.gameId === Citadels.citadels.id && citadelsPig;
+  const isAvalon = room.gameId === Avalon.avalon.id;
+  const pigTheme = isAvalon ? avalonPig : room.gameId === Citadels.citadels.id && citadelsPig;
   const isHost = room.hostId === room.you;
   const [copied, setCopied] = useState(false);
   const count = room.players.length;
@@ -30,6 +31,11 @@ export function Lobby({ room, game }: { room: RoomSnapshot; game: GameClient }) 
   const meIndex = room.players.find((p) => p.id === room.you)?.seatIndex ?? 0;
   const host = room.players.find((p) => p.id === room.hostId);
   const showTitleInHeader = Boolean(game.LobbyCardStyles);
+  const addBotButton = isHost && def.botAction && (
+    <button type="button" className="btn btn-ghost btn-small" disabled={count >= capacity} onClick={net.addBot}>
+      添加机器人凑人数
+    </button>
+  );
   const gameHeading = (
     <div className={`lobby-game-heading${showTitleInHeader ? ' lobby-game-heading-top' : ''}`}>
       <span className="lobby-heading-seal" aria-hidden="true">{pigTheme ? '🐷' : '✦'}</span>
@@ -170,7 +176,12 @@ export function Lobby({ room, game }: { room: RoomSnapshot; game: GameClient }) 
           )}
           <game.Options options={room.options} playerCount={target ?? count} players={room.players}
             editable={isHost} onChange={net.setOptions} />
-          {room.gameId === Avalon.avalon.id && <AvalonBotSettings room={room} />}
+          {isAvalon && (
+            <>
+              {addBotButton}
+              <AvalonBotSettings room={room} />
+            </>
+          )}
           <div className="lobby-actions">
             {isHost ? (
               <>
@@ -178,11 +189,7 @@ export function Lobby({ room, game }: { room: RoomSnapshot; game: GameClient }) 
                   开始游戏
                 </button>
                 {room.startBlocker && <p className="lobby-blocker">{room.startBlocker}</p>}
-                {def.botAction && (
-                  <button type="button" className="btn btn-ghost btn-small" disabled={count >= capacity} onClick={net.addBot}>
-                    添加机器人凑人数
-                  </button>
-                )}
+                {!isAvalon && addBotButton}
               </>
             ) : (
               <p className="lobby-waiting">等 {host?.name ?? '房主'} 开始游戏</p>

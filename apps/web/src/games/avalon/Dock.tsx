@@ -4,7 +4,6 @@ import { Avalon, type RoomPlayer } from '@tabletop/shared';
 import { net } from '../../net/client';
 import { TeamRoster } from './SeatIdentity';
 import { QuestCard, VoteToken } from './art';
-import { SpeechDesk } from './SpeechDesk';
 
 type View = Avalon.AvalonView;
 
@@ -15,7 +14,6 @@ type View = Avalon.AvalonView;
 export function Dock({
   view,
   players,
-  gameSeq,
   nameOf,
   picked,
   preselectedTeam,
@@ -29,7 +27,6 @@ export function Dock({
 }: {
   view: View;
   players: RoomPlayer[];
-  gameSeq: number;
   nameOf: (id: string | null) => string;
   /** 湖中仙女 / 刺杀时在桌上选中的目标 */
   picked: string | null;
@@ -117,8 +114,9 @@ export function Dock({
     case 'discussion': {
       const discussion = view.discussion!;
       const speaker = discussion.currentSpeaker;
-      const speakerNumber = view.players.indexOf(speaker) + 1;
-      const timer = formatTimer(speechSecondsRemaining);
+      const player = players.find(({ id }) => id === speaker);
+      const speakerNumber = (player?.seatIndex ?? view.players.indexOf(speaker)) + 1;
+      const timer = player?.isBot ? '正在准备' : formatTimer(speechSecondsRemaining);
       const current = speaker === me.id;
       return (
         <DockShell
@@ -128,7 +126,7 @@ export function Dock({
           waiting={!current}
         >
           {view.speechMode === 'text' ? (
-            <SpeechDesk key={discussion.turn} view={view} gameSeq={gameSeq} canSpeak={current} players={players} onOpenLog={onShowSpeechLog} />
+            <button type="button" className="btn btn-ghost btn-small av-open-speech-log" onClick={onShowSpeechLog}>发言与记录</button>
           ) : current && (
             <button type="button" className="btn btn-primary speech-finish" onClick={() => send({ type: 'finish_speech' })}>
               我说完了

@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import { motion } from 'framer-motion';
 import { Avalon } from '@tabletop/shared';
-import { polar, sector } from '../../art/geometry';
+import { sector } from '../../art/geometry';
 import { EMBLEM, GILT, LEAD, type Glass } from '../../art/glass';
 import { AVALON_CARD_BACK, avalonPigArt, getAvalonCardAsset, useAvalonCardStyle, type AvalonCardStyle } from './cardLibrary';
 
@@ -187,10 +187,9 @@ export function QuestRoundel({
         </text>
       )}
       {twoFails && !done && (
-        <g>
-          {[polar(50, 50, 40, 60), polar(50, 50, 40, 120)].map(([x, y]) => (
-            <circle key={x} cx={x} cy={y} r="6" fill="#d2384f" stroke={LEAD} strokeWidth="2" />
-          ))}
+        <g fill="#a3344d" stroke="#f2afba" strokeWidth="2">
+          <rect x="35" y="72" width="12" height="17" rx="2" transform="rotate(-12 41 80.5)" />
+          <rect x="53" y="72" width="12" height="17" rx="2" transform="rotate(12 59 80.5)" />
         </g>
       )}
     </svg>

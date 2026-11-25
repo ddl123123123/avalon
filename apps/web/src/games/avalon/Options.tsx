@@ -1,6 +1,5 @@
 import { Avalon } from '@tabletop/shared';
-import { LadyToken, RoleFace } from './art';
-import { CardLibrarySettings } from './CardLibrarySettings';
+import { LadyToken, QuestRoundel, RoleFace } from './art';
 
 const { EVIL_COUNT, MAX_PLAYERS, MIN_PLAYERS, OPTIONAL_ROLES, ROLES, TEAM_SIZES } = Avalon;
 
@@ -31,15 +30,29 @@ export function AvalonOptions({
 
   return (
     <div className="av-options">
-      <CardLibrarySettings />
-      <p className="av-options-summary">
-        {n} 人局 · 五次任务人数 {TEAM_SIZES[n]!.join(' / ')}
-        {n >= 7 && <span>第 4 次任务需两张失败牌才算失败</span>}
-      </p>
+      <section className="av-lobby-quests" aria-label={`${n} 人局任务`}>
+        <h2 className="av-options-heading">任务人数</h2>
+        <ol className="av-lobby-quest-track">
+          {TEAM_SIZES[n]!.map((size, index) => {
+            const twoFails = Avalon.failsRequired(n, index) === 2;
+            return (
+              <li key={index} className={twoFails ? 'av-lobby-quest-special' : undefined}>
+                <span className="av-lobby-quest-label">任务 <b>{index + 1}</b></span>
+                <span role="img" aria-label={`${size} 人`} className="av-lobby-quest-token">
+                  <QuestRoundel state="pending" size={size} twoFails={twoFails} />
+                </span>
+                {twoFails && <>
+                  <span className="av-lobby-quest-rule" aria-hidden="true"><b>2</b> 张失败牌</span>
+                  <span className="sr-only">至少两张失败牌才算失败</span>
+                </>}
+              </li>
+            );
+          })}
+        </ol>
+      </section>
 
       <fieldset className="av-timer-setting">
         <legend>发言倒计时</legend>
-        <p>可限制每位玩家的发言时间，也可选择不计时</p>
         <div className="av-timer-options av-speech-timer-options" role="group" aria-label="选择发言时长">
           {[0, ...Avalon.SPEECH_TIMERS].map((seconds) => (
             <button
@@ -50,7 +63,7 @@ export function AvalonOptions({
               disabled={!editable}
               onClick={() => onChange({ speechSeconds: seconds })}
             >
-              {seconds === 0 ? '不计时' : `${seconds} 秒`}
+              {seconds === 0 ? '不计时' : <><b>{seconds}</b> 秒</>}
             </button>
           ))}
         </div>
@@ -88,10 +101,9 @@ export function AvalonOptions({
         <details className="av-role-editor">
           <summary>调整角色和湖中仙女</summary>
           <div className="av-toggles">
-            <p className="av-options-summary">
-              梅林和刺客固定在场，剩余名额由普通角色补齐。
-              {evilSlotsFull && n < MAX_PLAYERS && '要换入其他邪恶角色，请先关闭一名已选的邪恶角色。'}
-            </p>
+            {evilSlotsFull && OPTIONAL_ROLES.some((role) => ROLES[role].alignment === 'evil' && !options[role]) && (
+              <p className="av-options-summary">邪恶方名额已满，取消一名后可替换。</p>
+            )}
             {OPTIONAL_ROLES.map((role) => {
               const info = ROLES[role];
               return (
@@ -105,6 +117,7 @@ export function AvalonOptions({
                 >
                   <span className="av-toggle-name">{info.name}</span>
                   <span className="av-toggle-text">{info.ability}</span>
+                  <span className="av-selection-mark" aria-hidden="true" />
                 </button>
               );
             })}
@@ -121,6 +134,7 @@ export function AvalonOptions({
               <span className="av-toggle-text">
                 第 2、3、4 次任务后，持有者可以查验一名玩家的阵营，然后把它交给对方。建议 {Avalon.LADY_RECOMMENDED_PLAYERS} 人以上使用。
               </span>
+              <span className="av-selection-mark" aria-hidden="true" />
             </button>
             {custom && <button type="button" className="link av-reset" onClick={() => onChange(recommended)}>恢复推荐阵容</button>}
           </div>

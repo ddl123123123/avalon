@@ -458,12 +458,21 @@
 .lobby-room-meta .room-code {
   gap: 8px;
   color: #92989a;
+  font-size: 0.73rem;
   white-space: nowrap;
 }
+.lobby-room-meta,
+.lobby-count,
+.lobby-table .seat-avatar-number {
+  font-family: var(--font-body);
+  font-variant-numeric: tabular-nums;
+}
 .lobby-room-meta .room-code strong {
-  color: #e0d7c4;
-  font-size: 1.45rem;
-  letter-spacing: 0.14em;
+  color: var(--gilt-bright);
+  font-family: inherit;
+  font-size: 1.65rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
 }
 .lobby-room-divider {
   width: 1px;
@@ -476,7 +485,7 @@
   align-items: center;
   gap: 8px;
   color: #c0c0b8;
-  font-size: 0.83rem;
+  font-size: 0.8rem;
   white-space: nowrap;
 }
 .lobby-room-state i {
@@ -490,15 +499,32 @@
   background: #a5b9a3;
   box-shadow: 0 0 10px rgba(165, 185, 163, 0.5);
 }
-.lobby-room-players {
-  color: var(--gilt-bright);
-  font-family: var(--font-numeral);
-  font-size: 0.96rem;
+.lobby-room-state b {
+  color: var(--vellum);
+  font-weight: 700;
 }
-.lobby-room-bar > .btn {
+.lobby-room-players {
+  align-items: baseline;
+  gap: 3px;
+  color: var(--vellum-dim);
+  font-size: 0.75rem;
+}
+.lobby-room-players strong {
+  color: var(--gilt-bright);
+  font-size: 1.18rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.lobby-header-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.lobby-header-actions .btn {
   min-height: 40px;
   font-size: 0.88rem;
   letter-spacing: 0.04em;
+  white-space: nowrap;
   border-color: rgba(181, 175, 158, 0.3);
   --btn-fg: #d3c9b2;
   --btn-bg: rgba(27, 33, 39, 0.78);
@@ -755,7 +781,7 @@
     padding-top: 7px;
     border-top: 1px solid rgba(181, 184, 179, 0.12);
   }
-  .lobby-room-bar > .btn { grid-area: invite; }
+  .lobby-header-actions { grid-area: invite; }
   .lobby-room-meta .room-code span { display: inline; }
   .lobby-body {
     gap: 14px;
@@ -789,14 +815,14 @@
     gap: 9px;
   }
   .lobby-room-meta .room-code strong {
-    font-size: 1.25rem;
+    font-size: 1.5rem;
   }
   .lobby-room-state,
   .lobby-room-players {
     font-size: 0.75rem;
   }
   .lobby-room-divider { height: 20px; }
-  .lobby-room-bar > .btn {
+  .lobby-header-actions .btn {
     min-height: 38px;
     padding-inline: 0.7em;
     font-size: 0.78rem;

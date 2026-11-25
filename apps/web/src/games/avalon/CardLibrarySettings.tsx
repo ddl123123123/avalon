@@ -1,18 +1,17 @@
-import { AvalonCardBack, RoleFace } from './art';
+import { ResponsiveSheet } from '../../ui/ResponsiveSheet';
+import { RoleFace } from './art';
 import { AVALON_CARD_STYLES, setAvalonCardStyle, useAvalonCardStyle } from './cardLibrary';
 
-export function CardLibrarySettings({ compact = false }: { compact?: boolean }) {
+export function CardLibrarySettings({ onClose }: { onClose: () => void }) {
   const selected = useAvalonCardStyle();
   if (selected === 'pig') return null;
 
   return (
-    <section className={`av-card-library${compact ? ' av-card-library-compact' : ''}`} aria-label="角色卡牌库设置">
-      {!compact && (
-        <div className="av-card-library-heading">
-          <h2>角色卡牌库</h2>
-          <p>选择你想使用的卡面风格，设置仅保存在本机</p>
-        </div>
-      )}
+    <ResponsiveSheet label="卡牌外观" className="av-card-library" onClose={onClose}>
+      <div className="drawer-head">
+        <h2>卡牌外观</h2>
+        <button type="button" className="btn btn-ghost btn-small" onClick={onClose}>完成</button>
+      </div>
       <div className="av-card-style-options">
         {AVALON_CARD_STYLES.map((style) => (
           <button
@@ -25,13 +24,14 @@ export function CardLibrarySettings({ compact = false }: { compact?: boolean }) 
             <span className="av-card-style-preview" aria-hidden="true">
               <RoleFace role="merlin" style={style.id} thumbnail />
               <RoleFace role="morgana" style={style.id} thumbnail />
-              <AvalonCardBack style={style.id} thumbnail />
             </span>
-            <span className="av-card-style-name">{style.name}</span>
-            <small>{style.description}</small>
+            <span className="av-card-style-name">
+              {style.name}
+              <span className="av-selection-mark" aria-hidden="true" />
+            </span>
           </button>
         ))}
       </div>
-    </section>
+    </ResponsiveSheet>
   );
 }

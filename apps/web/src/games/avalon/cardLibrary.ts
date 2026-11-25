@@ -5,9 +5,9 @@ import { isPigEdition } from '../pigEdition';
 type ClassicStyle = 'style-1' | 'style-2';
 export type AvalonCardStyle = ClassicStyle | 'pig';
 
-export const AVALON_CARD_STYLES: { id: ClassicStyle; name: string; description: string }[] = [
-  { id: 'style-1', name: '风格一 · 蓝金徽章', description: '低多边形插画与金色线框' },
-  { id: 'style-2', name: '风格二 · 星夜典藏', description: '写实奇幻插画与细致卡框' },
+export const AVALON_CARD_STYLES: { id: ClassicStyle; name: string }[] = [
+  { id: 'style-1', name: '蓝金徽章' },
+  { id: 'style-2', name: '星夜典藏' },
 ];
 
 export const AVALON_CARD_BACK = `${import.meta.env.BASE_URL}avalon-card-back.webp`;

@@ -5,6 +5,7 @@ import { Avalon, Citadels, getGame } from '@tabletop/shared';
 import { TableSurface } from '../art/glass';
 import { useAvalonCardStyle } from '../games/avalon/cardLibrary';
 import { AvalonBotSettings } from '../games/avalon/BotSettings';
+import { CardLibrarySettings } from '../games/avalon/CardLibrarySettings';
 import { useCitadelsPigTheme } from '../games/citadels/cardStyle';
 import type { GameClient } from '../games/registry';
 import { net } from '../net/client';
@@ -21,6 +22,7 @@ export function Lobby({ room, game }: { room: RoomSnapshot; game: GameClient }) 
   const pigTheme = isAvalon ? avalonPig : room.gameId === Citadels.citadels.id && citadelsPig;
   const isHost = room.hostId === room.you;
   const [copied, setCopied] = useState(false);
+  const [showCardLibrary, setShowCardLibrary] = useState(false);
   const count = room.players.length;
   const target = room.targetPlayers;
   const required = target ?? def.minPlayers;
@@ -80,14 +82,21 @@ export function Lobby({ room, game }: { room: RoomSnapshot; game: GameClient }) 
           <span className="lobby-room-divider" aria-hidden="true" />
           <span className={`lobby-room-state ${count >= required ? 'is-ready' : ''}`} aria-live="polite">
             <i aria-hidden="true" />
-            {count >= required ? '队伍已齐' : `还需 ${required - count} 人`}
+            <span>{count >= required ? '队伍已齐' : <>还需 <b>{required - count}</b> 人</>}</span>
           </span>
-          <span className="lobby-room-players">{count} / {capacity} 人</span>
+          <span className="lobby-room-players"><strong>{count}</strong><span> / {capacity} 人</span></span>
         </div>
 
-        <button type="button" className="btn btn-ghost btn-small" onClick={copy}>
-          {copied ? '链接已复制' : '复制邀请链接'}
-        </button>
+        <div className="lobby-header-actions">
+          {isAvalon && !avalonPig && (
+            <button type="button" className="btn btn-ghost btn-small" aria-haspopup="dialog" onClick={() => setShowCardLibrary(true)}>
+              卡牌外观
+            </button>
+          )}
+          <button type="button" className="btn btn-ghost btn-small" onClick={copy}>
+            {copied ? '链接已复制' : '复制邀请链接'}
+          </button>
+        </div>
         {showTitleInHeader && gameHeading}
       </header>
 
@@ -197,6 +206,7 @@ export function Lobby({ room, game }: { room: RoomSnapshot; game: GameClient }) 
           </div>
         </aside>
       </div>
+      {isAvalon && showCardLibrary && <CardLibrarySettings onClose={() => setShowCardLibrary(false)} />}
     </main>
   );
 }

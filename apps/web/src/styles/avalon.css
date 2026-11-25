@@ -3,39 +3,21 @@
   display: grid;
   gap: 14px;
 }
-.av-card-library {
-  display: grid;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid rgba(184, 158, 114, 0.28);
-  background: linear-gradient(135deg, rgba(24, 31, 42, 0.82), rgba(9, 12, 18, 0.8));
-}
-.av-card-library-heading {
-  display: grid;
-  gap: 3px;
-}
-.av-card-library-heading h2 {
-  color: var(--gilt-bright);
-  font-size: 1.12rem;
-}
-.av-card-library-heading p,
-.av-card-style-option small {
-  color: var(--vellum-dim);
-  font-size: 0.75rem;
-  line-height: 1.35;
+.drawer.av-card-library {
+  background: linear-gradient(165deg, #212b38, #0b1017 68%);
 }
 .av-card-style-options {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 .av-card-style-option {
   display: grid;
   justify-items: center;
   align-content: start;
-  gap: 6px;
+  gap: 10px;
   min-width: 0;
-  padding: 8px 6px;
+  padding: 10px 7px;
   border: 1px solid rgba(202, 197, 183, 0.18);
   border-radius: 4px;
   background: rgba(5, 8, 14, 0.48);
@@ -53,8 +35,8 @@
 }
 .av-card-style-preview {
   display: flex;
-  gap: 3px;
-  width: min(100%, 116px);
+  gap: 4px;
+  width: 100%;
   overflow: hidden;
   border-radius: 3px;
   filter: drop-shadow(0 5px 6px rgba(0, 0, 0, 0.4));
@@ -65,12 +47,17 @@
   border-radius: 2px;
 }
 .av-card-style-name {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   color: var(--vellum);
-  font-size: 0.76rem;
+  font-size: 0.86rem;
+  font-weight: 600;
   line-height: 1.25;
 }
-.av-card-style-option small {
-  font-size: 0.64rem;
+.av-card-style-name .av-selection-mark {
+  --mark-size: 15px;
 }
 .role-face-raster {
   position: relative;
@@ -172,25 +159,53 @@
 .flip-front .role-face-raster {
   height: 100%;
 }
-.role-card-settings {
-  position: relative;
+.av-lobby-quests {
+  display: grid;
+  gap: 7px;
 }
-.role-card-settings > summary {
+.av-lobby-quest-track {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 3px;
+  padding: 8px 4px;
+  margin: 0;
   list-style: none;
+  border: 1px solid rgba(214, 196, 155, 0.22);
+  border-radius: 5px;
+  background: rgba(7, 10, 24, 0.55);
 }
-.role-card-settings > summary::-webkit-details-marker {
-  display: none;
+.av-lobby-quest-track li {
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 3px;
+  padding: 3px 0;
+  border-radius: 4px;
 }
-.role-card-settings[open] > .av-card-library {
-  position: absolute;
-  z-index: 40;
-  top: calc(100% + 10px);
-  right: 0;
-  width: min(360px, calc(100vw - 24px));
-  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.65);
+.av-lobby-quest-label,
+.av-lobby-quest-rule {
+  font-size: 0.66rem;
+  white-space: nowrap;
+  line-height: 1.2;
 }
-.av-card-library-compact {
-  padding: 10px;
+.av-lobby-quest-label {
+  color: var(--vellum-dim);
+}
+.av-lobby-quest-token {
+  display: block;
+  width: min(94%, 53px);
+}
+.av-lobby-quest-token .roundel-number {
+  font-family: var(--font-body);
+  fill: var(--vellum);
+}
+.av-lobby-quest-special {
+  background: rgba(163, 52, 77, 0.17);
+  box-shadow: inset 0 0 0 1px rgba(242, 175, 186, 0.32);
+}
+.av-lobby-quest-rule {
+  color: var(--ruby-soft);
+  font-weight: 600;
 }
 .av-options-summary {
   color: #cfc8b2;
@@ -213,11 +228,6 @@
   color: var(--gilt-bright);
   font-size: 0.98rem;
 }
-.av-timer-setting p {
-  color: var(--vellum-dim);
-  font-size: 0.78rem;
-  line-height: 1.35;
-}
 .av-timer-options {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -225,6 +235,10 @@
 }
 .av-speech-timer-options {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.av-speech-timer-options .av-timer-choice {
+  padding-inline: 3px;
+  white-space: nowrap;
 }
 .av-timer-choice {
   min-width: 0;
@@ -353,32 +367,39 @@
   color: var(--vellum-dim);
   line-height: 1.5;
 }
-/* 右侧的开关 */
-.av-toggle::after {
-  content: '';
+.av-toggle > .av-selection-mark {
   position: absolute;
   right: 14px;
   top: 50%;
-  width: 26px;
-  height: 26px;
-  margin-top: -13px;
-  transform: rotate(45deg) scale(0.62);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  transition:
-    transform 0.3s var(--ease-out),
-    background 0.25s,
-    border-color 0.25s,
-    box-shadow 0.25s;
+  transform: translateY(-50%);
+}
+.av-selection-mark {
+  --mark-size: 22px;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: var(--mark-size);
+  height: var(--mark-size);
+  border: 1px solid var(--vellum-dim);
+  border-radius: 4px;
+}
+.av-toggle[aria-pressed='true'] > .av-selection-mark,
+.av-card-style-option[aria-pressed='true'] .av-selection-mark {
+  border-color: #ead6a5;
+  background: #ead6a5;
+}
+.av-toggle[aria-pressed='true'] > .av-selection-mark::after,
+.av-card-style-option[aria-pressed='true'] .av-selection-mark::after {
+  content: '';
+  width: 27%;
+  height: 54%;
+  border: solid #171920;
+  border-width: 0 2px 2px 0;
+  transform: translateY(-8%) rotate(45deg);
 }
 .av-toggle[aria-pressed='true'] {
   background: color-mix(in srgb, var(--tone) 20%, rgba(5, 8, 26, 0.5));
   border-color: color-mix(in srgb, var(--tone) 75%, transparent);
-}
-.av-toggle[aria-pressed='true']::after {
-  transform: rotate(45deg) scale(0.8);
-  background: var(--tone);
-  border-color: #fff;
-  box-shadow: 0 0 16px var(--tone);
 }
 .av-toggle:disabled {
   cursor: not-allowed;

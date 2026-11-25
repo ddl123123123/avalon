@@ -83,13 +83,17 @@
 
 .entry {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   margin-top: 2.2rem;
   max-width: 440px;
 }
+.entry > .field {
+  grid-template-columns: minmax(0, 1fr);
+}
 .entry-actions {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
 .entry-join {
@@ -1064,10 +1068,7 @@
     padding: 16px;
   }
   .entry-join {
-    flex-wrap: wrap;
-  }
-  .entry-join .input,
-  .entry-join .btn {
-    flex: 1 1 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
   }
 }

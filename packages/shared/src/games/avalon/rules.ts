@@ -122,7 +122,7 @@ export interface AvalonOptions {
 }
 
 export const SPEECH_TIMERS = [60, 90, 120] as const;
-export type SpeechSeconds = (typeof SPEECH_TIMERS)[number];
+export type SpeechSeconds = 0 | (typeof SPEECH_TIMERS)[number];
 
 export const OPTIONAL_ROLES = ['percival', 'morgana', 'mordred', 'oberon'] as const;
 export type OptionalRole = (typeof OPTIONAL_ROLES)[number];
@@ -143,13 +143,18 @@ export function defaultOptions(): AvalonOptions {
 
 export function normalizeOptions(raw: unknown): AvalonOptions {
   const src = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const speechSeconds = src.speechSeconds === 0
+    ? 0
+    : SPEECH_TIMERS.includes(src.speechSeconds as (typeof SPEECH_TIMERS)[number])
+      ? src.speechSeconds as (typeof SPEECH_TIMERS)[number]
+      : 90;
   return {
     percival: src.percival === true,
     morgana: src.morgana === true,
     mordred: src.mordred === true,
     oberon: src.oberon === true,
     ladyOfTheLake: src.ladyOfTheLake === true,
-    speechSeconds: SPEECH_TIMERS.includes(src.speechSeconds as SpeechSeconds) ? (src.speechSeconds as SpeechSeconds) : 90,
+    speechSeconds,
     botDifficulty: src.botDifficulty === 'advanced' ? 'advanced' : 'standard',
   };
 }

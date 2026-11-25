@@ -122,7 +122,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
   const [leaderFirst, setLeaderFirst] = useState(true);
   const [direction, setDirection] = useState<'left' | 'right'>('left');
   const [, setClockTick] = useState(0);
-  const speechDeadline = view.discussion?.deadline ?? null;
+  const speechDeadline = view.discussion?.timerSeconds === 0 ? null : view.discussion?.deadline ?? null;
 
   useEffect(() => {
     const board = boardRef.current;
@@ -357,7 +357,9 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
                               </div>
                               {botSpeaking ? <strong className="speech-waiting-countdown">正在准备</strong> : (
                                 <strong className="speech-countdown">
-                                  {Math.floor(speechSecondsRemaining / 60)}:{String(speechSecondsRemaining % 60).padStart(2, '0')}
+                                  {view.discussion.timerSeconds === 0
+                                    ? '不计时'
+                                    : `${Math.floor(speechSecondsRemaining / 60)}:${String(speechSecondsRemaining % 60).padStart(2, '0')}`}
                                 </strong>
                               )}
                               <small className="speech-progress">

@@ -490,7 +490,7 @@ export class RoomManager {
     if (room.game.id !== Avalon.avalon.id || room.status !== 'playing') return;
     const state = room.state as Avalon.AvalonState;
     const discussion = state.discussion;
-    if (!discussion) return;
+    if (!discussion || discussion.timerSeconds === 0) return;
     const player = discussion.order[discussion.currentIndex];
     room.speechTimer = setTimeout(() => {
       room.speechTimer = undefined;
@@ -527,7 +527,8 @@ export class RoomManager {
       if (member.polishRequest) return fail('上一条发言还在润色。');
       const source = msg.draft;
       if (!source || source.gameSeq !== room.gameSeq || view.speechMode !== 'text' ||
-          view.discussion?.currentSpeaker !== member.id || source.turn !== view.discussion.turn || Date.now() >= view.discussion.deadline) {
+          view.discussion?.currentSpeaker !== member.id || source.turn !== view.discussion.turn ||
+          (view.discussion.timerSeconds !== 0 && Date.now() >= view.discussion.deadline)) {
         return fail('当前文字发言轮次已更新。');
       }
       if (typeof source.text !== 'string' || !source.text.trim()) return fail('请先输入发言原文。');
@@ -644,7 +645,7 @@ export class RoomManager {
           this.botModelInFlight--;
         }
       }
-      if (reply?.action.type === 'submit_speech' && view.discussion) {
+      if (reply?.action.type === 'submit_speech' && view.discussion && view.discussion.timerSeconds !== 0) {
         const { deadline, timerSeconds } = view.discussion;
         // 生成和等待并行计时，从该座位开始发言时算约十秒。
         const publishAt = Math.min(deadline - 100, deadline - timerSeconds * 1000 + AVALON_BOT_SPEECH_MS * BOT_PACE);

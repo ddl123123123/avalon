@@ -283,7 +283,9 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
                                 <span>号玩家{view.speechMode === 'text' ? '文字发言' : '发言'}</span>
                               </div>
                               <strong className="speech-countdown">
-                                {Math.floor(speechSecondsRemaining / 60)}:{String(speechSecondsRemaining % 60).padStart(2, '0')}
+                                {view.discussion.timerSeconds === 0
+                                  ? '不计时'
+                                  : `${Math.floor(speechSecondsRemaining / 60)}:${String(speechSecondsRemaining % 60).padStart(2, '0')}`}
                               </strong>
                               <small className="speech-progress">
                                 第 {view.discussion.currentIndex + 1} / {view.discussion.order.length} 位 · 从队长{view.discussion.direction === 'left' ? '左' : '右'}手边开始

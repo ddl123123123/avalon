@@ -66,7 +66,7 @@ export function Dock({
           <DockShell
             key={`setup-${questNo}-${view.rejectCount}`}
             prompt={`第 ${questNo} 次任务 · 先设置讨论顺序`}
-            hint={`${preselectedTeam ? `在桌上选满 ${size} 人，预选名单对全桌公开。` : '讨论结束后再选队伍。'}每人${view.speechMode === 'text' ? '文字' : ''}发言限时 ${view.options.speechSeconds} 秒。`}
+            hint={`${preselectedTeam ? `在桌上选满 ${size} 人，预选名单对全桌公开。` : '讨论结束后再选队伍。'}${view.options.speechSeconds === 0 ? '每人发言不计时。' : `每人${view.speechMode === 'text' ? '文字' : ''}发言限时 ${view.options.speechSeconds} 秒。`}`}
             stacked
             compactLabel={preselectedTeam ? `讨论设置 · 已选 ${view.team.length}/${size}` : '讨论设置'}
           >
@@ -112,7 +112,7 @@ export function Dock({
       const discussion = view.discussion!;
       const speaker = discussion.currentSpeaker;
       const speakerNumber = view.players.indexOf(speaker) + 1;
-      const timer = formatTimer(speechSecondsRemaining);
+      const timer = discussion.timerSeconds === 0 ? '不计时' : formatTimer(speechSecondsRemaining);
       const current = speaker === me.id;
       return (
         <DockShell

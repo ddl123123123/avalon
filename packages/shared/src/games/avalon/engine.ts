@@ -79,7 +79,7 @@ export interface AvalonState {
   discussion: null | {
     order: PlayerId[];
     currentIndex: number;
-    deadline: number;
+    deadline: number | null;
     preselectedTeam: boolean;
     leaderFirst: boolean;
     direction: 'left' | 'right';
@@ -145,7 +145,7 @@ export interface AvalonView {
     currentIndex: number;
     currentSpeaker: PlayerId;
     turn: string;
-    deadline: number;
+    deadline: number | null;
     preselectedTeam: boolean;
     leaderFirst: boolean;
     direction: 'left' | 'right';
@@ -289,7 +289,7 @@ function advanceDiscussion(state: AvalonState, now: number) {
   state.discussion = {
     ...discussion,
     currentIndex: nextIndex,
-    deadline: now + discussion.timerSeconds * 1000,
+    deadline: discussion.timerSeconds === 0 ? null : now + discussion.timerSeconds * 1000,
   };
 }
 
@@ -431,7 +431,7 @@ function reduce(prev: AvalonState, player: PlayerId, action: AvalonAction, rng: 
       state.discussion = {
         order,
         currentIndex: 0,
-        deadline: now + state.options.speechSeconds * 1000,
+        deadline: state.options.speechSeconds === 0 ? null : now + state.options.speechSeconds * 1000,
         preselectedTeam: action.preselectedTeam,
         leaderFirst: action.leaderFirst,
         direction,
@@ -446,7 +446,7 @@ function reduce(prev: AvalonState, player: PlayerId, action: AvalonAction, rng: 
         throw new GameError('现在还没轮到你发言');
       }
       const now = typeof action.now === 'number' && Number.isFinite(action.now) ? action.now : Date.now();
-      recordSpeech(state, now >= state.discussion.deadline ? 'timed_out' : 'passed');
+      recordSpeech(state, state.discussion.deadline !== null && now >= state.discussion.deadline ? 'timed_out' : 'passed');
       advanceDiscussion(state, now);
       return state;
     }
@@ -458,7 +458,7 @@ function reduce(prev: AvalonState, player: PlayerId, action: AvalonAction, rng: 
       const text = typeof action.text === 'string' ? action.text.trim() : '';
       if (!text) throw new GameError('请先输入发言，或选择跳过');
       const now = typeof action.now === 'number' && Number.isFinite(action.now) ? action.now : Date.now();
-      if (now >= state.discussion.deadline) throw new GameError('你的发言时间已结束');
+      if (state.discussion.deadline !== null && now >= state.discussion.deadline) throw new GameError('你的发言时间已结束');
       recordSpeech(state, 'spoken', text);
       advanceDiscussion(state, now);
       return state;
@@ -466,7 +466,7 @@ function reduce(prev: AvalonState, player: PlayerId, action: AvalonAction, rng: 
     case 'timeout_speech': {
       if (state.phase !== 'discussion' || !state.discussion) return state;
       const now = typeof action.now === 'number' && Number.isFinite(action.now) ? action.now : Date.now();
-      if (now < state.discussion.deadline) return prev;
+      if (state.discussion.deadline === null || now < state.discussion.deadline) return prev;
       recordSpeech(state, 'timed_out');
       advanceDiscussion(state, now);
       return state;

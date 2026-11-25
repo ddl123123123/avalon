@@ -39,9 +39,9 @@ export function AvalonOptions({
 
       <fieldset className="av-timer-setting">
         <legend>发言倒计时</legend>
-        <p>轮到玩家发言时开始计时</p>
-        <div className="av-timer-options" role="group" aria-label="选择发言时长">
-          {Avalon.SPEECH_TIMERS.map((seconds) => (
+        <p>可限制每位玩家的发言时间，也可选择不计时</p>
+        <div className="av-timer-options av-speech-timer-options" role="group" aria-label="选择发言时长">
+          {[0, ...Avalon.SPEECH_TIMERS].map((seconds) => (
             <button
               key={seconds}
               type="button"
@@ -50,7 +50,7 @@ export function AvalonOptions({
               disabled={!editable}
               onClick={() => onChange({ speechSeconds: seconds })}
             >
-              {seconds} 秒
+              {seconds === 0 ? '不计时' : `${seconds} 秒`}
             </button>
           ))}
         </div>

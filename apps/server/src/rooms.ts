@@ -476,7 +476,7 @@ export class RoomManager {
     if (room.game.id !== Avalon.avalon.id || room.status !== 'playing') return;
     const state = room.state as Avalon.AvalonState;
     const discussion = state.discussion;
-    if (!discussion) return;
+    if (!discussion || discussion.deadline === null) return;
     const player = discussion.order[discussion.currentIndex];
     room.speechTimer = setTimeout(() => {
       room.speechTimer = undefined;

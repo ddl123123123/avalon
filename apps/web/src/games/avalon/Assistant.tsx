@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
 import { Avalon, type AvalonAssistantFeature, type RoomSnapshot } from '@tabletop/shared';
 import { net, useNet } from '../../net/client';
+import { ResponsiveSheet } from '../../ui/ResponsiveSheet';
 import type { AvalonNotebookData } from './notebookData';
 
 const FEATURES: Array<{ id: AvalonAssistantFeature; title: string; description: string }> = [
@@ -39,13 +39,6 @@ export function AvalonAssistant({
     : feature === 'post-game-review'
       ? view.phase === 'ended'
       : true;
-
-  useEffect(() => {
-    if (inline) return;
-    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && onClose();
-    addEventListener('keydown', onKey);
-    return () => removeEventListener('keydown', onKey);
-  }, [inline, onClose]);
 
   useEffect(() => {
     if (pending && assistantResult?.requestId === pending.id) {
@@ -166,28 +159,16 @@ export function AvalonAssistant({
   if (inline) return <section aria-label="AI 助手">{content}</section>;
 
   return (
-    <motion.div className="drawer-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
-      <motion.aside
-        className="drawer avalon-assistant-drawer"
-        role="dialog"
-        aria-modal="true"
-        aria-label="阿瓦隆 AI 助手"
-        initial={{ x: '100%' }}
-        animate={{ x: 0 }}
-        exit={{ x: '100%' }}
-        transition={{ type: 'spring', stiffness: 300, damping: 34 }}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <header className="drawer-head">
-          <div>
-            <p className="notebook-kicker">ROUND TABLE COUNSEL</p>
-            <h2>AI 助手</h2>
-          </div>
-          <button type="button" className="btn btn-ghost btn-small" onClick={onClose}>关闭</button>
-        </header>
+    <ResponsiveSheet label="阿瓦隆 AI 助手" className="avalon-assistant-drawer" onClose={onClose}>
+      <header className="drawer-head">
+        <div>
+          <p className="notebook-kicker">ROUND TABLE COUNSEL</p>
+          <h2>AI 助手</h2>
+        </div>
+        <button type="button" className="btn btn-ghost btn-small" onClick={onClose}>关闭</button>
+      </header>
 
-        {content}
-      </motion.aside>
-    </motion.div>
+      {content}
+    </ResponsiveSheet>
   );
 }

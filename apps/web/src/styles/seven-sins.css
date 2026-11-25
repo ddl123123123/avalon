@@ -23,11 +23,11 @@
 .sins-room > .room-bar h1 { font-size: clamp(1.2rem, 4vw, 1.7rem); }
 .sins-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(244px, 300px);
+  grid-template-columns: minmax(0, 1fr);
   max-width: 1180px;
   padding: 16px clamp(12px, 3vw, 28px) max(36px, env(safe-area-inset-bottom));
   margin: 0 auto;
-  gap: 16px;
+  gap: 10px;
 }
 .sins-main,
 .sins-sidebar {
@@ -165,7 +165,13 @@
 .sins-history details { border-top: 1px solid #4b3b46; }
 .sins-history .sins-log { padding: 6px 0 10px; }
 
-@media (max-width: 760px) {
-  .sins-layout { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+@media (max-width: 767px) {
   .sins-main, .sins-sidebar { gap: 10px; }
+}
+
+@media (min-width: 768px) {
+  .sins-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(244px, 300px);
+    gap: 16px;
+  }
 }

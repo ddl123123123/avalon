@@ -6,6 +6,7 @@ import { Crown } from '../../art/glass';
 import { SplitText } from '../../fx/SplitText';
 import { net } from '../../net/client';
 import { Ticker } from '../../ui/Ticker';
+import { ResponsiveSheet } from '../../ui/ResponsiveSheet';
 import { CommissionTile, GlassworksCardStyleContext, KilnMark, PanelBack, PanelCard, Shard, type GlassworksCardStyle } from './art';
 import { describe, listPieces, shortfall, toneOf } from './text';
 
@@ -403,31 +404,20 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
 
       <AnimatePresence>
         {showLog && (
-          <motion.div key="log" className="drawer-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowLog(false)}>
-            <motion.aside
-              className="drawer"
-              role="dialog"
-              aria-label="对局记录"
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', stiffness: 300, damping: 34 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <header className="drawer-head">
-                <h2>对局记录</h2>
-                <button type="button" className="btn btn-ghost btn-small" onClick={() => setShowLog(false)}>
-                  关闭
-                </button>
-              </header>
-              <p className="dock-hint">最新的在最上面。</p>
-              <ol className="ct-log">
-                {[...view.log].reverse().map((e) => (
-                  <li key={e.seq}>{describe(e, nameOf, view.target)}</li>
-                ))}
-              </ol>
-            </motion.aside>
-          </motion.div>
+          <ResponsiveSheet key="log" label="对局记录" onClose={() => setShowLog(false)}>
+            <header className="drawer-head">
+              <h2>对局记录</h2>
+              <button type="button" className="btn btn-ghost btn-small" onClick={() => setShowLog(false)}>
+                关闭
+              </button>
+            </header>
+            <p className="dock-hint">最新的在最上面。</p>
+            <ol className="ct-log">
+              {[...view.log].reverse().map((e) => (
+                <li key={e.seq}>{describe(e, nameOf, view.target)}</li>
+              ))}
+            </ol>
+          </ResponsiveSheet>
         )}
       </AnimatePresence>
     </main>

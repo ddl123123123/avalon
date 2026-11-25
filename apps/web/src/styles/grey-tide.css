@@ -49,7 +49,6 @@
 
 .grey-mission,
 .party-panel.grey-crew,
-.grey-layout:has(.grey-action),
 .grey-stations {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -138,8 +137,8 @@
   background: #284653;
 }
 
-@media (max-width: 680px) {
+@media (min-width: 768px) {
   .grey-layout:has(.grey-action) {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

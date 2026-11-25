@@ -4,6 +4,7 @@ import { Avalon, type RoomPlayer } from '@tabletop/shared';
 import { Crest } from '../../art/Crest';
 import { Tilt } from '../../fx/Tilt';
 import { CardBack } from '../../art/glass';
+import { ResponsiveSheet } from '../../ui/ResponsiveSheet';
 import { AvalonCardBack, QuestCard, RoleFace } from './art';
 import { avalonPigArt, useAvalonCardStyle } from './cardLibrary';
 
@@ -49,25 +50,7 @@ export function FlipCard({
 }
 
 function Overlay({ children, tone = 'plain', onClose }: { children: ReactNode; tone?: 'plain' | 'good' | 'evil'; onClose?: () => void }) {
-  useEffect(() => {
-    if (!onClose) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    addEventListener('keydown', onKey);
-    return () => removeEventListener('keydown', onKey);
-  }, [onClose]);
-  return (
-    <motion.div
-      className={`overlay overlay-${tone}`}
-      role="dialog"
-      aria-modal="true"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.3 }}
-    >
-      <div className="overlay-body">{children}</div>
-    </motion.div>
-  );
+  return <ResponsiveSheet centered label="对局揭示" tone={tone} onClose={onClose}>{children}</ResponsiveSheet>;
 }
 
 /** 我在夜晚得知的信息，写成一句话。 */

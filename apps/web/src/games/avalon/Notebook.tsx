@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { Avalon, type RoomPlayer } from '@tabletop/shared';
 import { net, useNet } from '../../net/client';
+import { ResponsiveSheet } from '../../ui/ResponsiveSheet';
 import type { AvalonNotebookData, AvalonNotebookNote } from './notebookData';
 
 const ROUND_NAMES = ['第一轮', '第二轮', '第三轮', '第四轮', '第五轮'];
@@ -45,13 +46,6 @@ export function Notebook({
       setFilterSeat(null);
     }
   }, [open, currentRound]);
-
-  useEffect(() => {
-    if (!open || inline) return;
-    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && onClose();
-    addEventListener('keydown', onKey);
-    return () => removeEventListener('keydown', onKey);
-  }, [inline, open, onClose]);
 
   useEffect(() => {
     if (!pending) return;
@@ -254,28 +248,16 @@ export function Notebook({
 
   return (
     <AnimatePresence>
-      {open && <motion.div className="drawer-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
-        <motion.aside
-          className="drawer notebook-drawer"
-          role="dialog"
-          aria-modal="true"
-          aria-label="推理笔记"
-          initial={{ x: '100%' }}
-          animate={{ x: 0 }}
-          exit={{ x: '100%' }}
-          transition={{ type: 'spring', stiffness: 300, damping: 34 }}
-          onClick={(event) => event.stopPropagation()}
-        >
-          <header className="drawer-head">
-            <div>
-              <p className="notebook-kicker">PRIVATE TABLE NOTES</p>
-              <h2>推理笔记</h2>
-            </div>
-            <button type="button" className="btn btn-ghost btn-small" onClick={onClose}>关闭</button>
-          </header>
-          {content}
-        </motion.aside>
-      </motion.div>}
+      {open && <ResponsiveSheet label="推理笔记" className="notebook-drawer" onClose={onClose}>
+        <header className="drawer-head">
+          <div>
+            <p className="notebook-kicker">PRIVATE TABLE NOTES</p>
+            <h2>推理笔记</h2>
+          </div>
+          <button type="button" className="btn btn-ghost btn-small" onClick={onClose}>关闭</button>
+        </header>
+        {content}
+      </ResponsiveSheet>}
     </AnimatePresence>
   );
 }

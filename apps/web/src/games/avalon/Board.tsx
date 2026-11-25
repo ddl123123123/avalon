@@ -98,6 +98,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
   const [showTools, setShowTools] = useState(false);
   const toolsButton = useRef<HTMLButtonElement>(null);
   const openTool = (open: (value: boolean) => void) => {
+    if (showTools) toolsButton.current?.focus({ preventScroll: true });
     setShowTools(false);
     open(true);
   };

@@ -1,13 +1,14 @@
 .home {
   max-width: 1240px;
   margin: 0 auto;
-  padding: clamp(20px, 4vw, 48px) clamp(18px, 4vw, 48px) 72px;
+  padding: env(safe-area-inset-top) clamp(18px, 4vw, 48px) max(72px, env(safe-area-inset-bottom));
 }
 
 .hero {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.95fr);
+  grid-template-columns: minmax(0, 1fr);
+  padding-top: 8px;
   align-items: center;
   gap: clamp(16px, 4vw, 56px);
   min-height: min(760px, 92vh);
@@ -269,7 +270,7 @@
 .howto {
   margin-top: clamp(40px, 7vw, 88px);
   display: grid;
-  grid-template-columns: minmax(0, 0.8fr) minmax(0, 2fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: clamp(20px, 4vw, 56px);
   align-items: start;
 }
@@ -288,8 +289,8 @@
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
   counter-reset: step;
 }
 .steps li {
@@ -315,9 +316,8 @@
   font-size: 0.95rem;
 }
 .wins {
-  grid-column: 2;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   margin-top: 8px;
 }
@@ -356,37 +356,27 @@
   color: var(--gilt-bright);
 }
 
-@media (max-width: 860px) {
+@media (min-width: 768px) {
   .hero {
-    grid-template-columns: 1fr;
-    padding-top: 8px;
-  }
-  .hero-window {
-    grid-row: 1;
-    justify-self: center;
-    width: min(78vw, 400px);
-    opacity: 0.95;
-  }
-  .hero-title {
-    font-size: clamp(4rem, calc(82vw / var(--chars, 3)), 9rem);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.95fr);
+    padding-top: 0;
   }
   .howto {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 2fr);
   }
   .steps {
-    grid-template-columns: 1fr;
-    gap: 18px;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0;
   }
   .wins {
-    grid-column: 1;
-    grid-template-columns: 1fr;
+    grid-column: 2;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   }
 }
 
 /* Tactical map / game archive treatment */
 .home {
   max-width: 1360px;
-  padding-top: 0;
 }
 .home-masthead {
   min-height: 76px;
@@ -702,7 +692,7 @@
 }
 .avalon-guide-feature {
   display: grid;
-  grid-template-columns: minmax(250px, 0.82fr) minmax(0, 1.18fr);
+  grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
   gap: clamp(24px, 5vw, 64px);
   margin-top: 30px;
@@ -965,13 +955,16 @@
   line-height: 1.8;
 }
 
-@media (max-width: 900px) {
+@media (min-width: 768px) {
+  .avalon-guide-feature { grid-template-columns: minmax(250px, 0.82fr) minmax(0, 1.18fr); }
+}
+@media (min-width: 768px) and (max-width: 900px) {
   .avalon-guide-feature {
     grid-template-columns: minmax(220px, 0.75fr) minmax(0, 1.25fr);
     gap: clamp(20px, 4vw, 36px);
   }
 }
-@media (max-width: 680px) {
+@media (max-width: 767px) {
   .avalon-guide-header {
     align-items: flex-start;
   }
@@ -979,7 +972,6 @@
     display: none;
   }
   .avalon-guide-feature {
-    grid-template-columns: minmax(0, 1fr);
     padding: 16px;
   }
   .avalon-guide-portrait {
@@ -1023,7 +1015,7 @@
   }
 }
 
-@media (max-width: 860px) {
+@media (max-width: 767px) {
   .home-masthead {
     min-height: 64px;
   }
@@ -1034,6 +1026,8 @@
     min-height: 0;
     row-gap: clamp(10px, 2vw, 16px);
   }
+  .hero::after { inset-inline: 0; }
+  .hero-title { font-size: clamp(4rem, calc(82vw / var(--chars, 3)), 9rem); }
   .hero-copy {
     padding-block: clamp(8px, 2vw, 14px) 26px;
   }
@@ -1043,6 +1037,10 @@
     text-align: center;
   }
   .hero-window {
+    grid-row: 1;
+    justify-self: center;
+    width: min(78vw, 400px);
+    opacity: 0.95;
     overflow: hidden;
   }
   .hero-window-stamp {

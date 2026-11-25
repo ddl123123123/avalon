@@ -2,6 +2,7 @@ import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Citadels, type RoomSnapshot } from '@tabletop/shared';
 import { net } from '../../net/client';
+import { ResponsiveSheet } from '../../ui/ResponsiveSheet';
 import { DraftPicker } from './Draft';
 import { EndScreen } from './EndScreen';
 import { PlayerPanel } from './PlayerPanel';
@@ -448,35 +449,24 @@ export function CitadelsBoard({ room }: { room: RoomSnapshot }) {
       <AnimatePresence>
         {inspect && <Inspect key="inspect" card={inspect} onClose={() => setInspect(null)} />}
         {showLog && (
-          <motion.div key="log" className="drawer-scrim" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowLog(false)}>
-            <motion.aside
-              className="drawer"
-              role="dialog"
-              aria-label="对局记录"
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', stiffness: 300, damping: 34 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <header className="drawer-head">
-                <h2>对局记录</h2>
-                <button type="button" className="btn btn-ghost btn-small" onClick={() => setShowLog(false)}>
-                  关闭
-                </button>
-              </header>
-              <p className="dock-hint">
-                牌堆还剩 {view.deckCount} 张。最新的在最上面。
-              </p>
-              <ol className="ct-log">
-                {[...view.log].reverse().map((e) => (
-                  <li key={e.seq} className={e.t === 'round' ? 'is-round' : ''}>
-                    {describe(e, nameOf)}
-                  </li>
-                ))}
-              </ol>
-            </motion.aside>
-          </motion.div>
+          <ResponsiveSheet key="log" label="对局记录" onClose={() => setShowLog(false)}>
+            <header className="drawer-head">
+              <h2>对局记录</h2>
+              <button type="button" className="btn btn-ghost btn-small" onClick={() => setShowLog(false)}>
+                关闭
+              </button>
+            </header>
+            <p className="dock-hint">
+              牌堆还剩 {view.deckCount} 张。最新的在最上面。
+            </p>
+            <ol className="ct-log">
+              {[...view.log].reverse().map((e) => (
+                <li key={e.seq} className={e.t === 'round' ? 'is-round' : ''}>
+                  {describe(e, nameOf)}
+                </li>
+              ))}
+            </ol>
+          </ResponsiveSheet>
         )}
       </AnimatePresence>
     </main>
@@ -487,24 +477,22 @@ export function CitadelsBoard({ room }: { room: RoomSnapshot }) {
 function Inspect({ card, onClose }: { card: string; onClose: () => void }) {
   const def = districtOf(card);
   return (
-    <motion.div className="overlay" role="dialog" aria-modal="true" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
-      <div className="overlay-body">
-        <motion.div className="role-card-big" initial={{ scale: 0.7, rotate: -6 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 200, damping: 18 }}>
-          <DistrictCard card={card} />
-        </motion.div>
-        <div className="overlay-text">
-          <p className="overlay-title">
-            {def.name}，{TYPE_NAMES[def.type]}城区
-          </p>
-          <p>
-            造价 {def.cost} <Coin className="inline-coin" />
-            {def.text ? `。${def.text}` : `，终局计 ${Citadels.districtScore(card)} 分。`}
-          </p>
-          <button type="button" className="btn btn-ghost btn-small" onClick={onClose}>
-            收起
-          </button>
-        </div>
+    <ResponsiveSheet centered closeOnBackdrop label={def.name} onClose={onClose}>
+      <motion.div className="role-card-big" initial={{ scale: 0.7, rotate: -6 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 200, damping: 18 }}>
+        <DistrictCard card={card} />
+      </motion.div>
+      <div className="overlay-text">
+        <p className="overlay-title">
+          {def.name}，{TYPE_NAMES[def.type]}城区
+        </p>
+        <p>
+          造价 {def.cost} <Coin className="inline-coin" />
+          {def.text ? `。${def.text}` : `，终局计 ${Citadels.districtScore(card)} 分。`}
+        </p>
+        <button type="button" className="btn btn-ghost btn-small" onClick={onClose}>
+          收起
+        </button>
       </div>
-    </motion.div>
+    </ResponsiveSheet>
   );
 }

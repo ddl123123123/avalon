@@ -562,7 +562,7 @@ export class RoomManager {
         if (member.connection === conn) conn.send(message);
       };
       void answerAvalonAssistant({ feature: msg.feature, draft: draft!, profile: editor!, signal: controller.signal }).then(
-        (content) => reply({ type: 'avalon_assistant_result', requestId, content }),
+        ({ content }) => reply({ type: 'avalon_assistant_result', requestId, content }),
         (error: unknown) => reply({ type: 'avalon_assistant_error', requestId, message: error instanceof Error ? error.message : 'AI 润色暂时不可用。' }),
       );
       return;
@@ -584,8 +584,8 @@ export class RoomManager {
       privateNotes: typeof msg.privateNotes === 'string' ? msg.privateNotes.slice(0, 2600) : undefined,
       speech,
     }).then(
-      (content) => {
-        if (member.connection === conn) conn.send({ type: 'avalon_assistant_result', requestId, content });
+      (result) => {
+        if (member.connection === conn) conn.send({ type: 'avalon_assistant_result', requestId, ...result });
       },
       (error: unknown) => {
         const message = error instanceof Error ? error.message : 'AI 分析失败，请稍后重试。';

@@ -9,13 +9,14 @@ interface DraftPreview {
   error?: string;
 }
 
-export function SpeechDesk({ view, gameSeq, speechSecondsRemaining, text, setText, inputRef }: {
+export function SpeechDesk({ view, gameSeq, speechSecondsRemaining, text, setText, inputRef, onPrepare }: {
   view: Avalon.AvalonView;
   gameSeq: number;
   speechSecondsRemaining: number;
   text: string;
   setText: Dispatch<SetStateAction<string>>;
   inputRef: Ref<HTMLTextAreaElement>;
+  onPrepare: () => void;
 }) {
   const { link } = useNet();
   const [preview, setPreview] = useState<DraftPreview | null>(null);
@@ -28,7 +29,11 @@ export function SpeechDesk({ view, gameSeq, speechSecondsRemaining, text, setTex
   const turn = view.discussion?.turn;
   const myId = view.me?.id;
   const myTurn = !!myId && view.discussion?.currentSpeaker === myId;
-  const canSpeak = myTurn && speechSecondsRemaining > 0 && link === 'online';
+  const hasTime = view.discussion?.timerSeconds === 0 || speechSecondsRemaining > 0;
+  const canSpeak = myTurn && hasTime && link === 'online';
+  const status = link !== 'online' ? '连接中，草稿可以继续编辑'
+    : !myTurn ? '可先写草稿，轮到你时发送'
+      : hasTime ? '轮到你发言' : '发言时间已到';
   const activePreview = preview?.source === text && preview.turn === turn ? preview : null;
   const suggestion = activePreview?.text;
 
@@ -84,7 +89,7 @@ export function SpeechDesk({ view, gameSeq, speechSecondsRemaining, text, setTex
       <div className="av-editor-head">
         <label htmlFor={textId}>我的发言</label>
         <span id={statusId} role="status">
-          {myTurn ? '轮到你发言' : '可先写草稿，轮到你时发送'}
+          {status}
         </span>
       </div>
       <textarea id={textId} ref={inputRef} className="input" rows={3} value={text} aria-describedby={statusId}
@@ -107,6 +112,7 @@ export function SpeechDesk({ view, gameSeq, speechSecondsRemaining, text, setTex
         <button type="button" className="btn btn-ghost btn-small" disabled={!canSpeak || pending || !text.trim()} onClick={polish}>
           {pending ? '润色中…' : 'AI 润色'}
         </button>
+        <button type="button" className="btn btn-ghost btn-small" onClick={onPrepare}>发言准备</button>
         {myTurn && <button type="button" className="btn btn-ghost btn-small" disabled={!canSpeak} onClick={() => net.act({ type: 'finish_speech' })}>跳过</button>}
       </div>
     </form>

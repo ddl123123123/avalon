@@ -76,7 +76,7 @@ export type ClientMessage =
 export type ServerMessage =
   | { type: 'welcome'; playerId: PlayerId; roomCode: string | null }
   | { type: 'room'; room: RoomSnapshot }
-  | { type: 'avalon_assistant_result'; requestId: string; content: string }
+  | { type: 'avalon_assistant_result'; requestId: string; content: string; privateAnalysis?: string }
   | { type: 'avalon_assistant_error'; requestId: string; message: string }
   | { type: 'left'; reason: string | null }
   | { type: 'error'; message: string };

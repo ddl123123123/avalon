@@ -88,7 +88,7 @@ export interface NetState {
   /** 正在尝试进入的房间 */
   joining: string | null;
   notice: Notice | null;
-  assistantResult: { requestId: string; content: string } | null;
+  assistantResult: { requestId: string; content: string; privateAnalysis?: string } | null;
   assistantError: { requestId: string; message: string } | null;
 }
 
@@ -183,7 +183,7 @@ function connect() {
         break;
       case 'avalon_assistant_result':
         if (pendingPolish?.id === msg.requestId) pendingPolish.finish({ content: msg.content });
-        else set({ assistantResult: { requestId: msg.requestId, content: msg.content } });
+        else set({ assistantResult: { requestId: msg.requestId, content: msg.content, privateAnalysis: msg.privateAnalysis } });
         break;
       case 'avalon_assistant_error':
         if (pendingPolish?.id === msg.requestId) pendingPolish.finish({ message: msg.message });

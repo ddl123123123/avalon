@@ -7,7 +7,7 @@ import type { AvalonNotebookData } from './notebookData';
 const FEATURES: Array<{ id: AvalonAssistantFeature; title: string; description: string }> = [
   { id: 'team-comparison', title: '队伍对比', description: '结合当前候选队伍、历轮任务和投票记录梳理风险与支持证据。' },
   { id: 'role-coach', title: '角色教练', description: '根据你的身份、已知线索和当前阶段，给出下一步思路。' },
-  { id: 'speech-prep', title: '发言准备', description: '整理一条事实、一条推断和一个适合拿到桌面讨论的问题。' },
+  { id: 'speech-prep', title: '发言准备', description: '生成一段可以编辑的发言正文。' },
   { id: 'rules-qa', title: '规则问答', description: '用自然语言询问角色能力、任务、投票或湖中仙女规则。' },
   { id: 'post-game-review', title: '赛后复盘', description: '对局结束后回顾转折点、关键选择和可改进之处。' },
 ];
@@ -16,6 +16,8 @@ export function AvalonAssistant({
   room,
   view,
   notebook,
+  feature,
+  onFeatureChange,
   onClose,
   onUseSpeech,
   inline = false,
@@ -23,17 +25,20 @@ export function AvalonAssistant({
   room: RoomSnapshot;
   view: Avalon.AvalonView;
   notebook: AvalonNotebookData;
+  feature: AvalonAssistantFeature;
+  onFeatureChange: (feature: AvalonAssistantFeature) => void;
   onClose: () => void;
   onUseSpeech?: (text: string) => void;
   inline?: boolean;
 }) {
   const { assistantResult, assistantError } = useNet();
-  const [feature, setFeature] = useState<AvalonAssistantFeature>('role-coach');
   const [question, setQuestion] = useState('');
   const [pending, setPending] = useState<{ id: string; feature: AvalonAssistantFeature } | null>(null);
-  const [answer, setAnswer] = useState<{ feature: AvalonAssistantFeature; content: string } | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [answer, setAnswer] = useState<{ feature: AvalonAssistantFeature; content: string; privateAnalysis?: string } | null>(null);
+  const [error, setError] = useState<{ feature: AvalonAssistantFeature; message: string } | null>(null);
+  const [copied, setCopied] = useState(false);
   const selected = FEATURES.find((item) => item.id === feature)!;
+  const visibleAnswer = answer?.feature === feature ? answer : null;
   const featureReady = feature === 'team-comparison'
     ? view.team.length > 0
     : feature === 'post-game-review'
@@ -42,14 +47,14 @@ export function AvalonAssistant({
 
   useEffect(() => {
     if (pending && assistantResult?.requestId === pending.id) {
-      setAnswer({ feature: pending.feature, content: assistantResult.content });
+      setAnswer({ feature: pending.feature, content: assistantResult.content, privateAnalysis: assistantResult.privateAnalysis });
       setPending(null);
     }
   }, [assistantResult, pending]);
 
   useEffect(() => {
     if (pending && assistantError?.requestId === pending.id) {
-      setError(assistantError.message);
+      setError({ feature: pending.feature, message: assistantError.message });
       setPending(null);
     }
   }, [assistantError, pending]);
@@ -69,12 +74,13 @@ export function AvalonAssistant({
   const request = () => {
     if (!featureReady || pending) return;
     if (feature === 'rules-qa' && !question.trim()) {
-      setError('先写下你想问的规则问题。');
+      setError({ feature, message: '先写下你想问的规则问题。' });
       return;
     }
     const requestId = crypto.randomUUID();
     setError(null);
     setAnswer(null);
+    setCopied(false);
     const sent = net.askAvalonAssistant({
       requestId,
       feature,
@@ -82,6 +88,19 @@ export function AvalonAssistant({
       privateNotes: makePrivateNotes(),
     });
     if (sent) setPending({ id: requestId, feature });
+  };
+
+  const copySpeech = async (draft: string) => {
+    if (onUseSpeech) {
+      onUseSpeech(draft);
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(draft);
+      setCopied(true);
+    } catch {
+      window.prompt('复制发言正文', draft);
+    }
   };
 
   const content = (
@@ -100,10 +119,7 @@ export function AvalonAssistant({
               className="assistant-feature"
               aria-pressed={feature === item.id}
               disabled={disabled}
-              onClick={() => {
-                setFeature(item.id);
-                setError(null);
-              }}
+              onClick={() => onFeatureChange(item.id)}
             >
               {item.title}
               {disabled && <small>对局结束后开放</small>}
@@ -131,24 +147,30 @@ export function AvalonAssistant({
           </label>
         )}
         <button type="button" className="btn btn-primary assistant-submit" disabled={!featureReady || Boolean(pending)} onClick={request}>
-          {pending ? '正在分析…' : feature === 'rules-qa' ? '提交问题' : '开始分析'}
+          {pending ? '处理中…' : feature === 'speech-prep' ? '生成发言稿' : feature === 'rules-qa' ? '提交问题' : '开始分析'}
         </button>
       </section>
 
-      {error && <p className="assistant-error" role="alert">{error}</p>}
+      {error?.feature === feature && <p className="assistant-error" role="alert">{error.message}</p>}
       {pending && (
         <p className="assistant-pending" role="status">
           正在整理可见线索并请求 DeepSeek 分析，请稍候…
         </p>
       )}
-      {answer && (
+      {visibleAnswer && (
         <section className="assistant-answer" aria-live="polite">
-          <h3>{FEATURES.find((item) => item.id === answer.feature)?.title} · 分析结果</h3>
-          <pre>{answer.content}</pre>
-          {answer.feature === 'speech-prep' && onUseSpeech && (
-            <button type="button" className="btn btn-primary btn-small" onClick={() => onUseSpeech(answer.content)}>
-              复制到我的发言
-            </button>
+          <h3>{visibleAnswer.privateAnalysis ? '发言正文' : `${selected.title} · 分析结果`}</h3>
+          <pre>{visibleAnswer.content}</pre>
+          {visibleAnswer.privateAnalysis && (
+            <>
+              <button type="button" className="btn btn-primary btn-small" onClick={() => void copySpeech(visibleAnswer.content)}>
+                {onUseSpeech ? '填入我的发言' : copied ? '正文已复制' : '复制发言正文'}
+              </button>
+              <details className="assistant-private-analysis">
+                <summary>分析 · 仅自己可见</summary>
+                <pre>{visibleAnswer.privateAnalysis}</pre>
+              </details>
+            </>
           )}
           <small>分析基于发起请求时的局面。</small>
         </section>

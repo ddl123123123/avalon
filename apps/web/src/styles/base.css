@@ -13,6 +13,20 @@
   unicode-range: U+56DE;
 }
 
+@font-face {
+  font-family: 'UI Digits';
+  src: local('Arial'), local('Helvetica'), local('Roboto'), local('Roboto-Regular'), local('Liberation Sans');
+  font-weight: 100 500;
+  unicode-range: U+0030-0039;
+}
+
+@font-face {
+  font-family: 'UI Digits';
+  src: local('Arial Bold'), local('Helvetica Bold'), local('Roboto Bold'), local('Roboto-Bold'), local('Liberation Sans Bold');
+  font-weight: 600 900;
+  unicode-range: U+0030-0039;
+}
+
 :root {
   --abyss: #090b10;
   --night: #111722;
@@ -30,8 +44,8 @@
   --ruby-soft: #c18e95;
   --ruby-deep: #512d39;
 
-  --font-display: 'Display Patch', 'ZCOOL XiaoWei', 'Cormorant Garamond', 'Songti SC', 'STSong', 'SimSun', serif;
-  --font-numeral: 'Cormorant Garamond', 'ZCOOL XiaoWei', 'Songti SC', serif;
+  --font-display: 'UI Digits', 'Display Patch', 'ZCOOL XiaoWei', 'Cormorant Garamond', 'Songti SC', 'STSong', 'SimSun', serif;
+  --font-numeral: var(--font-body);
   --font-body: -apple-system, 'PingFang SC', 'HarmonyOS Sans SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
 
   --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);

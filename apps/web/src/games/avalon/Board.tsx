@@ -1,6 +1,6 @@
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { Avalon, type RoomSnapshot } from '@tabletop/shared';
+import { Avalon, type AvalonAssistantFeature, type RoomSnapshot } from '@tabletop/shared';
 import { net } from '../../net/client';
 import { RoundTable } from '../../ui/RoundTable';
 import { Dock } from './Dock';
@@ -95,6 +95,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
   const [notebook, setNotebook] = useState(() => readNotebook(dossierKey));
   const [showNotebook, setShowNotebook] = useState(false);
   const [showAssistant, setShowAssistant] = useState(false);
+  const [assistantFeature, setAssistantFeature] = useState<AvalonAssistantFeature>('role-coach');
   const [showTools, setShowTools] = useState(false);
   const toolsButton = useRef<HTMLButtonElement>(null);
   const openTool = (open: (value: boolean) => void) => {
@@ -218,11 +219,17 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
 
   const compactPane = compactOverride?.stage === compactStage ? compactOverride.pane
     : showEndScreen || voteReveal || pickableIds.size > 0 ? 'table' : 'workspace';
-  const openSpeechLog = () => {
+  const openWorkspace = (pane: WorkspaceView) => {
     setShowTools(false);
-    setWorkspaceView('log');
+    setWorkspaceView(pane);
     setCompactOverride({ stage: compactStage, pane: 'workspace' });
     requestAnimationFrame(() => speechWorkspace.current?.focus({ preventScroll: true }));
+  };
+  const openSpeechLog = () => openWorkspace('log');
+  const openAssistant = (feature: AvalonAssistantFeature) => {
+    setAssistantFeature(feature);
+    if (textMode) openWorkspace('assistant');
+    else openTool(setShowAssistant);
   };
 
   const onPick = (id: string) => {
@@ -292,7 +299,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
               {compactPane === 'table' ? '文字面板' : showEndScreen ? '结算' : '圆桌'}
             </button>
           )}
-          {(!textMode || (me && !ended)) && (
+          {(!textMode || me) && (
             <button ref={toolsButton} type="button" className="btn btn-ghost btn-small av-tools-toggle" aria-controls="av-room-tools" aria-expanded={showTools} onClick={() => setShowTools((open) => !open)}>
               工具 <span aria-hidden="true">{showTools ? '−' : '+'}</span>
             </button>
@@ -304,13 +311,24 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
               <>
                 <button type="button" className="btn btn-ghost btn-small" onClick={() => openTool(setShowNotebook)}>笔记</button>
                 <button type="button" className="btn btn-ghost btn-small" onClick={() => openTool(setShowHistory)}>任务记录</button>
-                {me && <button type="button" className="btn btn-ghost btn-small" onClick={() => openTool(setShowAssistant)}>AI 助手</button>}
+                {me && <button type="button" className="btn btn-ghost btn-small" onClick={() => openAssistant('role-coach')}>AI 助手</button>}
               </>
             )}
             {me && !ended && (
               <button type="button" className="btn btn-ghost btn-small" onClick={() => openTool(setShowRole)}>
                 我的身份
               </button>
+            )}
+            {me && (
+              <>
+                {!ended && view.team.length > 0 && (
+                  <button type="button" className="btn btn-ghost btn-small" onClick={() => openAssistant('team-comparison')}>队伍对比</button>
+                )}
+                <button type="button" className="btn btn-ghost btn-small" onClick={() => openAssistant('rules-qa')}>规则问答</button>
+                {ended && (
+                  <button type="button" className="btn btn-ghost btn-small" onClick={() => openAssistant('post-game-review')}>赛后复盘</button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -477,6 +495,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
             <>
               <div id={`${workspaceId}-assistant`} className="av-workspace-view av-workspace-tool" hidden={workspaceView !== 'assistant'}>
                 <AvalonAssistant inline room={room} view={view} notebook={notebook}
+                  feature={assistantFeature} onFeatureChange={setAssistantFeature}
                   onClose={() => setWorkspaceView('log')} onUseSpeech={ended ? undefined : useAssistantSpeech} />
               </div>
               <div id={`${workspaceId}-notebook`} className="av-workspace-view av-workspace-tool" hidden={workspaceView !== 'notebook'}>
@@ -485,7 +504,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
             </>
           )}
           {me && !ended && <SpeechDesk view={view} gameSeq={room.gameSeq} speechSecondsRemaining={speechSecondsRemaining}
-            text={speechDraft} setText={setSpeechDraft} inputRef={speechInput} />}
+            text={speechDraft} setText={setSpeechDraft} inputRef={speechInput} onPrepare={() => openAssistant('speech-prep')} />}
         </aside>
       )}
 
@@ -519,6 +538,8 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
             room={room}
             view={view}
             notebook={notebook}
+            feature={assistantFeature}
+            onFeatureChange={setAssistantFeature}
             onClose={() => setShowAssistant(false)}
           />
         )}

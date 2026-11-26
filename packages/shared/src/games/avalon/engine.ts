@@ -1,4 +1,4 @@
-import { GameError, pick, shuffle, type GameDefinition, type PlayerId, type Rng } from '../../framework';
+import { GameError, pick, shuffle, type GameActionContext, type GameDefinition, type PlayerId, type Rng } from '../../framework';
 import {
   LADY_AFTER_QUESTS,
   MAX_PLAYERS,
@@ -41,6 +41,12 @@ export interface ProposalRecord {
   approved: boolean;
 }
 
+export interface ProposalView extends Omit<ProposalRecord, 'votes'> {
+  votes: ProposalRecord['votes'] | null;
+  approvals: number;
+  rejections: number;
+}
+
 export interface QuestRecord {
   questIndex: number;
   leader: PlayerId;
@@ -71,10 +77,10 @@ export interface AvalonState {
   questIndex: number;
   leaderIndex: number;
   confirmedRoles: PlayerId[];
-  leaderOrder: PlayerId[];
   /** 队长本轮已完成讨论，正在提交最终队伍。 */
   discussionComplete: boolean;
-  speechMode: 'voice' | 'text';
+  speechMode: 'voice' | 'text' | 'manual';
+  manualSpeechDeadline: number | null;
   speeches: SpeechRecord[];
   discussion: null | {
     order: PlayerId[];
@@ -114,6 +120,8 @@ export type AvalonAction =
   | { type: 'submit_speech'; turn: string; text: string; now?: number }
   /** 倒计时结束后自动进入下一位；任何玩家都可触发 */
   | { type: 'timeout_speech'; now?: number }
+  | { type: 'set_manual_timer'; running: boolean; questIndex: number; rejectCount: number; now?: number }
+  | { type: 'request_bot_proposal'; questIndex: number; rejectCount: number }
   /** 队长确定队伍，进入投票 */
   | { type: 'propose_team'; team: PlayerId[] }
   | { type: 'vote'; approve: boolean }
@@ -139,6 +147,7 @@ export interface AvalonView {
   confirmedRoles: PlayerId[];
   discussionComplete: boolean;
   speechMode: AvalonState['speechMode'];
+  manualSpeechDeadline: number | null;
   speeches: SpeechRecord[];
   discussion: null | {
     order: PlayerId[];
@@ -155,10 +164,11 @@ export interface AvalonView {
   questSizes: number[];
   failsRequired: number[];
   team: PlayerId[];
-  /** 已经投票 / 已经出任务牌的人（看不到内容） */
+  /** 公开成员模式下显示已投票的座位。 */
   voted: PlayerId[];
+  votedCount: number;
   played: PlayerId[];
-  proposals: ProposalRecord[];
+  proposals: ProposalView[];
   quests: QuestRecord[];
   lady: null | {
     holder: PlayerId;
@@ -230,9 +240,9 @@ function setup(players: PlayerId[], options: AvalonOptions, rng: Rng): AvalonSta
     questIndex: 0,
     leaderIndex: -1,
     confirmedRoles: [],
-    leaderOrder: [],
     discussionComplete: false,
-    speechMode: 'voice',
+    speechMode: options.discussionMode === 'manual' ? 'manual' : 'voice',
+    manualSpeechDeadline: null,
     speeches: [],
     discussion: null,
     rejectCount: 0,
@@ -260,9 +270,7 @@ function checkTeam(state: AvalonState, team: unknown, requireFull: boolean): Pla
 }
 
 function nextLeader(state: AvalonState) {
-  const order = state.leaderOrder ?? state.players;
-  const current = order.indexOf(state.players[state.leaderIndex]!);
-  state.leaderIndex = state.players.indexOf(order[(current + 1) % order.length]!);
+  state.leaderIndex = (state.leaderIndex + 1) % state.players.length;
 }
 
 function finish(state: AvalonState, winner: Alignment, reason: WinReason) {
@@ -275,6 +283,7 @@ function startTeamPhase(state: AvalonState) {
   state.phase = 'team';
   state.discussionComplete = false;
   state.discussion = null;
+  state.manualSpeechDeadline = null;
   state.team = [];
   state.votes = {};
   state.questCards = {};
@@ -382,7 +391,7 @@ function ladyTargets(state: AvalonState): PlayerId[] {
   return state.players.filter((id) => !past.includes(id));
 }
 
-function reduce(prev: AvalonState, player: PlayerId, action: AvalonAction, rng: Rng): AvalonState {
+function reduce(prev: AvalonState, player: PlayerId, action: AvalonAction, rng: Rng, context?: GameActionContext): AvalonState {
   if (!prev.players.includes(player)) throw new GameError('你不在这局游戏中');
   if (!action || typeof action !== 'object') throw new GameError('无效的操作');
   if (action.type === 'confirm_role') {
@@ -390,8 +399,7 @@ function reduce(prev: AvalonState, player: PlayerId, action: AvalonAction, rng: 
     const state = structuredClone(prev);
     state.confirmedRoles.push(player);
     if (state.confirmedRoles.length === state.players.length) {
-      state.leaderOrder = shuffle(state.players, rng);
-      state.leaderIndex = state.players.indexOf(state.leaderOrder[0]!);
+      state.leaderIndex = Math.floor(rng() * state.players.length);
       if (state.options.ladyOfTheLake) {
         // 湖中仙女仍按实际座位发给首任队长右手边的玩家。
         const holder = state.players[(state.leaderIndex - 1 + state.players.length) % state.players.length]!;
@@ -414,6 +422,7 @@ function reduce(prev: AvalonState, player: PlayerId, action: AvalonAction, rng: 
       return state;
     }
     case 'start_discussion': {
+      if (state.speechMode === 'manual') throw new GameError('本局使用线下手动发言');
       if (state.phase !== 'team' || state.discussionComplete) throw new GameError('现在不能开始讨论');
       if (player !== leader) throw new GameError('只有队长可以设置发言顺序');
       if (typeof action.preselectedTeam !== 'boolean' || typeof action.leaderFirst !== 'boolean') {
@@ -474,11 +483,33 @@ function reduce(prev: AvalonState, player: PlayerId, action: AvalonAction, rng: 
       advanceDiscussion(state, now);
       return state;
     }
+    case 'set_manual_timer': {
+      if (player !== context?.hostId) throw new GameError('只有房主可以控制发言计时');
+      if (state.speechMode !== 'manual' || state.phase !== 'team' || state.options.speechSeconds === 0) {
+        throw new GameError('当前不能设置发言计时');
+      }
+      if (action.questIndex !== state.questIndex || action.rejectCount !== state.rejectCount) return prev;
+      if (typeof action.running !== 'boolean') throw new GameError('计时操作不正确');
+      const now = typeof action.now === 'number' && Number.isFinite(action.now) ? action.now : Date.now();
+      state.manualSpeechDeadline = action.running ? now + state.options.speechSeconds * 1000 : null;
+      return state;
+    }
+    case 'request_bot_proposal': {
+      if (player !== context?.hostId) throw new GameError('只有房主可以请机器人提交队伍');
+      if (state.speechMode !== 'manual' || state.phase !== 'team' || !context.botPlayers?.includes(leader)) {
+        throw new GameError('当前车头不能由机器人提交队伍');
+      }
+      if (action.questIndex !== state.questIndex || action.rejectCount !== state.rejectCount) return prev;
+      if (state.discussionComplete) return prev;
+      state.discussionComplete = true;
+      return state;
+    }
     case 'propose_team': {
       if (state.phase !== 'team') throw new GameError('现在不是组队阶段');
       if (player !== leader) throw new GameError('只有队长可以提交队伍');
       if (state.speechMode === 'text' && !state.discussionComplete) throw new GameError('请先完成本轮文字讨论');
       state.team = checkTeam(state, action.team, true);
+      state.manualSpeechDeadline = null;
       state.votes = {};
       state.phase = 'vote';
       return state;
@@ -530,6 +561,8 @@ function reduce(prev: AvalonState, player: PlayerId, action: AvalonAction, rng: 
 }
 
 function view(state: AvalonState, viewer: PlayerId | null): AvalonView {
+  const showVoters = state.options.voteVisibility !== 'totals';
+  const voted = state.phase === 'vote' ? Object.keys(state.votes) : [];
   const ended = state.phase === 'ended';
   const count = state.players.length;
   const inGame = viewer !== null && state.players.includes(viewer);
@@ -565,6 +598,7 @@ function view(state: AvalonState, viewer: PlayerId | null): AvalonView {
     confirmedRoles: state.confirmedRoles ?? [],
     discussionComplete: state.discussionComplete,
     speechMode: state.speechMode,
+    manualSpeechDeadline: state.manualSpeechDeadline ?? null,
     speeches: state.speeches,
     discussion: state.discussion
       ? {
@@ -577,9 +611,14 @@ function view(state: AvalonState, viewer: PlayerId | null): AvalonView {
     questSizes: TEAM_SIZES[count]!.slice(),
     failsRequired: TEAM_SIZES[count]!.map((_, i) => failsRequired(count, i)),
     team: state.team,
-    voted: state.phase === 'vote' ? Object.keys(state.votes) : [],
+    voted: showVoters ? voted : [],
+    votedCount: voted.length,
     played: state.phase === 'quest' ? Object.keys(state.questCards) : [],
-    proposals: state.proposals,
+    proposals: state.proposals.map(({ votes, ...proposal }) => {
+      const ballots = Object.values(votes);
+      const approvals = ballots.filter(Boolean).length;
+      return { ...proposal, votes: showVoters ? votes : null, approvals, rejections: ballots.length - approvals };
+    }),
     quests: state.quests,
     lady: state.lady,
     assassin: state.phase === 'assassin' || ended ? assassin : null,
@@ -603,9 +642,11 @@ function botAction(state: AvalonState, player: PlayerId, rng: Rng): AvalonAction
       return state.confirmedRoles.includes(player) ? null : { type: 'confirm_role' };
     case 'team': {
       if (state.players[state.leaderIndex] !== player) return null;
-      if (state.discussionComplete) return { type: 'propose_team', team: state.team };
+      const manual = state.speechMode === 'manual';
+      if (manual && !state.discussionComplete) return null;
+      if (!manual && state.discussionComplete) return { type: 'propose_team', team: state.team };
       const size = TEAM_SIZES[state.players.length]![state.questIndex]!;
-      if (state.team.length === size) {
+      if (!manual && state.team.length === size) {
         return { type: 'start_discussion', preselectedTeam: true, leaderFirst: true, direction: 'left' };
       }
       const others = shuffle(
@@ -614,7 +655,7 @@ function botAction(state: AvalonState, player: PlayerId, rng: Rng): AvalonAction
       );
       // 正义方尽量避开自己知道的邪恶方
       const preferred = evil ? others : [...others.filter((id) => known[id] !== 'evil'), ...others.filter((id) => known[id] === 'evil')];
-      return { type: 'draft_team', team: [player, ...preferred.slice(0, size - 1)] };
+      return { type: manual ? 'propose_team' : 'draft_team', team: [player, ...preferred.slice(0, size - 1)] };
     }
     case 'discussion':
       return state.discussion?.order[state.discussion.currentIndex] === player ? { type: 'finish_speech' } : null;

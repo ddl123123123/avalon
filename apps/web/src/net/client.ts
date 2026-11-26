@@ -92,6 +92,7 @@ export interface NetState {
   assistantError: { requestId: string; message: string } | null;
 }
 
+let serverClockOffset = 0;
 let state: NetState = {
   link: 'connecting',
   playerId: null,
@@ -170,6 +171,7 @@ function connect() {
         }
         break;
       case 'room':
+        serverClockOffset = msg.room.serverTime === undefined ? 0 : msg.room.serverTime - Date.now();
         if (state.room?.code !== msg.room.code || state.room?.gameSeq !== msg.room.gameSeq || msg.room.status !== 'playing') {
           pendingPolish?.finish({ message: '原发言轮次已结束。' });
         }
@@ -234,6 +236,7 @@ export function setName(name: string) {
 }
 
 export const net = {
+  serverNow: () => Date.now() + serverClockOffset,
   createRoom(name: string, gameId: string, options?: unknown) {
     setName(name);
     raw({ type: 'create_room', name, gameId, options });

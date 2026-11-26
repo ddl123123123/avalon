@@ -16,6 +16,7 @@ export type Rng = () => number;
 export interface GameActionContext {
   hostId: PlayerId;
   offlinePlayers: readonly PlayerId[];
+  botPlayers?: readonly PlayerId[];
 }
 
 /** 玩家做了规则不允许的事。message 会直接展示给玩家。 */

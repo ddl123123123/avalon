@@ -51,8 +51,12 @@ export function AvalonBotSettings({ room }: { room: RoomSnapshot }) {
   return (
     <fieldset className="av-bot-settings">
       <legend>机器人对战</legend>
-      <p>有人机的对局使用文字发言，全桌都能查看发言记录。</p>
-      <p>外部模型会读取公开发言、战报和该机器人自己的身份视野。</p>
+      {options.discussionMode === 'manual' ? (
+        <p>机器人参与组队和投票，线下发言由真人进行。</p>
+      ) : (
+        <p>有人机的对局使用文字发言，全桌都能查看发言记录。</p>
+      )}
+      <p>外部模型会读取公开{options.discussionMode === 'manual' ? '' : '发言、'}战报和该机器人自己的身份视野。</p>
       {models ? (
         <>
           <div className="av-timer-options" role="group" aria-label="机器人难度">
@@ -64,7 +68,7 @@ export function AvalonBotSettings({ room }: { room: RoomSnapshot }) {
               </button>
             ))}
           </div>
-          {!models.profiles.length && <p>服务器暂无可用的外部模型。机器人使用本地规则行动，自己的发言轮次会跳过。</p>}
+          {!models.profiles.length && <p>服务器暂无可用的外部模型。机器人使用本地规则行动。{options.discussionMode !== 'manual' && '机器人的发言轮次会跳过。'}</p>}
           <BotModels key={room.code} models={models} bots={bots} />
         </>
       ) : <p>本局难度：{options.botDifficulty === 'advanced' ? '高阶博弈' : '常规'}。</p>}

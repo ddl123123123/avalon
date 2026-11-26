@@ -256,7 +256,8 @@ export class RoomManager {
           rng,
         );
         if (room.game.id === Avalon.avalon.id && room.members.some((m) => m.isBot)) {
-          (room.state as Avalon.AvalonState).speechMode = 'text';
+          const state = room.state as Avalon.AvalonState;
+          if (state.speechMode !== 'manual') state.speechMode = 'text';
           room.avalonAgents = { memory: new Map(), running: new Map(), requests: 0 };
         }
         room.status = 'playing';
@@ -468,6 +469,7 @@ export class RoomManager {
     const next = room.game.reduce(room.state, playerId, timedAction, Math.random, {
       hostId: room.hostId,
       offlinePlayers: room.members.filter((m) => !m.isBot && !m.connection).map((m) => m.id),
+      botPlayers: room.members.filter((m) => m.isBot).map((m) => m.id),
     });
     if (next === room.state && room.game.id === Avalon.avalon.id) return;
     room.state = next;
@@ -743,6 +745,7 @@ export class RoomManager {
       targetPlayers: room.targetPlayers,
       startBlocker: room.status === 'lobby' ? this.startBlocker(room) : null,
       gameSeq: room.gameSeq,
+      serverTime: Date.now(),
       view: room.state === null ? null : room.game.view(room.state, viewer.id),
       you: viewer.id,
       ...(room.game.id === Avalon.avalon.id && room.status === 'lobby' && viewer.id === room.hostId ? {

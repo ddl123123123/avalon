@@ -27,7 +27,7 @@ export function History({
           关闭
         </button>
       </header>
-      {rounds.length === 0 && <p className="drawer-empty">还没有任何一次组队投票。第一支队伍亮票后，这里会记下每个人的选择。</p>}
+      {rounds.length === 0 && <p className="drawer-empty">组队投票结束后，结果会显示在这里。</p>}
       {rounds.map(({ q, proposals, quest }) => (
         <section key={q} className="history-round">
           <h3>
@@ -40,8 +40,8 @@ export function History({
             )}
           </h3>
           {proposals.map((p) => {
-            const yes = view.players.filter((id) => p.votes[id]);
-            const no = view.players.filter((id) => !p.votes[id]);
+            const yes = p.votes && view.players.filter((id) => p.votes?.[id] === true);
+            const no = p.votes && view.players.filter((id) => p.votes?.[id] === false);
             return (
               <div key={p.attempt} className={`history-proposal ${p.approved ? 'is-approved' : 'is-rejected'}`}>
                 <p className="history-line">
@@ -50,11 +50,11 @@ export function History({
                 </p>
                 <p className="history-votes">
                   <span className="vote-dot vote-dot-yes" />
-                  赞成 {yes.length}：{yes.map(nameOf).join('、') || '无'}
+                  赞成 {p.approvals}{yes && ` · ${yes.map(nameOf).join('、') || '无'}`}
                 </p>
                 <p className="history-votes">
                   <span className="vote-dot vote-dot-no" />
-                  反对 {no.length}：{no.map(nameOf).join('、') || '无'}
+                  反对 {p.rejections}{no && ` · ${no.map(nameOf).join('、') || '无'}`}
                 </p>
               </div>
             );

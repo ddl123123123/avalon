@@ -236,6 +236,14 @@
 .av-speech-timer-options {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
+.av-pair-options {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.av-setting-hint {
+  margin: 0;
+  color: var(--vellum-dim);
+  font-size: 0.8rem;
+}
 .av-speech-timer-options .av-timer-choice {
   padding-inline: 3px;
   white-space: nowrap;
@@ -762,6 +770,21 @@
 .speech-progress {
   color: var(--vellum-dim);
   font-size: 0.72rem;
+}
+.av-manual-timer {
+  margin-top: 6px;
+}
+.av-manual-timer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+}
+.av-manual-timer-actions .btn {
+  min-height: 44px;
+  padding-inline: 8px;
+  letter-spacing: normal;
+  white-space: nowrap;
 }
 .public-preselected-team {
   max-width: min(36vw, 13rem);

@@ -92,7 +92,8 @@ export interface BotMemory {
 
 export function needsAvalonModel(action: BotAction): action is Decision {
   return action.type !== 'confirm_role' && action.type !== 'start_discussion' &&
-    action.type !== 'timeout_speech' && action.type !== 'submit_speech';
+    action.type !== 'timeout_speech' && action.type !== 'submit_speech' &&
+    action.type !== 'set_manual_timer' && action.type !== 'request_bot_proposal';
 }
 
 export function decisionToken(view: Avalon.AvalonView, actionType: BotAction['type']) {
@@ -155,9 +156,10 @@ export function makeBotContext(view: Avalon.AvalonView, players: RoomPlayer[], m
       failsRequired: view.failsRequired, leader: seat(view.leader), team: view.team.map(seat),
       preselectedTeam: view.discussion?.preselectedTeam ?? false,
       speechOrder: view.discussion?.order.map(seat),
-      proposals: view.proposals.map(({ questIndex, attempt, leader, team, votes, approved }) => ({
+      proposals: view.proposals.map(({ questIndex, attempt, leader, team, votes, approved, approvals, rejections }) => ({
         quest: questIndex + 1, attempt, leader: seat(leader), team: team.map(seat), approved,
-        votes: Object.entries(votes).map(([player, approve]) => ({ seat: seat(player), approve })),
+        approvals, rejections,
+        votes: votes ? Object.entries(votes).map(([player, approve]) => ({ seat: seat(player), approve })) : undefined,
       })),
       quests: view.quests.map(({ questIndex, leader, team, fails, success }) => ({
         quest: questIndex + 1, leader: seat(leader), team: team.map(seat), fails, success,

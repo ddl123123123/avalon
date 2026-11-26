@@ -15,6 +15,7 @@ import { Notebook } from './Notebook';
 import { notebookStorageKey, readNotebook, saveNotebook } from './notebookData';
 import { SpeechDesk } from './SpeechDesk';
 import { SpeechLog } from './SpeechLog';
+import { ManualSpeechTimer } from './ManualSpeechTimer';
 
 type View = Avalon.AvalonView;
 
@@ -28,7 +29,7 @@ type CompactPane = 'table' | 'workspace';
 
 /** 需要停下来给所有人看的时刻，按发生顺序排队播放。 */
 type Reveal =
-  | { kind: 'vote'; proposal: Avalon.ProposalRecord }
+  | { kind: 'vote'; proposal: Avalon.ProposalView }
   | { kind: 'quest'; quest: Avalon.QuestRecord }
   | { kind: 'lady'; target: string; alignment: Avalon.Alignment }
   | { kind: 'assassin' };
@@ -84,6 +85,8 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
   const view = room.view as View;
   const me = view.me;
   const textMode = view.speechMode === 'text';
+  const manualMode = view.speechMode === 'manual';
+  const isHost = room.you === room.hostId;
   const byId = new Map(room.players.map((p) => [p.id, p]));
   const nameOf = (id: string | null) => (id === null ? undefined : byId.get(id))?.name ?? '？';
   const seatNameOf = (id: string | null) => {
@@ -195,7 +198,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
 
   // 亮票期间牌桌停留在被表决的那支队伍上
   const shownTeam = voteReveal ? voteReveal.team : view.phase === 'lady' || view.phase === 'assassin' ? [] : view.team;
-  const showPublicPreselection = view.team.length > 0 && (
+  const showPublicPreselection = !manualMode && view.team.length > 0 && (
     (view.phase === 'team' && !view.discussionComplete) ||
     (view.phase === 'discussion' && view.discussion?.preselectedTeam)
   );
@@ -208,7 +211,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
 
   const pickableIds = new Set<string>();
   if (!busy && me) {
-    if (view.phase === 'team' && iLead && (view.discussionComplete || preselectedTeam)) view.players.forEach((id) => pickableIds.add(id));
+    if (view.phase === 'team' && iLead && (manualMode || view.discussionComplete || preselectedTeam)) view.players.forEach((id) => pickableIds.add(id));
     if (view.phase === 'lady' && view.lady?.holder === me.id) {
       view.players.filter((id) => !view.lady!.pastHolders.includes(id)).forEach((id) => pickableIds.add(id));
     }
@@ -257,7 +260,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
       case 'identity':
         return `已确认身份 ${view.confirmedRoles.length} / ${view.players.length}`;
       case 'vote':
-        return `投票中 ${view.voted.length} / ${view.players.length}`;
+        return `投票中 ${view.votedCount} / ${view.players.length}`;
       case 'quest':
         return `任务进行中 ${view.played.length} / ${view.team.length}`;
       case 'lady':
@@ -269,7 +272,6 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
     }
   };
 
-  const approvals = voteReveal ? Object.values(voteReveal.votes).filter(Boolean).length : 0;
   const notebookProps = {
     currentRound: view.questIndex + 1, players: room.players, you: room.you, roleSet: view.roleSet,
     notebook, onChange: setNotebook, onClose: () => setShowNotebook(false),
@@ -361,7 +363,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
                         >
                           <strong>{voteReveal.approved ? '组队通过' : '组队被否决'}</strong>
                           <span>
-                            赞成 {approvals}，反对 {view.players.length - approvals}
+                            赞成 {voteReveal.approvals}，反对 {voteReveal.rejections}
                           </span>
                           <span>{voteReveal.team.map(seatNameOf).join('、')}</span>
                         </motion.div>
@@ -387,10 +389,13 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
                           )}
                           {view.phase === 'team' ? (
                             <div className="center-info" role="status">
-                              <p className="center-status-label">车头{view.discussionComplete ? '正在确认队伍' : '正在组队'}</p>
+                              <p className="center-status-label">{manualMode ? '本轮车头' : view.discussionComplete ? '车头正在确认队伍' : '车头正在组队'}</p>
                               <p className="center-status">{seatNameOf(view.leader)}</p>
                             </div>
                           ) : !view.discussion && <p className="center-status" role="status">{status()}</p>}
+                          {manualMode && view.phase === 'team' && view.options.speechSeconds !== 0 && (
+                            <ManualSpeechTimer view={view} canControl={isHost && !busy} />
+                          )}
                           {publicPreselection && (
                             <p className="public-preselected-team" aria-live="polite">
                               公开预组车 · {publicPreselection} 号
@@ -443,7 +448,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
                     onTeam={shownTeam.includes(id)}
                     hasLady={view.lady?.holder === id}
                     acted={!voteReveal && (view.voted.includes(id) || view.played.includes(id))}
-                    vote={voteReveal ? voteReveal.votes[id]! : null}
+                    vote={voteReveal?.votes?.[id] ?? null}
                     order={i}
                     note={noteFor(id)}
                     pickable={pickableIds.has(id)}
@@ -461,6 +466,7 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
             ) : (
               <Dock
                 view={view}
+                isHost={isHost}
                 players={room.players}
                 nameOf={seatNameOf}
                 picked={picked}

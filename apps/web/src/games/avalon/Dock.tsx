@@ -13,6 +13,7 @@ type View = Avalon.AvalonView;
  */
 export function Dock({
   view,
+  isHost,
   players,
   nameOf,
   picked,
@@ -25,6 +26,7 @@ export function Dock({
   speechSecondsRemaining,
 }: {
   view: View;
+  isHost: boolean;
   players: RoomPlayer[];
   nameOf: (id: string | null) => string;
   /** 湖中仙女 / 刺杀时在桌上选中的目标 */
@@ -47,9 +49,32 @@ export function Dock({
 
   switch (view.phase) {
     case 'identity':
-      return <DockShell prompt="等待全员确认身份" hint="全员确认后随机决定发车顺序" waiting />;
+      return <DockShell prompt="等待全员确认身份" hint="首任车头随机抽取，之后按座位顺时针轮换" waiting />;
     case 'team': {
       const roster = <TeamRoster players={players} team={view.team} label="候选队伍" size={size} />;
+      if (view.speechMode === 'manual') {
+        const botLeads = players.some(({ id, isBot }) => id === view.leader && isBot);
+        if (botLeads && isHost) {
+          return (
+            <DockShell prompt={view.discussionComplete ? '机器人正在选队伍' : `${nameOf(view.leader)} 是车头`} waiting={view.discussionComplete}>
+              {!view.discussionComplete && (
+                <button type="button" className="btn btn-primary" onClick={() => send({
+                  type: 'request_bot_proposal', questIndex: view.questIndex, rejectCount: view.rejectCount,
+                })}>让机器人组队</button>
+              )}
+            </DockShell>
+          );
+        }
+        if (view.leader !== me.id) return <DockShell prompt={`等 ${nameOf(view.leader)} 提交队伍`} roster={view.team.length ? roster : undefined} />;
+        return (
+          <DockShell prompt={`第 ${questNo} 次任务 · 点座位选 ${size} 人`} roster={view.team.length ? roster : undefined}
+            hint={view.rejectCount === Avalon.MAX_REJECTS - 1 ? '这是本轮最后一次组队，再被否决邪恶方直接获胜' : undefined}>
+            <button type="button" className="btn btn-primary" disabled={view.team.length !== size} onClick={() => send({ type: 'propose_team', team: view.team })}>
+              提交队伍并投票
+            </button>
+          </DockShell>
+        );
+      }
       if (view.leader !== me.id) {
         return (
           <DockShell
@@ -133,11 +158,12 @@ export function Dock({
     }
 
     case 'vote': {
-      const last = view.rejectCount === 4 ? '这是本轮最后一次组队，再被否决邪恶方直接获胜。' : '';
+      const last = view.rejectCount === Avalon.MAX_REJECTS - 1 ? '这是本轮最后一次组队，再被否决邪恶方直接获胜。' : '';
+      const revealHint = view.options.voteVisibility === 'totals' ? '所有人投完后只公布赞成和反对票数' : '所有人投完后同时亮票';
       const roster = <TeamRoster players={players} team={view.team} label="提议队伍" />;
       if (me.myVote !== null) {
         return (
-          <DockShell prompt={`你投了${me.myVote ? '赞成' : '反对'}。等其他人表态`} hint={`${view.voted.length} / ${n} 人已投票`} roster={roster} waiting>
+          <DockShell prompt={`你投了${me.myVote ? '赞成' : '反对'}。等其他人表态`} hint={`${view.votedCount} / ${n} 人已投票`} roster={roster} waiting>
             <div className="dock-mine">
               <VoteToken approve={me.myVote} />
             </div>
@@ -145,7 +171,7 @@ export function Dock({
         );
       }
       return (
-        <DockShell prompt={`你同意 ${nameOf(view.leader)} 提出的队伍吗？`} hint={`${last}所有人投完后同时亮票`} roster={roster}>
+        <DockShell prompt={`你同意 ${nameOf(view.leader)} 提出的队伍吗？`} hint={`${last}${revealHint}`} roster={roster}>
           <div className="dock-choices">
             <ChoiceButton label="赞成" onClick={() => send({ type: 'vote', approve: true })}>
               <VoteToken approve />

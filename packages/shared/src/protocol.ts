@@ -27,6 +27,8 @@ export interface RoomSnapshot {
   startBlocker: string | null;
   /** 每开一局加一，客户端用它区分不同的对局 */
   gameSeq: number;
+  /** 服务器生成房间快照时的时间，用于对齐手动倒计时。 */
+  serverTime?: number;
   /** 当前玩家视角下的对局信息；大厅阶段为 null */
   view: unknown | null;
   you: PlayerId;

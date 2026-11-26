@@ -52,6 +52,20 @@ export function AvalonOptions({
       </section>
 
       <fieldset className="av-timer-setting">
+        <legend>发言方式</legend>
+        <div className="av-timer-options av-pair-options" role="group" aria-label="发言方式">
+          {(['turns', 'manual'] as const).map((mode) => (
+            <button key={mode} type="button" className="av-timer-choice"
+              aria-pressed={options.discussionMode === mode} disabled={!editable}
+              onClick={() => onChange({ discussionMode: mode })}>
+              {mode === 'turns' ? '逐位发言' : '线下手动计时'}
+            </button>
+          ))}
+        </div>
+        {options.discussionMode === 'manual' && <p className="av-setting-hint">自由接着说，房主控制全桌计时。</p>}
+      </fieldset>
+
+      <fieldset className="av-timer-setting">
         <legend>发言倒计时</legend>
         <div className="av-timer-options av-speech-timer-options" role="group" aria-label="选择发言时长">
           {[0, ...Avalon.SPEECH_TIMERS].map((seconds) => (
@@ -64,6 +78,19 @@ export function AvalonOptions({
               onClick={() => onChange({ speechSeconds: seconds })}
             >
               {seconds === 0 ? '不计时' : <><b>{seconds}</b> 秒</>}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset className="av-timer-setting">
+        <legend>组队投票结果</legend>
+        <div className="av-timer-options av-pair-options" role="group" aria-label="组队投票结果">
+          {(['players', 'totals'] as const).map((visibility) => (
+            <button key={visibility} type="button" className="av-timer-choice"
+              aria-pressed={options.voteVisibility === visibility} disabled={!editable}
+              onClick={() => onChange({ voteVisibility: visibility })}>
+              {visibility === 'players' ? '公开投票成员' : '只公开票数'}
             </button>
           ))}
         </div>

@@ -33,7 +33,7 @@ interface Attempt {
   questIndex: number;
   attempt: number;
   speeches: Avalon.SpeechRecord[];
-  proposal?: Avalon.ProposalRecord;
+  proposal?: Avalon.ProposalView;
   active?: { leader: PlayerId; team: PlayerId[]; status: string };
 }
 
@@ -55,29 +55,30 @@ function attemptsFor(view: Avalon.AvalonView) {
     get(view.questIndex, view.rejectCount + 1).active = {
       leader: view.leader,
       team: view.team,
-      status: view.phase === 'vote' ? `投票中 · ${view.voted.length}/${view.players.length} 人已投`
+      status: view.phase === 'vote' ? `投票中 · ${view.votedCount}/${view.players.length} 人已投`
         : view.phase === 'discussion' ? '发言中' : view.discussionComplete ? '待提交队伍' : '组队中',
     };
   }
   return [...attempts.values()].sort((a, b) => b.questIndex - a.questIndex || b.attempt - a.attempt);
 }
 
-function Votes({ votes, players, approve }: {
-  votes: Record<PlayerId, boolean>;
+function Votes({ votes, players, approve, count }: {
+  votes: Avalon.ProposalView['votes'];
   players: RoomPlayer[];
   approve: boolean;
+  count: number;
 }) {
-  const group = players.filter((player) => votes[player.id] === approve);
+  const group = votes && players.filter((player) => votes[player.id] === approve);
   return (
     <div className="av-log-votes">
       <span className={approve ? 'tone-good' : 'tone-evil'}>
-        {approve ? '赞成' : '反对'} {group.length}
+        {approve ? '赞成' : '反对'} {count}
       </span>
-      {group.length ? (
+      {group && (group.length ? (
         <ul aria-label={approve ? '赞成玩家' : '反对玩家'}>
           {group.map((player) => <li key={player.id}><SeatIdentity player={player} /></li>)}
         </ul>
-      ) : <span className="av-log-muted">无</span>}
+      ) : <span className="av-log-muted">无</span>)}
     </div>
   );
 }
@@ -137,9 +138,9 @@ export const SpeechLog = memo(function SpeechLog({ view, players }: { view: Aval
               {leader && <p className="av-log-leader">车头 <SeatIdentity player={byId.get(leader)} /></p>}
               {team && team.length > 0 && <TeamRoster players={players} team={team} label={proposal || view.phase === 'vote' ? '提议队伍' : '候选队伍'} />}
               {proposal && (
-                <div className="av-log-ballot" aria-label="公开票型">
-                  <Votes votes={proposal.votes} players={players} approve />
-                  <Votes votes={proposal.votes} players={players} approve={false} />
+                <div className="av-log-ballot" aria-label="投票结果">
+                  <Votes votes={proposal.votes} players={players} approve count={proposal.approvals} />
+                  <Votes votes={proposal.votes} players={players} approve={false} count={proposal.rejections} />
                   {mission && <p className={mission.success ? 'tone-good' : 'tone-evil'}>
                     任务{mission.success ? '成功' : '失败'} · {mission.fails} 张失败牌
                   </p>}

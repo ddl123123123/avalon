@@ -117,7 +117,9 @@ export interface AvalonOptions {
   mordred: boolean;
   oberon: boolean;
   ladyOfTheLake: boolean;
+  discussionMode: 'turns' | 'manual';
   speechSeconds: SpeechSeconds;
+  voteVisibility: 'players' | 'totals';
   botDifficulty: 'standard' | 'advanced';
 }
 
@@ -138,7 +140,10 @@ export function recommendedOptions(playerCount: number): Pick<AvalonOptions, Opt
 }
 
 export function defaultOptions(): AvalonOptions {
-  return { percival: false, morgana: false, mordred: false, oberon: false, ladyOfTheLake: false, speechSeconds: 90, botDifficulty: 'standard' };
+  return {
+    percival: false, morgana: false, mordred: false, oberon: false, ladyOfTheLake: false,
+    discussionMode: 'turns', speechSeconds: 90, voteVisibility: 'players', botDifficulty: 'standard',
+  };
 }
 
 export function normalizeOptions(raw: unknown): AvalonOptions {
@@ -154,7 +159,9 @@ export function normalizeOptions(raw: unknown): AvalonOptions {
     mordred: src.mordred === true,
     oberon: src.oberon === true,
     ladyOfTheLake: src.ladyOfTheLake === true,
+    discussionMode: src.discussionMode === 'manual' ? 'manual' : 'turns',
     speechSeconds,
+    voteVisibility: src.voteVisibility === 'totals' ? 'totals' : 'players',
     botDifficulty: src.botDifficulty === 'advanced' ? 'advanced' : 'standard',
   };
 }

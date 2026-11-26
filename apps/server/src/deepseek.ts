@@ -67,7 +67,9 @@ function makeGameContext(input: AvalonAssistantInput): Record<string, unknown> {
       attempt: proposal.attempt,
       leader: playerLabel(proposal.leader, playersById),
       team: proposal.team.map((id) => playerLabel(id, playersById)),
-      votes: Object.entries(proposal.votes).map(([id, approve]) => `${playerLabel(id, playersById)}${approve ? '赞成' : '反对'}`),
+      approvals: proposal.approvals,
+      rejections: proposal.rejections,
+      votes: proposal.votes ? Object.entries(proposal.votes).map(([id, approve]) => `${playerLabel(id, playersById)}${approve ? '赞成' : '反对'}`) : undefined,
       approved: proposal.approved,
     })),
     quests: view.quests.map((quest) => ({

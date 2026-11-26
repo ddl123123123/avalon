@@ -135,7 +135,7 @@ describe('夜晚信息', () => {
 });
 
 describe('组队与投票', () => {
-  it('只在最后一名玩家确认时随机安排发车顺序', () => {
+  it('全员确认后只随机抽取首任车头', () => {
     const players = ids(5);
     let s = avalon.setup(players, opts(), seeded(1));
     const confirm = { type: 'confirm_role' } as const;
@@ -147,11 +147,12 @@ describe('组队与投票', () => {
     expect(avalon.view(s, null)).toMatchObject({ phase: 'identity', leader: null, confirmedRoles: players.slice(0, -1) });
     expect(() => act(s, players[0]!, { type: 'draft_team', team: [] })).toThrow(/等待所有玩家/);
 
-    s = avalon.reduce(s, players.at(-1)!, confirm, () => 0);
+    let draws = 0;
+    s = avalon.reduce(s, players.at(-1)!, confirm, () => { draws++; return 0.82; });
     expect(s.phase).toBe('team');
+    expect(draws).toBe(1);
     expect(s.players).toEqual(players);
-    expect(s.leaderOrder).toEqual(['p1', 'p2', 'p3', 'p4', 'p0']);
-    expect(avalon.view(s, null).leader).toBe('p1');
+    expect(avalon.view(s, null).leader).toBe('p4');
   });
 
   it('只有队长能组队，人数必须正确', () => {
@@ -163,15 +164,17 @@ describe('组队与投票', () => {
     expect(propose(s, ['p0', 'p1']).phase).toBe('vote');
   });
 
-  it('平票算否决，按随机发车顺序换下一位', () => {
-    let s = startGame(ids(6), opts(), seeded(2));
-    const next = s.leaderOrder[1];
+  it('平票和完成任务后都顺时针换车头，末座接回首座', () => {
+    let s = startGame(ids(6), opts(), () => 0.9);
+    expect(leaderOf(s)).toBe('p5');
     s = propose(s, ['p0', 'p1']);
     s = voteAll(s, (p) => ['p0', 'p1', 'p2'].includes(p));
     expect(s.proposals[0]!.approved).toBe(false);
     expect(s.phase).toBe('team');
     expect(s.rejectCount).toBe(1);
-    expect(leaderOf(s)).toBe(next);
+    expect(leaderOf(s)).toBe('p0');
+    s = runQuest(s, ['p0', 'p1']);
+    expect(leaderOf(s)).toBe('p1');
   });
 
   it('投票结束前看不到别人的票，结束后公开', () => {
@@ -184,6 +187,20 @@ describe('组队与投票', () => {
     expect(v.me!.myVote).toBeNull();
     expect(avalon.view(s, 'p0').me!.myVote).toBe(false);
     expect(() => act(s, 'p0', { type: 'vote', approve: true })).toThrow(/已经/);
+    for (const p of s.players.slice(1)) s = act(s, p, { type: 'vote', approve: true });
+    expect(avalon.view(s, 'p1').proposals[0]).toMatchObject({ votes: { p0: false, p1: true }, approvals: 4, rejections: 1 });
+  });
+
+  it('只公开票数时，房主和其他玩家都只能看到合计与自己的票', () => {
+    let s = propose(startGame(ids(5), opts({ voteVisibility: 'totals' }), seeded(3)), ['p0', 'p1']);
+    s = act(s, 'p0', { type: 'vote', approve: false });
+    expect(avalon.view(s, 'p1')).toMatchObject({ voted: [], votedCount: 1, proposals: [], me: { myVote: null } });
+    expect(avalon.view(s, 'p0').me!.myVote).toBe(false);
+    for (const id of s.players.slice(1)) s = act(s, id, { type: 'vote', approve: true });
+    expect(s.phase).toBe('quest');
+    for (const viewer of [...s.players, null]) {
+      expect(avalon.view(s, viewer).proposals[0]).toMatchObject({ votes: null, approvals: 4, rejections: 1, approved: true });
+    }
   });
 
   it('连续五次否决，邪恶方获胜', () => {
@@ -201,6 +218,41 @@ describe('组队与投票', () => {
     s = runQuest(s, goodTeam(s));
     expect(s.rejectCount).toBe(0);
     expect(s.questIndex).toBe(1);
+  });
+});
+
+describe('线下手动计时', () => {
+  it('由房主控制全桌计时，超时后不切阶段，车头可以直接发起投票', () => {
+    const players = ids(5);
+    const context = { hostId: 'p0', offlinePlayers: [] };
+    let s = startGame(players, opts({ discussionMode: 'manual', speechSeconds: 60 }), () => 0.3);
+    const captain = leaderOf(s);
+    const timer = { type: 'set_manual_timer', running: true, questIndex: 0, rejectCount: 0, now: 1000 } as const;
+    expect(captain).toBe('p1');
+    expect(() => avalon.reduce(s, captain, timer, Math.random, context)).toThrow('只有房主');
+    expect(() => act(s, captain, { type: 'start_discussion', preselectedTeam: false, leaderFirst: false, direction: 'left' })).toThrow('线下手动发言');
+    s = avalon.reduce(s, context.hostId, timer, Math.random, context);
+    expect(avalon.view(s, captain)).toMatchObject({ speechMode: 'manual', manualSpeechDeadline: 61000, discussion: null });
+    expect(act(s, captain, { type: 'timeout_speech', now: 65000 }).phase).toBe('team');
+    expect(s.leaderIndex).toBe(1);
+    s = avalon.reduce(s, context.hostId, { ...timer, now: 65000 }, Math.random, context);
+    expect(s.manualSpeechDeadline).toBe(125000);
+    s = avalon.reduce(s, context.hostId, { ...timer, running: false }, Math.random, context);
+    expect(s.manualSpeechDeadline).toBeNull();
+    s = voteAll(propose(s, ['p0', 'p1']), false);
+    expect(s.phase).toBe('team');
+    expect(avalon.reduce(s, context.hostId, timer, Math.random, context)).toBe(s);
+  });
+
+  it('机器人车头在房主请求后才会提出队伍', () => {
+    let s = startGame(ids(5), opts({ discussionMode: 'manual', speechSeconds: 0 }), () => 0.3);
+    const captain = leaderOf(s);
+    const context = { hostId: 'p0', offlinePlayers: [], botPlayers: [captain] };
+    expect(avalon.botAction!(s, captain, Math.random)).toBeNull();
+    s = avalon.reduce(s, context.hostId, { type: 'request_bot_proposal', questIndex: 0, rejectCount: 0 }, Math.random, context);
+    const action = avalon.botAction!(s, captain, Math.random)!;
+    expect(action.type).toBe('propose_team');
+    expect(act(s, captain, action).phase).toBe('vote');
   });
 });
 

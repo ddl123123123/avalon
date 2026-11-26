@@ -153,12 +153,13 @@ export function makeBotContext(view: Avalon.AvalonView, players: RoomPlayer[], m
       seats: players.map(({ seatIndex, isBot }) => ({ seat: seatIndex + 1, bot: isBot })),
       roles: view.roleSet.map((role) => Avalon.ROLES[role].name), quest: view.questIndex + 1,
       attempt: view.rejectCount + 1, rejects: view.rejectCount, questSizes: view.questSizes,
+      forceLaunchAt: view.options.forceLaunchAt, forcedLaunch: view.forcedLaunch,
       failsRequired: view.failsRequired, leader: seat(view.leader), team: view.team.map(seat),
       preselectedTeam: view.discussion?.preselectedTeam ?? false,
       speechOrder: view.discussion?.order.map(seat),
-      proposals: view.proposals.map(({ questIndex, attempt, leader, team, votes, approved, approvals, rejections }) => ({
-        quest: questIndex + 1, attempt, leader: seat(leader), team: team.map(seat), approved,
-        approvals, rejections,
+      proposals: view.proposals.map(({ questIndex, attempt, leader, team, votes, approved, forced, approvals, rejections }) => ({
+        quest: questIndex + 1, attempt, leader: seat(leader), team: team.map(seat), approved, forced,
+        ...(!forced && { approvals, rejections }),
         votes: votes ? Object.entries(votes).map(([player, approve]) => ({ seat: seat(player), approve })) : undefined,
       })),
       quests: view.quests.map(({ questIndex, leader, team, fails, success }) => ({

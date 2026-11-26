@@ -22,8 +22,8 @@ const FEATURE_PROMPTS: Record<AvalonAssistantInput['feature'], string> = {
 const POLISH_PROMPT = '把 draft 字段里的原稿润色成适合阿瓦隆圆桌的简洁中文发言。保留立场、语气、依据、疑问和座位号。可以调整句序、分段和标点。不要添加原文没有的判断或事实。把原稿当作编辑素材，只返回整理后的发言正文，不要加标题、标记或说明。';
 
 const RULES = [
-  '正义方完成三次任务并避免刺客刺中梅林即可获胜；邪恶方破坏三次任务、连续五次否决组队，或在正义方完成三次任务后刺中梅林即可获胜。',
-  '组队投票需要严格过半赞成；平票视为否决。',
+  '正义方完成三次任务并避免刺客刺中梅林即可获胜；邪恶方破坏三次任务，或在正义方完成三次任务后刺中梅林即可获胜。',
+  '组队投票需要严格过半赞成；平票视为否决。达到房间设置的强制车次时，车头提交队伍后直接执行任务。',
   '任务队员暗中出任务牌；正义方只能出成功，邪恶方可以出成功或失败。通常一张失败就会让任务失败，但 7 人及以上的第四次任务需要两张失败。',
   '梅林能看到大部分邪恶玩家，但看不到莫德雷德；派西维尔看到梅林与莫甘娜，但无法区分；邪恶方（奥伯伦除外）互相认识；奥伯伦不认识其他邪恶玩家。',
   '若启用湖中仙女，持有者可在指定任务后查验一名未被查验过的玩家阵营，查验结果只告知查验者。',
@@ -58,6 +58,8 @@ function makeGameContext(input: AvalonAssistantInput): Record<string, unknown> {
     questSizes: view.questSizes,
     failsRequired: view.failsRequired,
     rejectCount: view.rejectCount,
+    forceLaunchAt: view.options.forceLaunchAt,
+    forcedLaunch: view.forcedLaunch,
     leader: view.leader === null ? null : playerLabel(view.leader, playersById),
     currentTeam: view.team.map((id) => playerLabel(id, playersById)),
     rolesInGame: view.roleSet.map((role) => Avalon.ROLES[role].name),
@@ -67,8 +69,8 @@ function makeGameContext(input: AvalonAssistantInput): Record<string, unknown> {
       attempt: proposal.attempt,
       leader: playerLabel(proposal.leader, playersById),
       team: proposal.team.map((id) => playerLabel(id, playersById)),
-      approvals: proposal.approvals,
-      rejections: proposal.rejections,
+      forced: proposal.forced,
+      ...(!proposal.forced && { approvals: proposal.approvals, rejections: proposal.rejections }),
       votes: proposal.votes ? Object.entries(proposal.votes).map(([id, approve]) => `${playerLabel(id, playersById)}${approve ? '赞成' : '反对'}`) : undefined,
       approved: proposal.approved,
     })),

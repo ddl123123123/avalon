@@ -543,11 +543,11 @@
   font-variant-numeric: tabular-nums;
 }
 .reject-segments {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  display: flex;
   gap: 3px;
 }
 .reject-pip {
+  flex: 1;
   height: 4px;
   border-radius: 2px;
   background: rgba(239, 230, 207, 0.17);
@@ -555,6 +555,10 @@
 }
 .reject-pip.is-used {
   background: var(--ruby-soft);
+}
+.reject-label.is-forced {
+  color: var(--gilt-bright);
+  font-weight: 700;
 }
 .center-status-label {
   font-size: 0.74rem;

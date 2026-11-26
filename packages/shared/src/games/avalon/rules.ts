@@ -99,8 +99,7 @@ export const TEAM_SIZES: Record<number, readonly number[]> = {
 export const QUEST_COUNT = 5;
 /** 三次任务成功或失败即分出胜负 */
 export const QUESTS_TO_WIN = 3;
-/** 同一轮任务中连续五次组队被否决，邪恶方获胜 */
-export const MAX_REJECTS = 5;
+export const FORCED_LAUNCH_OPTIONS = [5, 3] as const;
 /** 湖中仙女在第 2、3、4 次任务结束后使用 */
 export const LADY_AFTER_QUESTS: readonly number[] = [1, 2, 3];
 /** 规则书建议 7 人及以上使用湖中仙女 */
@@ -120,6 +119,7 @@ export interface AvalonOptions {
   discussionMode: 'turns' | 'manual';
   speechSeconds: SpeechSeconds;
   voteVisibility: 'players' | 'totals';
+  forceLaunchAt: (typeof FORCED_LAUNCH_OPTIONS)[number];
   botDifficulty: 'standard' | 'advanced';
 }
 
@@ -142,7 +142,7 @@ export function recommendedOptions(playerCount: number): Pick<AvalonOptions, Opt
 export function defaultOptions(): AvalonOptions {
   return {
     percival: false, morgana: false, mordred: false, oberon: false, ladyOfTheLake: false,
-    discussionMode: 'turns', speechSeconds: 90, voteVisibility: 'players', botDifficulty: 'standard',
+    discussionMode: 'turns', speechSeconds: 90, voteVisibility: 'players', forceLaunchAt: 5, botDifficulty: 'standard',
   };
 }
 
@@ -162,6 +162,7 @@ export function normalizeOptions(raw: unknown): AvalonOptions {
     discussionMode: src.discussionMode === 'manual' ? 'manual' : 'turns',
     speechSeconds,
     voteVisibility: src.voteVisibility === 'totals' ? 'totals' : 'players',
+    forceLaunchAt: src.forceLaunchAt === 3 ? 3 : 5,
     botDifficulty: src.botDifficulty === 'advanced' ? 'advanced' : 'standard',
   };
 }

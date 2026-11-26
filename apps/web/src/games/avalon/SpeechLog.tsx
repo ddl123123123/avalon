@@ -132,15 +132,17 @@ export const SpeechLog = memo(function SpeechLog({ view, players }: { view: Aval
             <article key={`${questIndex}:${attempt}`} className="av-log-attempt">
               <header className="av-log-attempt-head">
                 <h3>任务 {questIndex + 1} · 第 {attempt} 次组队</h3>
-                {proposal ? <span className={proposal.approved ? 'tone-good' : 'tone-evil'}>{proposal.approved ? '通过' : '否决'}</span>
+                {proposal ? <span className={proposal.approved ? 'tone-good' : 'tone-evil'}>{proposal.forced ? '强制发车' : proposal.approved ? '通过' : '否决'}</span>
                   : <span className="av-log-muted">{active?.status ?? '待亮票'}</span>}
               </header>
               {leader && <p className="av-log-leader">车头 <SeatIdentity player={byId.get(leader)} /></p>}
               {team && team.length > 0 && <TeamRoster players={players} team={team} label={proposal || view.phase === 'vote' ? '提议队伍' : '候选队伍'} />}
               {proposal && (
-                <div className="av-log-ballot" aria-label="投票结果">
-                  <Votes votes={proposal.votes} players={players} approve count={proposal.approvals} />
-                  <Votes votes={proposal.votes} players={players} approve={false} count={proposal.rejections} />
+                <div className="av-log-ballot" aria-label={proposal.forced ? '任务结果' : '投票结果'}>
+                  {!proposal.forced && <>
+                    <Votes votes={proposal.votes} players={players} approve count={proposal.approvals} />
+                    <Votes votes={proposal.votes} players={players} approve={false} count={proposal.rejections} />
+                  </>}
                   {mission && <p className={mission.success ? 'tone-good' : 'tone-evil'}>
                     任务{mission.success ? '成功' : '失败'} · {mission.fails} 张失败牌
                   </p>}

@@ -96,6 +96,20 @@ export function AvalonOptions({
         </div>
       </fieldset>
 
+      <fieldset className="av-timer-setting">
+        <legend>强制发车</legend>
+        <div className="av-timer-options av-pair-options">
+          {Avalon.FORCED_LAUNCH_OPTIONS.map((attempt) => (
+            <button key={attempt} type="button" className="av-timer-choice"
+              aria-pressed={options.forceLaunchAt === attempt} disabled={!editable}
+              onClick={() => onChange({ forceLaunchAt: attempt })}>
+              第 <b>{attempt}</b> 车强制发车
+            </button>
+          ))}
+        </div>
+        <p className="av-setting-hint">连续流车 {options.forceLaunchAt - 1} 次后，下一车直接执行任务。</p>
+      </fieldset>
+
       <div className="av-roster" aria-live="polite">
         <h2 className="av-options-heading">{custom ? '自定义阵容' : '推荐阵容'}</h2>
         {deck.length > 0 && (

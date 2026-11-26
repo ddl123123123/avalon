@@ -1,7 +1,7 @@
 import type { Avalon } from '@tabletop/shared';
 
 const TABLE_RULES = [
-  '目标是帮助自己的阵营获胜。组队必须严格过半赞成，平票否决，连续五次否决直接判邪恶胜。',
+  '目标是帮助自己的阵营获胜。组队投票须严格过半赞成，平票否决。达到房间设置的强制车次时，车头提交队伍后直接执行任务。',
   '三次任务失败直接判邪恶胜。三次成功后仍有刺杀，只有刺客可以指认，猜中梅林才判邪恶胜。',
   '正义方只能出成功。根据失败门槛判断破坏是否有效，7 人及以上第四次任务要两张失败。',
   '严格区分公开事实、你有权知道的私密信息和你的猜测。只能使用本请求的视角。',
@@ -22,7 +22,7 @@ const ROLE_SKILLS: Record<Avalon.Role, { baseline: string; advanced: string }> =
   },
   assassin: {
     baseline: '跟踪哪些人多次提前指出正确风险。刺杀时选证据更扎实的候选。',
-    advanced: '为候选分别记录可见行为和反证，优先区分持续提前预判与派西维尔或忠臣主动挡刀。不要因为别人突然自称梅林就下注。能靠任务或五次否决结束时无需赌刺杀。',
+    advanced: '为候选分别记录可见行为和反证，优先区分持续提前预判与派西维尔或忠臣主动挡刀。不要因为别人突然自称梅林就下注。',
   },
   morgana: {
     baseline: '用公开逻辑伪装成认真带队的好人，给派西维尔留下可信印象。',
@@ -43,8 +43,8 @@ const ROLE_SKILLS: Record<Avalon.Role, { baseline: string; advanced: string }> =
 };
 
 const ALIGNMENT_SKILLS = {
-  good: '过半赞成之前用已有记录给队伍加减分。避免第四次否决之后再赌一次；扛刀、烟雾和暗示以保住梅林和最终任务成功为目标。',
-  evil: '按局势切换伪装、切割队友、选择性破坏和关键否决。估计队友也可能出失败，一张够用时避免双踩；需两张时评估同时破坏的可能。利用四次否决的高压，但不要每轮机械反对。',
+  good: '过半赞成之前用已有记录给队伍加减分。临近强制发车时比较当前队伍和下一位车头可能提出的队伍；扛刀、烟雾和暗示以保住梅林和最终任务成功为目标。',
+  evil: '按局势切换伪装、切割队友、选择性破坏和关键否决。估计队友也可能出失败，一张够用时避免双踩；需两张时评估同时破坏的可能。考虑下一车是否会强制发车。',
 };
 
 export function avalonBotSystem(role: Avalon.Role, alignment: Avalon.Alignment, difficulty: Avalon.AvalonOptions['botDifficulty']) {

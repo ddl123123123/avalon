@@ -43,6 +43,7 @@ export function Dock({
   const n = view.players.length;
   const size = view.questSizes[view.questIndex]!;
   const questNo = view.questIndex + 1;
+  const launchHint = view.forcedLaunch ? '本车强制发车，提交名单后直接执行任务' : undefined;
   const send = (action: Avalon.AvalonAction) => net.act(action);
 
   if (!me) return <DockShell prompt="你正在旁观这一局" />;
@@ -68,9 +69,9 @@ export function Dock({
         if (view.leader !== me.id) return <DockShell prompt={`等 ${nameOf(view.leader)} 提交队伍`} roster={view.team.length ? roster : undefined} />;
         return (
           <DockShell prompt={`第 ${questNo} 次任务 · 点座位选 ${size} 人`} roster={view.team.length ? roster : undefined}
-            hint={view.rejectCount === Avalon.MAX_REJECTS - 1 ? '这是本轮最后一次组队，再被否决邪恶方直接获胜' : undefined}>
+            hint={launchHint}>
             <button type="button" className="btn btn-primary" disabled={view.team.length !== size} onClick={() => send({ type: 'propose_team', team: view.team })}>
-              提交队伍并投票
+              {view.forcedLaunch ? '强制发车' : '提交队伍并投票'}
             </button>
           </DockShell>
         );
@@ -124,11 +125,11 @@ export function Dock({
       return (
         <DockShell
           prompt={`讨论结束。你是队长，确认第 ${questNo} 次任务队伍`}
-          hint={view.rejectCount === Avalon.MAX_REJECTS - 1 ? '这是本轮最后一次组队，再被否决邪恶方直接获胜' : undefined}
+          hint={launchHint}
           roster={roster}
         >
           <button type="button" className="btn btn-primary" disabled={!ready} onClick={() => send({ type: 'propose_team', team: view.team })}>
-            就这支队伍
+            {view.forcedLaunch ? '强制发车' : '就这支队伍'}
           </button>
         </DockShell>
       );
@@ -158,7 +159,7 @@ export function Dock({
     }
 
     case 'vote': {
-      const last = view.rejectCount === Avalon.MAX_REJECTS - 1 ? '这是本轮最后一次组队，再被否决邪恶方直接获胜。' : '';
+      const last = view.rejectCount === view.options.forceLaunchAt - 2 ? '本车若流车，下一车将强制发车。' : '';
       const revealHint = view.options.voteVisibility === 'totals' ? '所有人投完后只公布赞成和反对票数' : '所有人投完后同时亮票';
       const roster = <TeamRoster players={players} team={view.team} label="提议队伍" />;
       if (me.myVote !== null) {

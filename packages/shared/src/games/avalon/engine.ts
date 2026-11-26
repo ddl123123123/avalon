@@ -2,7 +2,6 @@ import { GameError, pick, shuffle, type GameActionContext, type GameDefinition, 
 import {
   LADY_AFTER_QUESTS,
   MAX_PLAYERS,
-  MAX_REJECTS,
   MIN_PLAYERS,
   QUESTS_TO_WIN,
   ROLES,
@@ -24,8 +23,6 @@ export type AvalonPhase = 'identity' | 'team' | 'discussion' | 'vote' | 'quest' 
 export type WinReason =
   /** 三次任务失败 */
   | 'quests_failed'
-  /** 连续五次组队被否决 */
-  | 'rejects'
   /** 刺客刺中梅林 */
   | 'assassinated'
   /** 刺客认错了人 */
@@ -39,6 +36,7 @@ export interface ProposalRecord {
   team: PlayerId[];
   votes: Record<PlayerId, boolean>;
   approved: boolean;
+  forced: boolean;
 }
 
 export interface ProposalView extends Omit<ProposalRecord, 'votes'> {
@@ -167,6 +165,7 @@ export interface AvalonView {
   /** 公开成员模式下显示已投票的座位。 */
   voted: PlayerId[];
   votedCount: number;
+  forcedLaunch: boolean;
   played: PlayerId[];
   proposals: ProposalView[];
   quests: QuestRecord[];
@@ -327,10 +326,14 @@ export function skipUnavailableSpeech(prev: AvalonState, player: PlayerId, turn:
   return next;
 }
 
-function resolveVote(state: AvalonState) {
+function isForcedLaunch(state: AvalonState) {
+  return state.rejectCount >= (state.options.forceLaunchAt ?? 5) - 1;
+}
+
+function resolveProposal(state: AvalonState, forced: boolean) {
   const approvals = Object.values(state.votes).filter(Boolean).length;
   // 需要严格过半；平票视为否决
-  const approved = approvals * 2 > state.players.length;
+  const approved = forced || approvals * 2 > state.players.length;
   state.proposals.push({
     questIndex: state.questIndex,
     attempt: state.rejectCount + 1,
@@ -338,6 +341,7 @@ function resolveVote(state: AvalonState) {
     team: state.team.slice(),
     votes: { ...state.votes },
     approved,
+    forced,
   });
   if (approved) {
     state.phase = 'quest';
@@ -345,10 +349,6 @@ function resolveVote(state: AvalonState) {
     return;
   }
   state.rejectCount += 1;
-  if (state.rejectCount >= MAX_REJECTS) {
-    finish(state, 'evil', 'rejects');
-    return;
-  }
   nextLeader(state);
   startTeamPhase(state);
 }
@@ -511,7 +511,8 @@ function reduce(prev: AvalonState, player: PlayerId, action: AvalonAction, rng: 
       state.team = checkTeam(state, action.team, true);
       state.manualSpeechDeadline = null;
       state.votes = {};
-      state.phase = 'vote';
+      if (isForcedLaunch(state)) resolveProposal(state, true);
+      else state.phase = 'vote';
       return state;
     }
     case 'vote': {
@@ -519,7 +520,7 @@ function reduce(prev: AvalonState, player: PlayerId, action: AvalonAction, rng: 
       if (typeof action.approve !== 'boolean') throw new GameError('无效的投票');
       if (player in state.votes) throw new GameError('你已经投过票了');
       state.votes[player] = action.approve;
-      if (Object.keys(state.votes).length === state.players.length) resolveVote(state);
+      if (Object.keys(state.votes).length === state.players.length) resolveProposal(state, false);
       return state;
     }
     case 'quest': {
@@ -613,11 +614,12 @@ function view(state: AvalonState, viewer: PlayerId | null): AvalonView {
     team: state.team,
     voted: showVoters ? voted : [],
     votedCount: voted.length,
+    forcedLaunch: (state.phase === 'team' || state.phase === 'discussion' || state.phase === 'quest') && isForcedLaunch(state),
     played: state.phase === 'quest' ? Object.keys(state.questCards) : [],
     proposals: state.proposals.map(({ votes, ...proposal }) => {
       const ballots = Object.values(votes);
       const approvals = ballots.filter(Boolean).length;
-      return { ...proposal, votes: showVoters ? votes : null, approvals, rejections: ballots.length - approvals };
+      return { ...proposal, votes: showVoters && !proposal.forced ? votes : null, approvals, rejections: ballots.length - approvals };
     }),
     quests: state.quests,
     lady: state.lady,
@@ -661,7 +663,6 @@ function botAction(state: AvalonState, player: PlayerId, rng: Rng): AvalonAction
       return state.discussion?.order[state.discussion.currentIndex] === player ? { type: 'finish_speech' } : null;
     case 'vote': {
       if (player in state.votes) return null;
-      if (state.rejectCount === MAX_REJECTS - 1) return { type: 'vote', approve: !evil || rng() < 0.5 };
       const hasKnownEvil = state.team.some((id) => known[id] === 'evil' || (evil && id === player));
       if (evil) return { type: 'vote', approve: hasKnownEvil ? rng() < 0.85 : rng() < 0.35 };
       if (role === 'merlin' && hasKnownEvil) return { type: 'vote', approve: rng() < 0.15 };

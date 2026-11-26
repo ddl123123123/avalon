@@ -55,7 +55,10 @@ function useReveals(room: RoomSnapshot, view: View) {
       return;
     }
     const added: Reveal[] = [];
-    while (s.proposals < view.proposals.length) added.push({ kind: 'vote', proposal: view.proposals[s.proposals++]! });
+    while (s.proposals < view.proposals.length) {
+      const proposal = view.proposals[s.proposals++]!;
+      if (!proposal.forced) added.push({ kind: 'vote', proposal });
+    }
     while (s.quests < view.quests.length) added.push({ kind: 'quest', quest: view.quests[s.quests++]! });
     if (s.lady < ladyCount && view.lady) {
       const last = view.lady.inspections.filter((i) => i.by === view.me!.id).at(-1)!;
@@ -425,14 +428,14 @@ function AvalonBoardSession({ room }: { room: RoomSnapshot }) {
                       )}
                     </div>
                     {view.phase !== 'identity' && !voteReveal && (
-                      <div className="reject-track" aria-label={`本轮已否决 ${view.rejectCount} 次，满 5 次邪恶方获胜`}>
-                        <span className="reject-label">本轮否决</span>
+                      <div className="reject-track" aria-label={`本轮已流车 ${view.rejectCount} 次，第 ${view.options.forceLaunchAt} 车强制发车`}>
+                        <span className={`reject-label${view.forcedLaunch ? ' is-forced' : ''}`}>{view.forcedLaunch ? '强制发车' : '本轮流车'}</span>
                         <div className="reject-segments" aria-hidden="true">
-                          {Array.from({ length: Avalon.MAX_REJECTS }, (_, i) => (
+                          {Array.from({ length: view.options.forceLaunchAt - 1 }, (_, i) => (
                             <span key={i} className={`reject-pip ${i < view.rejectCount ? 'is-used' : ''}`} />
                           ))}
                         </div>
-                        <strong>{view.rejectCount} / {Avalon.MAX_REJECTS}</strong>
+                        <strong>{view.rejectCount} / {view.options.forceLaunchAt - 1}</strong>
                       </div>
                     )}
                   </section>

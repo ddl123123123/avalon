@@ -203,21 +203,29 @@ describe('组队与投票', () => {
     }
   });
 
-  it('连续五次否决，邪恶方获胜', () => {
-    let s = startGame(ids(5), opts(), seeded(4));
-    for (let i = 0; i < 5; i++) s = voteAll(propose(s, ['p0', 'p1']), false);
-    expect(s.phase).toBe('ended');
-    expect(s.winner).toBe('evil');
-    expect(s.winReason).toBe('rejects');
-  });
-
-  it('任务完成后否决计数清零', () => {
-    let s = startGame(ids(5), opts(), seeded(5));
-    for (let i = 0; i < 4; i++) s = voteAll(propose(s, goodTeam(s)), false);
-    expect(s.rejectCount).toBe(4);
-    s = runQuest(s, goodTeam(s));
+  it.each([3, 5] as const)('第 %i 车提交队伍就执行任务，下一项任务重新计数', (forceLaunchAt) => {
+    let s = startGame(ids(5), opts({ forceLaunchAt }), seeded(4));
+    for (let i = 1; i < forceLaunchAt; i++) {
+      expect(avalon.view(s, null).forcedLaunch).toBe(false);
+      s = propose(s, goodTeam(s));
+      expect(s.phase).toBe('vote');
+      s = voteAll(s, false);
+    }
+    expect(avalon.view(s, null).forcedLaunch).toBe(true);
+    expect(s.rejectCount).toBe(forceLaunchAt - 1);
+    expect(() => propose(s, ['p0'])).toThrow(/2 名/);
+    const leader = leaderOf(s);
+    const team = goodTeam(s);
+    s = propose(s, team);
+    expect(s.phase).toBe('quest');
+    expect(s.winner).toBeNull();
+    expect(avalon.view(s, null).proposals.at(-1)).toMatchObject({ attempt: forceLaunchAt, leader, team, forced: true, votes: null });
+    expect(() => act(s, 'p0', { type: 'vote', approve: true })).toThrow('现在不是投票阶段');
+    for (const player of team) s = act(s, player, { type: 'quest', success: true });
     expect(s.rejectCount).toBe(0);
     expect(s.questIndex).toBe(1);
+    expect(avalon.view(s, null).forcedLaunch).toBe(false);
+    expect(propose(s, goodTeam(s)).phase).toBe('vote');
   });
 });
 

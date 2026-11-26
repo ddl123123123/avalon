@@ -7,7 +7,6 @@ import { RoleFace } from './art';
 
 const REASONS: Record<Avalon.WinReason, string> = {
   quests_failed: '三次任务被破坏，卡美洛陷落了。',
-  rejects: '圆桌连续五次谈不拢，邪恶方不战而胜。',
   assassinated: '三次任务都完成了，但刺客认出了梅林。',
   merlin_safe: '三次任务完成，梅林也没有暴露。',
 };

@@ -27,7 +27,7 @@ export function History({
           关闭
         </button>
       </header>
-      {rounds.length === 0 && <p className="drawer-empty">组队投票结束后，结果会显示在这里。</p>}
+      {rounds.length === 0 && <p className="drawer-empty">组队和任务结果会显示在这里。</p>}
       {rounds.map(({ q, proposals, quest }) => (
         <section key={q} className="history-round">
           <h3>
@@ -46,16 +46,20 @@ export function History({
               <div key={p.attempt} className={`history-proposal ${p.approved ? 'is-approved' : 'is-rejected'}`}>
                 <p className="history-line">
                   <strong>{nameOf(p.leader)}</strong> 提议 {p.team.map(nameOf).join('、')}
-                  <span className="history-verdict">{p.approved ? '通过' : '否决'}</span>
+                  <span className="history-verdict">{p.forced ? '强制发车' : p.approved ? '通过' : '否决'}</span>
                 </p>
-                <p className="history-votes">
-                  <span className="vote-dot vote-dot-yes" />
-                  赞成 {p.approvals}{yes && ` · ${yes.map(nameOf).join('、') || '无'}`}
-                </p>
-                <p className="history-votes">
-                  <span className="vote-dot vote-dot-no" />
-                  反对 {p.rejections}{no && ` · ${no.map(nameOf).join('、') || '无'}`}
-                </p>
+                {!p.forced && (
+                  <>
+                    <p className="history-votes">
+                      <span className="vote-dot vote-dot-yes" />
+                      赞成 {p.approvals}{yes && ` · ${yes.map(nameOf).join('、') || '无'}`}
+                    </p>
+                    <p className="history-votes">
+                      <span className="vote-dot vote-dot-no" />
+                      反对 {p.rejections}{no && ` · ${no.map(nameOf).join('、') || '无'}`}
+                    </p>
+                  </>
+                )}
               </div>
             );
           })}

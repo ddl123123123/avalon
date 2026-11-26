@@ -10,3 +10,4 @@
 .env.*
 games.anois.site
 deploy
+.data

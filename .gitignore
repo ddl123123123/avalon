@@ -3,6 +3,8 @@ dist
 .DS_Store
 *.log
 coverage
+# 开发时的账号库（apps/server 默认写到这里）
+.data
 .env
 .env.*
 !.env.example

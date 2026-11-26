@@ -12,9 +12,12 @@ import {
   type RoomPlayer,
   type RoomSnapshot,
   type RoomStatus,
+  type SeatSummary,
   type ServerMessage,
+  type AccountUser,
 } from '@tabletop/shared';
 import { answerAvalonAssistant } from './deepseek';
+import type { GameRecorder } from './stats';
 import {
   askAvalonBot, botModelDirectory, decisionToken, localBotModel, modelFor, needsAvalonModel, rememberAction, speechEditorFor,
   type BotMemory,
@@ -23,15 +26,20 @@ import {
 /** 一条到客户端的连接。服务端不关心底层是不是 WebSocket。 */
 export interface Connection {
   send(message: ServerMessage): void;
-  /** 浏览器保存的私密标识，用来在刷新和断线后认回同一个人 */
-  clientId: string | null;
+  /**
+   * 认人用的身份键，hello 之后才有：登录用户是 `u:<账号 id>`，换设备登录也能认回同一个座位；
+   * 游客是 `g:<浏览器保存的私密 clientId>`，只能在同一个浏览器里刷新、断线后认回来。
+   */
+  identity: string | null;
+  /** 握手时凭 Cookie 认出的账号；游客为 null */
+  account: AccountUser | null;
 }
 
 interface Member {
   id: PlayerId;
   seatIndex: number;
-  /** 机器人没有 clientId */
-  clientId: string | null;
+  /** 机器人没有身份键 */
+  identity: string | null;
   name: string;
   isBot: boolean;
   avalonProfile?: string;
@@ -62,6 +70,8 @@ interface Room {
   aiRequestTimes: Map<PlayerId, number>;
   aiRequestHistory: number[];
   emptyTimer: NodeJS.Timeout | null;
+  /** 当前这一局在统计库里的编号（写库是异步的） */
+  record?: Promise<number | null>;
 }
 
 /** 大厅里掉线后座位保留多久。要够房主切到聊天软件发完邀请链接再回来。 */
@@ -84,30 +94,34 @@ function cleanName(raw: unknown): string {
   return [...name].slice(0, NAME_MAX_LENGTH).join('');
 }
 
+const NO_RECORDER: GameRecorder = { visit() {}, gameStarted: async () => null, gameEnded() {} };
+
 export class RoomManager {
+  constructor(private recorder: GameRecorder = NO_RECORDER) {}
+
   private rooms = new Map<string, Room>();
   private readonly botModels = botModelDirectory(process.env);
   private botModelInFlight = 0;
   private botModelCalls: number[] = [];
-  /** clientId → 所在房间号 */
+  /** 身份键 → 所在房间号 */
   private seats = new Map<string, string>();
-  /** clientId → 对外公开的玩家 id（公开 id 不能反推出 clientId） */
+  /** 身份键 → 对外公开的玩家 id（公开 id 不能反推出身份键） */
   private publicIds = new Map<string, PlayerId>();
 
-  private publicId(clientId: string): PlayerId {
-    let id = this.publicIds.get(clientId);
+  private publicId(identity: string): PlayerId {
+    let id = this.publicIds.get(identity);
     if (!id) {
       id = newId();
-      this.publicIds.set(clientId, id);
+      this.publicIds.set(identity, id);
     }
     return id;
   }
 
   private find(conn: Connection): { room: Room; member: Member } | null {
-    if (!conn.clientId) return null;
-    const code = this.seats.get(conn.clientId);
+    if (!conn.identity) return null;
+    const code = this.seats.get(conn.identity);
     const room = code ? this.rooms.get(code) : undefined;
-    const member = room?.members.find((m) => m.clientId === conn.clientId);
+    const member = room?.members.find((m) => m.identity === conn.identity);
     return room && member ? { room, member } : null;
   }
 
@@ -128,19 +142,34 @@ export class RoomManager {
       if (typeof msg.clientId !== 'string' || msg.clientId.length < 16 || msg.clientId.length > 64) {
         throw new GameError('无效的客户端标识');
       }
-      conn.clientId = msg.clientId;
+      const guestKey = `g:${msg.clientId}`;
+      if (msg.guest === true) conn.account = null;
+      if (conn.account) {
+        conn.identity = `u:${conn.account.id}`;
+        // 游客时入的座，登录后归到账号名下，换设备也能回来
+        this.adopt(guestKey, conn.identity);
+      } else {
+        conn.identity = guestKey;
+      }
+      this.recorder.visit(conn.identity, conn.account?.id ?? null);
       const seat = this.find(conn);
       // 只告知上次所在的房间，由客户端决定是否回去（发 join_room），避免新开的标签页抢走座位
-      conn.send({ type: 'welcome', playerId: this.publicId(msg.clientId), roomCode: seat?.room.code ?? null });
+      conn.send({
+        type: 'welcome',
+        playerId: this.publicId(conn.identity),
+        roomCode: seat?.room.code ?? null,
+        account: conn.account,
+        seats: this.seatsOf(conn.identity),
+      });
       return;
     }
-    if (!conn.clientId) throw new GameError('连接尚未就绪，请稍后再试');
+    if (!conn.identity) throw new GameError('连接尚未就绪，请稍后再试');
 
     switch (msg.type) {
       case 'create_room':
-        return this.createRoom(conn, msg.name, msg.gameId, msg.options);
+        return this.createRoom(conn, conn.account?.displayName ?? msg.name, msg.gameId, msg.options);
       case 'join_room':
-        return this.joinRoom(conn, msg.code, msg.name);
+        return this.joinRoom(conn, msg.code, conn.account?.displayName ?? msg.name);
     }
 
     const seat = this.find(conn);
@@ -215,7 +244,7 @@ export class RoomManager {
         if (room.members.length >= (room.targetPlayers ?? room.game.maxPlayers)) throw new GameError('房间已满');
         const used = new Set(room.members.map((m) => m.name));
         const name = BOT_NAMES.find((n) => !used.has(n)) ?? `骑士${room.members.length + 1}`;
-        room.members.push({ id: newId(), seatIndex: this.firstFreeSeat(room), clientId: null, name, isBot: true, avalonProfile: room.defaultAvalonProfile, connection: null, dropTimer: null });
+        room.members.push({ id: newId(), seatIndex: this.firstFreeSeat(room), identity: null, name, isBot: true, avalonProfile: room.defaultAvalonProfile, connection: null, dropTimer: null });
         return this.broadcast(room);
       }
       case 'set_avalon_bot_model':
@@ -262,6 +291,14 @@ export class RoomManager {
         }
         room.status = 'playing';
         room.gameSeq += 1;
+        room.record = this.recorder.gameStarted({
+          roomCode: room.code,
+          gameId: room.game.id,
+          players: [...room.members].sort((a, b) => a.seatIndex - b.seatIndex).map((m) => ({
+            userId: m.identity?.startsWith('u:') ? m.identity.slice(2) : null,
+            isBot: m.isBot,
+          })),
+        });
         this.broadcast(room);
         return this.scheduleBots(room);
       }
@@ -301,7 +338,7 @@ export class RoomManager {
         if (!this.rooms.has(candidate)) code = candidate;
       }
     }
-    const id = this.publicId(conn.clientId!);
+    const id = this.publicId(conn.identity!);
     const config = game.playerCountOptions;
     const defaults = config
       ? game.normalizeOptions({ ...game.defaultOptions(), ...config.recommendedOptions(config.defaultCount) })
@@ -316,7 +353,7 @@ export class RoomManager {
       code,
       game,
       hostId: id,
-      members: [{ id, seatIndex: 0, clientId: conn.clientId, name, isBot: false, connection: conn, dropTimer: null }],
+      members: [{ id, seatIndex: 0, identity: conn.identity, name, isBot: false, connection: conn, dropTimer: null }],
       status: 'lobby',
       options,
       targetPlayers: config?.defaultCount ?? null,
@@ -328,7 +365,7 @@ export class RoomManager {
       emptyTimer: null,
     };
     this.rooms.set(code, room);
-    this.seats.set(conn.clientId!, code);
+    this.seats.set(conn.identity!, code);
     this.broadcast(room);
   }
 
@@ -337,7 +374,7 @@ export class RoomManager {
     const room = this.rooms.get(code);
     if (!room) throw new GameError(`没有找到房间 ${code || ''}，检查一下房间号`.replace('  ', ' '));
 
-    const already = room.members.find((m) => m.clientId === conn.clientId);
+    const already = room.members.find((m) => m.identity === conn.identity);
     if (already) {
       const elsewhere = this.find(conn);
       if (elsewhere && elsewhere.room !== room) this.leave(elsewhere.room, elsewhere.member);
@@ -351,15 +388,15 @@ export class RoomManager {
     const elsewhere = this.find(conn);
     if (elsewhere) this.leave(elsewhere.room, elsewhere.member);
     room.members.push({
-      id: this.publicId(conn.clientId!),
+      id: this.publicId(conn.identity!),
       seatIndex: this.firstFreeSeat(room),
-      clientId: conn.clientId,
+      identity: conn.identity,
       name,
       isBot: false,
       connection: conn,
       dropTimer: null,
     });
-    this.seats.set(conn.clientId!, room.code);
+    this.seats.set(conn.identity!, room.code);
     this.touch(room);
     this.broadcast(room);
   }
@@ -367,15 +404,67 @@ export class RoomManager {
   private attach(room: Room, member: Member, conn: Connection) {
     if (member.connection && member.connection !== conn) {
       this.cancelPolish(member);
-      member.connection.send({ type: 'left', reason: '你在另一个窗口打开了这个房间' });
-      member.connection.clientId = null;
+      member.connection.send({ type: 'left', reason: '你在另一个窗口或设备上打开了这个房间' });
+      member.connection.identity = null;
     }
     member.connection = conn;
-    if (member.clientId) this.seats.set(member.clientId, room.code);
+    if (member.identity) this.seats.set(member.identity, room.code);
     if (member.dropTimer) clearTimeout(member.dropTimer);
     member.dropTimer = null;
     this.touch(room);
     this.broadcast(room);
+  }
+
+  /**
+   * 把游客身份占的座位转到账号名下（登录、注册之后）。
+   * 账号在同一个房间里已经有座位时不动那个房间；账号已经在别的房间时，不改「当前所在房间」。
+   */
+  private adopt(fromKey: string, toKey: string) {
+    let moved = false;
+    for (const room of this.rooms.values()) {
+      const guest = room.members.find((m) => m.identity === fromKey);
+      if (!guest || room.members.some((m) => m.identity === toKey)) continue;
+      guest.identity = toKey;
+      // 还挂着的旧连接来自同一个浏览器，跟着换身份，之后断开时才能正常让出座位
+      if (guest.connection?.identity === fromKey) guest.connection.identity = toKey;
+      moved = true;
+    }
+    if (!moved) return;
+    const code = this.seats.get(fromKey);
+    this.seats.delete(fromKey);
+    if (code && !this.seats.has(toKey) && this.rooms.get(code)?.members.some((m) => m.identity === toKey)) {
+      this.seats.set(toKey, code);
+    }
+    // 账号第一次入座前沿用游客的公开 id，同桌看到的还是同一个人
+    const guestId = this.publicIds.get(fromKey);
+    if (guestId && !this.publicIds.has(toKey)) this.publicIds.set(toKey, guestId);
+  }
+
+  /** 这个身份还占着座位的房间，进行中的对局排在前面 */
+  seatsOf(identity: string): SeatSummary[] {
+    const order: Record<RoomStatus, number> = { playing: 0, ended: 1, lobby: 2 };
+    return [...this.rooms.values()]
+      .filter((room) => room.members.some((m) => m.identity === identity))
+      .map((room) => ({ code: room.code, gameId: room.game.id, status: room.status }))
+      .sort((a, b) => order[a.status] - order[b.status]);
+  }
+
+  /** 账号改了昵称：还在大厅的房间里同步过去（对局中不改，免得记录对不上人） */
+  renameAccount(user: AccountUser) {
+    const identity = `u:${user.id}`;
+    for (const room of this.rooms.values()) {
+      const member = room.members.find((m) => m.identity === identity);
+      if (!member || room.status !== 'lobby' || member.name === user.displayName) continue;
+      member.name = user.displayName;
+      this.broadcast(room);
+    }
+  }
+
+  /** 会话被注销（退出其他设备、改密码）：这些连接上的账号身份立刻作废，客户端会重连 */
+  dropAccount(conn: Connection) {
+    this.disconnect(conn);
+    conn.identity = null;
+    conn.account = null;
   }
 
   private firstFreeSeat(room: Room): number {
@@ -414,7 +503,7 @@ export class RoomManager {
     } else {
       // 对局中离开只是离线，座位保留，凭房间号可以回来
       member.connection = null;
-      if (member.clientId) this.seats.delete(member.clientId);
+      if (member.identity) this.seats.delete(member.identity);
       this.passHostIfNeeded(room);
       this.touch(room);
     }
@@ -426,7 +515,7 @@ export class RoomManager {
     this.cancelPolish(member);
     room.members = room.members.filter((m) => m !== member);
     if (member.dropTimer) clearTimeout(member.dropTimer);
-    if (member.clientId && this.seats.get(member.clientId) === room.code) this.seats.delete(member.clientId);
+    if (member.identity && this.seats.get(member.identity) === room.code) this.seats.delete(member.identity);
     if (reason !== null) member.connection?.send({ type: 'left', reason });
     member.connection = null;
     this.passHostIfNeeded(room);
@@ -454,10 +543,11 @@ export class RoomManager {
   }
 
   private destroy(room: Room) {
+    if (room.status === 'playing' && room.record) this.recorder.gameEnded(room.record, 'abandoned');
     this.clearBotTimers(room);
     for (const m of room.members) {
       if (m.dropTimer) clearTimeout(m.dropTimer);
-      if (m.clientId && this.seats.get(m.clientId) === room.code) this.seats.delete(m.clientId);
+      if (m.identity && this.seats.get(m.identity) === room.code) this.seats.delete(m.identity);
     }
     this.rooms.delete(room.code);
   }
@@ -479,6 +569,7 @@ export class RoomManager {
   private afterAction(room: Room) {
     if (room.game.isOver(room.state)) {
       room.status = 'ended';
+      if (room.record) this.recorder.gameEnded(room.record, 'finished');
       this.clearBotTimers(room);
     }
     this.broadcast(room);
@@ -766,6 +857,17 @@ export class RoomManager {
   }
 
   stats() {
-    return { rooms: this.rooms.size };
+    let playing = 0;
+    let online = 0;
+    let onlineMembers = 0;
+    for (const room of this.rooms.values()) {
+      if (room.status === 'playing') playing++;
+      for (const m of room.members) {
+        if (m.isBot || !m.connection) continue;
+        online++;
+        if (m.identity?.startsWith('u:')) onlineMembers++;
+      }
+    }
+    return { rooms: this.rooms.size, playing, online, onlineMembers };
   }
 }

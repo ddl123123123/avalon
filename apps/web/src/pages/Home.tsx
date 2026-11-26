@@ -11,8 +11,10 @@ import { avalonPigArt, useAvalonCardStyle } from '../games/avalon/cardLibrary';
 import { useCitadelsPigTheme } from '../games/citadels/cardStyle';
 import { TruthQuickPlay } from '../games/party/TruthQuickPlay';
 import { GAME_CLIENTS } from '../games/registry';
+import { openAccountSheet, useAccount } from '../net/account';
 import { forgetRecentRoom, getName, net, notify, setName, useNet } from '../net/client';
 import { navigate, roomPath } from '../net/route';
+import { AccountButton } from './AccountSheet';
 
 const GAMES = Object.values(GAME_CLIENTS);
 const GAME_KEY = 'tabletop.game';
@@ -29,7 +31,8 @@ function rememberedGame(): string {
 
 export function Home() {
   const reducedMotion = useReducedMotion();
-  const { room, lastRoomCode, recentRooms } = useNet();
+  const { room, lastRoomCode, recentRooms, seats } = useNet();
+  const { user } = useAccount();
   const [gameId, setGameId] = useState(rememberedGame);
   const [name, setNameInput] = useState(getName);
   const [code, setCode] = useState('');
@@ -56,6 +59,7 @@ export function Home() {
   };
 
   const requireName = (): string | null => {
+    if (user) return user.displayName;
     const trimmed = name.trim();
     if (trimmed) return trimmed;
     notify('先起个名字，同桌的人要靠它认出你');
@@ -73,7 +77,7 @@ export function Home() {
     const who = requireName();
     if (!who) return;
     if (!/^\d{4,8}$/.test(code)) return notify('房间号是 4 位数字，问问房主');
-    setName(who);
+    if (!user) setName(who);
     navigate(roomPath(code));
   };
 
@@ -89,6 +93,7 @@ export function Home() {
         </div>
         <div className="home-masthead-note">
           <span>桌游与聚会游戏</span>
+          <AccountButton />
         </div>
       </header>
 
@@ -114,6 +119,16 @@ export function Home() {
           <p className="hero-lede">{game.hero.lede}</p>
 
           {isTruth ? <TruthQuickPlay /> : <div className="entry">
+            {user ? (
+              <div className="entry-identity">
+                <span className="account-avatar" aria-hidden="true">{[...user.displayName][0]}</span>
+                <span>
+                  以 <strong>{user.displayName}</strong> 的身份入座
+                  <small>换设备登录同一个账号，也能回到进行中的对局</small>
+                </span>
+                <button type="button" className="link" onClick={() => openAccountSheet()}>账号</button>
+              </div>
+            ) : <>
             <label className="field">
               你的名字
               <input
@@ -126,6 +141,11 @@ export function Home() {
                 autoComplete="nickname"
               />
             </label>
+            <p className="entry-account-hint">
+              想换设备接着玩？<button type="button" className="link" onClick={() => openAccountSheet('register')}>注册</button>
+              或<button type="button" className="link" onClick={() => openAccountSheet('login')}>登录</button>账号
+            </p>
+            </>}
             <div className="entry-actions">
               <button type="button" className="btn btn-primary" onClick={create}>
                 开一间{game.name}的房
@@ -146,7 +166,31 @@ export function Home() {
               </form>
             </div>
           </div>}
-          {resumeCode && !recentRooms.some((recent) => recent.code === resumeCode) && (
+          {seats.length > 0 && (
+            <section className="recent-rooms my-seats" aria-label="你还在的房间">
+              <header>
+                <div>
+                  <p>{user ? 'YOUR TABLES' : 'THIS BROWSER'}</p>
+                  <h2>你还在的房间</h2>
+                </div>
+                <span>{user ? `账号 @${user.username}` : '仅限本浏览器'}</span>
+              </header>
+              <ul>
+                {seats.map((seat) => (
+                  <li key={seat.code}>
+                    <button type="button" className="recent-room-entry" onClick={() => resume(seat.code)}>
+                      <span className="recent-room-main">
+                        <strong>{seat.code}</strong>
+                        <small>{GAME_CLIENTS[seat.gameId]?.name ?? '桌游房间'} · {seat.status === 'playing' ? '对局进行中' : seat.status === 'ended' ? '对局已结束' : '等待开局'}</small>
+                      </span>
+                      <span className="recent-room-rejoin">{seat.status === 'playing' ? '回到对局' : '回到房间'} <span aria-hidden="true">↗</span></span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {resumeCode && !recentRooms.some((recent) => recent.code === resumeCode) && !seats.some((seat) => seat.code === resumeCode) && (
             <button type="button" className="link resume" onClick={() => navigate(roomPath(resumeCode))}>
               回到房间 {resumeCode}
             </button>

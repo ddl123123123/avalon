@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from 'react';
-import { GAME_MESSAGE_BYTES, type ClientMessage, type RoomSnapshot, type ServerMessage } from '@tabletop/shared';
+import {
+  GAME_MESSAGE_BYTES, type AccountUser, type ClientMessage, type RoomSnapshot, type SeatSummary, type ServerMessage,
+} from '@tabletop/shared';
 import { navigate } from './route';
 
 /**
@@ -9,6 +11,8 @@ import { navigate } from './route';
  */
 
 const alias = new URLSearchParams(location.search).get('as');
+/** ?as= 调试标签页一律当游客，不然同一个浏览器里的账号 Cookie 会让它们互相顶掉 */
+export const debugAlias = alias;
 const scoped = (key: string) => (alias ? `${key}:${alias}` : key);
 
 function stored(key: string): string | null {
@@ -80,6 +84,10 @@ function loadRecentRooms(): RecentRoom[] {
 export interface NetState {
   link: 'connecting' | 'online' | 'offline';
   playerId: string | null;
+  /** 当前这条连接被服务器认成的账号；游客为 null */
+  account: AccountUser | null;
+  /** 这个身份在服务器上还占着座位的房间（登录后换设备也能看到） */
+  seats: SeatSummary[];
   /** 服务器记得我上次所在的房间（还没回去） */
   lastRoomCode: string | null;
   /** 本机最近进入过的房间，用于从首页重新加入 */
@@ -96,6 +104,8 @@ let serverClockOffset = 0;
 let state: NetState = {
   link: 'connecting',
   playerId: null,
+  account: null,
+  seats: [],
   lastRoomCode: null,
   recentRooms: loadRecentRooms(),
   room: null,
@@ -124,6 +134,11 @@ export function forgetRecentRoom(code: string) {
 
 let socket: WebSocket | null = null;
 let retry = 0;
+/** 服务器以「登录态失效」关闭连接时通知账号模块（见 account.ts） */
+let onSessionRevoked: (() => void) | null = null;
+export function handleSessionRevoked(fn: () => void) {
+  onSessionRevoked = fn;
+}
 let noticeId = 0;
 let pendingPolish: { id: string; finish: (result: { content: string } | { message: string }) => void } | null = null;
 /** 断线重连后要回到的房间 */
@@ -158,13 +173,15 @@ function connect() {
 
   ws.onopen = () => {
     retry = 0;
-    ws.send(JSON.stringify({ type: 'hello', clientId } satisfies ClientMessage));
+    ws.send(JSON.stringify({ type: 'hello', clientId, ...(alias ? { guest: true } : {}) } satisfies ClientMessage));
   };
   ws.onmessage = (ev) => {
+    // 已经换掉的旧连接（登录后重连）上迟到的消息一律不理
+    if (socket !== ws) return;
     const msg = JSON.parse(ev.data) as ServerMessage;
     switch (msg.type) {
       case 'welcome':
-        set({ link: 'online', playerId: msg.playerId, lastRoomCode: msg.roomCode });
+        set({ link: 'online', playerId: msg.playerId, lastRoomCode: msg.roomCode, account: msg.account, seats: msg.seats ?? [] });
         if (intent) {
           set({ joining: intent.code });
           ws.send(JSON.stringify({ type: 'join_room', ...intent } satisfies ClientMessage));
@@ -191,13 +208,16 @@ function connect() {
         if (pendingPolish?.id === msg.requestId) pendingPolish.finish({ message: msg.message });
         else set({ assistantError: { requestId: msg.requestId, message: msg.message } });
         break;
-      case 'left':
+      case 'left': {
         pendingPolish?.finish({ message: '已离开当前对局。' });
         intent = null;
-        set({ room: null, joining: null, lastRoomCode: null });
+        // 大厅里离开就是让出座位；对局中离开座位还在，账号换设备也能回去
+        const gone = state.room && state.room.status === 'lobby' ? state.room.code : null;
+        set({ room: null, joining: null, lastRoomCode: null, seats: state.seats.filter((seat) => seat.code !== gone) });
         navigate('/');
         if (msg.reason) notify(msg.reason);
         break;
+      }
       case 'error':
         // 进房失败（房间不存在、已开局……）：放弃这次意图，回到未入房状态
         if (state.joining) {
@@ -208,9 +228,10 @@ function connect() {
         break;
     }
   };
-  ws.onclose = () => {
+  ws.onclose = (ev) => {
     if (socket !== ws) return;
     socket = null;
+    if (ev.code === 4001) onSessionRevoked?.();
     pendingPolish?.finish({ message: '连接已断开，原稿仍可继续编辑。' });
     set({ link: 'offline' });
     retry += 1;
@@ -228,8 +249,21 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
+/**
+ * 换了身份（登录、注册、退出）之后重连：服务器只在握手时看 Cookie。
+ * 人在房间里的话，重连后会凭 intent 自动回到原来的座位。
+ */
+export function reconnect() {
+  const old = socket;
+  socket = null;
+  pendingPolish?.finish({ message: '连接已切换，原稿仍可继续编辑。' });
+  old?.close();
+  retry = 0;
+  connect();
+}
+
 export function getName(): string {
-  return stored('tabletop.name') ?? '';
+  return state.account?.displayName ?? stored('tabletop.name') ?? '';
 }
 export function setName(name: string) {
   store('tabletop.name', name.trim());
@@ -238,11 +272,12 @@ export function setName(name: string) {
 export const net = {
   serverNow: () => Date.now() + serverClockOffset,
   createRoom(name: string, gameId: string, options?: unknown) {
-    setName(name);
+    // 登录后入座用账号昵称，不覆盖游客时用的名字
+    if (!state.account) setName(name);
     raw({ type: 'create_room', name, gameId, options });
   },
   joinRoom(code: string, name: string) {
-    setName(name);
+    if (!state.account) setName(name);
     intent = { code, name };
     set({ joining: code });
     raw({ type: 'join_room', code, name });
@@ -283,6 +318,15 @@ export const net = {
   },
   backToLobby: () => raw({ type: 'back_to_lobby' }),
 };
+
+export function getNetState(): NetState {
+  return state;
+}
+
+export function subscribeNet(fn: () => void): () => void {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
 
 export function useNet(): NetState {
   return useSyncExternalStore(

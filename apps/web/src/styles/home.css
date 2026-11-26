@@ -1023,7 +1023,7 @@
   .home-masthead {
     min-height: 64px;
   }
-  .home-masthead-note span:last-child {
+  .home-masthead-note > span {
     display: none;
   }
   .hero {

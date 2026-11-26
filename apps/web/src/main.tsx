@@ -13,6 +13,7 @@ import './styles/ninja-night.css';
 import './styles/grey-tide.css';
 import './styles/citadels-pig.css';
 import './styles/seven-sins.css';
+import './styles/account.css';
 import './styles/mobile.css';
 
 createRoot(document.getElementById('root')!).render(

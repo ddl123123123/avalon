@@ -49,8 +49,30 @@ export type AvalonAssistantFeature =
   | 'rules-qa'
   | 'post-game-review';
 
+/** 注册用户的公开资料。登录令牌只放在 HttpOnly Cookie 里，前端拿不到。 */
+export interface AccountUser {
+  id: string;
+  /** 登录用的用户名（不区分大小写） */
+  username: string;
+  /** 入座时同桌看到的名字 */
+  displayName: string;
+  /** 能打开管理页（/admin）。只能在服务器上用命令行授予 */
+  isAdmin?: boolean;
+}
+
+/** 当前身份在服务器上占着座位的房间：换设备登录后用它找回对局 */
+export interface SeatSummary {
+  code: string;
+  gameId: string;
+  status: RoomStatus;
+}
+
 export type ClientMessage =
-  | { type: 'hello'; clientId: string }
+  /**
+   * clientId 是浏览器保存的游客标识。带着登录 Cookie 连上来时，服务器改用账号认人；
+   * guest 为 true 时忽略 Cookie（调试用的 ?as= 标签页）。
+   */
+  | { type: 'hello'; clientId: string; guest?: boolean }
   | { type: 'create_room'; name: string; gameId: string; options?: unknown }
   | { type: 'join_room'; code: string; name: string }
   | { type: 'leave_room' }
@@ -76,7 +98,15 @@ export type ClientMessage =
   | { type: 'back_to_lobby' };
 
 export type ServerMessage =
-  | { type: 'welcome'; playerId: PlayerId; roomCode: string | null }
+  | {
+      type: 'welcome';
+      playerId: PlayerId;
+      roomCode: string | null;
+      /** 这条连接认出的账号；游客为 null */
+      account: AccountUser | null;
+      /** 这个身份还占着座位的房间（进行中的对局可以凭它回去） */
+      seats: SeatSummary[];
+    }
   | { type: 'room'; room: RoomSnapshot }
   | { type: 'avalon_assistant_result'; requestId: string; content: string; privateAnalysis?: string }
   | { type: 'avalon_assistant_error'; requestId: string; message: string }

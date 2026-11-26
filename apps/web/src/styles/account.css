@@ -1,0 +1,224 @@
+/* 账号：首页右上角入口、登录/注册面板、「你还在的房间」 */
+
+.account-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(184, 158, 114, 0.42);
+  border-radius: 999px;
+  color: var(--gilt-bright);
+  background: rgba(184, 158, 114, 0.08);
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  transition: background 0.18s, border-color 0.18s;
+}
+.account-chip:hover:not(:disabled) {
+  border-color: var(--gilt);
+  background: rgba(184, 158, 114, 0.16);
+}
+.account-chip:disabled {
+  opacity: 0.5;
+}
+.account-chip.is-user {
+  padding-left: 4px;
+}
+.account-chip-name {
+  max-width: 9em;
+  overflow: hidden;
+  color: var(--vellum);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-avatar {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(214, 196, 155, 0.5);
+  border-radius: 50%;
+  color: #171614;
+  background: linear-gradient(180deg, #ddcda9, var(--gilt) 60%, #8a724d);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.drawer.account-drawer {
+  width: min(96vw, 420px);
+  background: linear-gradient(180deg, #202a35, #10151d 68%, #0b0e13);
+  border-left-color: rgba(184, 158, 114, 0.32);
+}
+.account-body {
+  display: grid;
+  gap: 18px;
+}
+.account-lede {
+  color: var(--vellum-dim);
+  font-size: 0.88rem;
+  line-height: 1.7;
+}
+.account-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid rgba(184, 158, 114, 0.22);
+}
+.account-tab {
+  min-height: 44px;
+  color: var(--vellum-dim);
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  letter-spacing: 0.1em;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.account-tab[aria-selected='true'] {
+  color: var(--gilt-bright);
+  border-bottom-color: var(--gilt);
+}
+.account-form {
+  display: grid;
+  gap: 14px;
+}
+.account-form .btn-small {
+  justify-self: start;
+}
+.account-remember {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: var(--vellum);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.account-remember input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: var(--gilt);
+}
+.account-remember small,
+.account-hint {
+  display: block;
+  color: #8f948f;
+  font-size: 0.76rem;
+  line-height: 1.6;
+}
+.account-error {
+  padding: 8px 12px;
+  border-left: 2px solid var(--ruby-soft);
+  color: #f0c9cd;
+  background: rgba(143, 88, 99, 0.16);
+  font-size: 0.86rem;
+}
+.account-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.account-card .account-avatar {
+  width: 52px;
+  height: 52px;
+  font-size: 1.6rem;
+}
+.account-card strong {
+  display: block;
+  color: var(--vellum);
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 400;
+}
+.account-card small {
+  color: #8f948f;
+  font-size: 0.82rem;
+}
+.account-section {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid rgba(190, 194, 197, 0.12);
+  padding-top: 12px;
+}
+.account-section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 36px;
+  color: var(--vellum);
+  font-size: 0.95rem;
+  text-align: left;
+}
+.account-section-toggle span {
+  color: var(--gilt);
+  font-size: 1.2rem;
+}
+.account-devices {
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  border-top: 1px solid rgba(190, 194, 197, 0.12);
+  padding-top: 14px;
+}
+.account-devices h3 {
+  color: var(--vellum);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+.account-devices p {
+  color: var(--vellum-dim);
+  font-size: 0.86rem;
+}
+.account-admin {
+  justify-self: start;
+}
+.account-signout {
+  margin-top: 6px;
+}
+
+/* 首页入座区 */
+.entry-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(184, 158, 114, 0.26);
+  border-radius: 4px;
+  background: rgba(5, 8, 26, 0.4);
+  color: var(--vellum-dim);
+  font-size: 0.9rem;
+}
+.entry-identity > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.entry-identity strong {
+  color: var(--vellum);
+}
+.entry-identity small {
+  display: block;
+  color: #8f948f;
+  font-size: 0.74rem;
+}
+.entry-account-hint,
+.gate-account {
+  color: #8f948f;
+  font-size: 0.78rem;
+}
+.entry-account-hint .link,
+.gate-account .link {
+  margin-inline: 0.25em;
+}
+.gate-identity {
+  color: var(--vellum-dim);
+}
+.gate-identity strong {
+  color: var(--vellum);
+}
+.my-seats {
+  margin-top: 18px;
+}
+.my-seats li {
+  grid-template-columns: minmax(0, 1fr);
+}

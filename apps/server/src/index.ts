@@ -4,7 +4,12 @@ import { extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { GAME_MESSAGE_BYTES, type ClientMessage, type ServerMessage } from '@tabletop/shared';
+import { AccountStore, type ResolvedSession } from './accounts';
+import { createAdminHandler } from './admin-http';
+import { createAuthHandler, sameOrigin, sessionFromRequest } from './auth-http';
+import { openDatabase } from './db';
 import { RoomManager, type Connection } from './rooms';
+import { Stats } from './stats';
 
 const PORT = Number(process.env.SERVER_PORT ?? process.env.PORT ?? 8790);
 /** 生产环境下由同一个端口提供前端构建产物（pnpm build 之后） */
@@ -28,13 +33,61 @@ const MIME: Record<string, string> = {
   '.woff2': 'font/woff2',
 };
 
-const rooms = new RoomManager();
+/** 线上是共用 Postgres 实例里的 tabletop 库（DATABASE_URL）；本地没配就用 .data/pglite（见 db.ts） */
+const db = await openDatabase();
+const accounts = new AccountStore(db);
+const stats = new Stats(db);
+await stats.closeInterrupted();
+
+const rooms = new RoomManager(stats);
+
+/** 当前所有的 WebSocket 连接，按会话找得到，注销会话时要把它们踢下线 */
+const sockets = new Map<WebSocket, Connection & { sessionHash: string | null }>();
+
+const handleAuth = createAuthHandler(accounts, {
+  revoked(tokenHashes) {
+    const revoked = new Set(tokenHashes);
+    for (const [socket, conn] of sockets) {
+      if (!conn.sessionHash || !revoked.has(conn.sessionHash)) continue;
+      rooms.dropAccount(conn);
+      // 4001：登录态失效。客户端收到后重新确认身份再连
+      socket.close(4001, 'session revoked');
+    }
+  },
+  profileChanged(user) {
+    for (const conn of sockets.values()) if (conn.account?.id === user.id) conn.account = user;
+    rooms.renameAccount(user);
+  },
+});
+
+const handleAdmin = createAdminHandler({
+  accounts,
+  stats,
+  db,
+  live: () => {
+    const { rooms: count, playing, online, onlineMembers } = rooms.stats();
+    return { rooms: count, playing, online, onlineMembers };
+  },
+});
 
 const http = createServer((req, res) => {
   const url = new URL(req.url ?? '/', 'http://localhost');
   if (url.pathname === '/healthz') {
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ ok: true, ...rooms.stats() }));
+    return;
+  }
+  if (url.pathname.startsWith('/api/auth/')) {
+    void handleAuth(req, res, url.pathname);
+    return;
+  }
+  if (url.pathname.startsWith('/api/admin/')) {
+    void handleAdmin(req, res, url);
+    return;
+  }
+  if (url.pathname.startsWith('/api/')) {
+    res.writeHead(404, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+    res.end(JSON.stringify({ error: '没有这个接口' }));
     return;
   }
   if (!existsSync(WEB_DIST)) {
@@ -60,11 +113,34 @@ const http = createServer((req, res) => {
   createReadStream(file).pipe(res);
 });
 
-const wss = new WebSocketServer({ server: http, path: '/ws', maxPayload: GAME_MESSAGE_BYTES });
+const wss = new WebSocketServer({ noServer: true, maxPayload: GAME_MESSAGE_BYTES });
 
-wss.on('connection', (socket: WebSocket) => {
-  const conn: Connection & { alive: boolean } = {
-    clientId: null,
+// 握手时凭 Cookie 认账号（要查库，所以先查完再完成升级）。
+// 跨站页面发起的连接一律当游客，防止借用别人的登录态（CSWSH）
+http.on('upgrade', (req, socket, head) => {
+  if (new URL(req.url ?? '/', 'http://localhost').pathname !== '/ws') {
+    socket.destroy();
+    return;
+  }
+  socket.on('error', () => socket.destroy());
+  const lookup = sameOrigin(req) ? sessionFromRequest(accounts, req) : Promise.resolve(null);
+  lookup
+    .catch((err) => {
+      // 数据库暂时连不上：先当游客放进来，不耽误开局
+      console.error('[ws] session lookup failed', err instanceof Error ? err.message : err);
+      return null;
+    })
+    .then((session) => {
+      if (socket.destroyed) return;
+      wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req, session));
+    });
+});
+
+wss.on('connection', (socket: WebSocket, _req: unknown, session: ResolvedSession | null) => {
+  const conn: Connection & { alive: boolean; sessionHash: string | null } = {
+    identity: null,
+    account: session?.user ?? null,
+    sessionHash: session?.session.tokenHash ?? null,
     alive: true,
     send(message: ServerMessage) {
       if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(message));
@@ -81,8 +157,10 @@ wss.on('connection', (socket: WebSocket) => {
     if (!msg || typeof msg !== 'object' || typeof (msg as { type?: unknown }).type !== 'string') return;
     rooms.handle(conn, msg);
   });
+  sockets.set(socket, conn);
   socket.on('close', () => {
     clearInterval(heartbeat);
+    sockets.delete(socket);
     rooms.disconnect(conn);
   });
   socket.on('error', () => socket.terminate());

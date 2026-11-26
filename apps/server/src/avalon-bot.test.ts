@@ -79,7 +79,8 @@ test('a room runs an entire discussion with independently routed bots and one hu
     const errors: string[] = [];
     const botSpeechDurations: number[] = [];
     const conn: Connection = {
-      clientId: null,
+      identity: null,
+      account: null,
       send(message) {
         if (message.type === 'room') {
           const previous = snapshot?.view as Avalon.AvalonView | undefined;

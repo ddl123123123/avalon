@@ -24,6 +24,8 @@ services:
       AVALON_BOT_MODELS: ${AVALON_BOT_MODELS:-}
       AVALON_BOT_API_KEYS: ${AVALON_BOT_API_KEYS:-}
       AVALON_BOT_ROLE_MODELS: ${AVALON_BOT_ROLE_MODELS:-}
+      # 账号与统计：塔罗那台 Postgres（wenpai-db-1）里单独的 tabletop 库和 tabletop 角色，见 docs/deploy.md
+      DATABASE_URL: ${DATABASE_URL:?在 /srv/tabletop/.env 里设置 DATABASE_URL}
     mem_limit: 384m
     logging:
       driver: json-file

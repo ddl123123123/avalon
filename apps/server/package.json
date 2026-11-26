@@ -6,16 +6,20 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
-    "test": "tsx --test src/avalon-bot.test.ts",
-    "typecheck": "tsc -p tsconfig.json"
+    "test": "tsx --test src/avalon-bot.test.ts src/accounts.test.ts src/stats.test.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "admin": "tsx src/admin-cli.ts"
   },
   "dependencies": {
     "@tabletop/shared": "workspace:*",
+    "pg": "^8.23.1",
     "tsx": "^4.19.2",
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.6.0",
     "@types/node": "^22.10.0",
+    "@types/pg": "^8.23.1",
     "@types/ws": "^8.5.13"
   }
 }

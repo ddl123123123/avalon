@@ -5,7 +5,7 @@
  *   pnpm --filter @tabletop/shared sim:glassworks 3000 4     # 只跑 4 人，3000 局
  */
 import { chooseAction, glassworks, type BotStyle, type GlassworksState } from '../src/games/glassworks/engine';
-import { panelOf } from '../src/games/glassworks/rules';
+import { PANELS, panelOf } from '../src/games/glassworks/rules';
 
 function seeded(seed: number) {
   let s = seed >>> 0;
@@ -31,6 +31,10 @@ for (const n of COUNTS) {
   const all = { total: [] as number[], count: [] as number[] };
   let stuck = 0;
   let mixed = 0;
+  /** 每个模板被烧成了几次、其中几次吃到了余温 */
+  const built = new Map<string, number>();
+  let heated = 0;
+  let builds = 0;
 
   for (let g = 0; g < GAMES; g++) {
     const rng = seeded(g * 7919 + n * 104729 + 17);
@@ -43,12 +47,23 @@ for (const n of COUNTS) {
       const action = chooseAction(state, state.turn, rng, style(state.turn));
       if (!action) break;
       state = glassworks.reduce(state, state.turn, action, rng);
+      const last = state.log.at(-1);
+      if (action.type === 'build' && last?.t === 'build') {
+        builds++;
+        if (last.saved) heated++;
+      }
     }
     if (state.phase !== 'ended' || !state.winner || !state.scores) {
       stuck++;
       continue;
     }
     rounds.push(state.round);
+    for (const p of players) {
+      for (const id of state.panels[p]!) {
+        const key = id.split('-').slice(0, 2).join('-');
+        built.set(key, (built.get(key) ?? 0) + 1);
+      }
+    }
     seatWins[order.indexOf(state.winner)]! += 1;
     const used = new Set(players.map(style));
     if (used.size === 2) {
@@ -82,4 +97,14 @@ for (const n of COUNTS) {
       `烧了 ${avg(winner.count).toFixed(1)} 块（小窗 ${(winner.tiers[0]! / done).toFixed(1)} / 花窗 ${(winner.tiers[1]! / done).toFixed(1)} / 玫瑰窗 ${(winner.tiers[2]! / done).toFixed(1)}）`,
   );
   console.log(`全体  平均 ${avg(all.total).toFixed(1)} 分，${avg(all.count).toFixed(1)} 块窗片`);
+  console.log(`余温  每局触发 ${(heated / Math.max(1, done)).toFixed(1)} 次（占全部烧制的 ${pct(heated, builds)}）`);
+  if (process.env.CARDS) {
+    // 每个模板每局被烧成几张（每个模板有 5 张）。长期没人烧的就是定价偏贵，抢着烧的就是偏便宜
+    console.log('模板  声望  造价        每局烧成');
+    for (const p of PANELS.filter((x) => x.hue === 'blue')) {
+      const key = p.id.split('-').slice(0, 2).join('-');
+      const shape = Object.values(p.cost).sort((a, b) => b - a).join('+');
+      console.log(`${key.padEnd(6)} ${p.points}    ${shape.padEnd(10)}  ${((built.get(key) ?? 0) / Math.max(1, done)).toFixed(2)}`);
+    }
+  }
 }

@@ -212,7 +212,7 @@
   gap: clamp(8px, 1.6vh, 16px);
   padding: 4px clamp(10px, 2.4vw, 24px) 10px;
   /* 窗片既不能宽过屏幕，也不能高到把晾架挤出去 */
-  --gw-card: clamp(52px, min(15.5vw, (100dvh - 506px) / 4.2), 100px);
+  --gw-card: clamp(52px, min(15.5vw, (100dvh - 522px) / 4.2), 100px);
   --gw-gap: clamp(5px, 1vh, 10px);
 }
 .gw-commissions {
@@ -290,7 +290,7 @@
   pointer-events: none;
 }
 .gw-card.is-picked {
-  transform: translateY(-6px) scale(1.04);
+  transform: translateY(-3px) scale(1.04);
   filter: drop-shadow(0 0 14px rgba(246, 217, 138, 0.95));
   z-index: 2;
 }
@@ -324,6 +324,109 @@
   border-radius: 999px;
 }
 
+/* 只差一两步的窗片：顶边挂一枚小签，写还差几块 */
+.gw-short {
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  translate: -50% 0;
+  padding: 0 7px;
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  line-height: 17px;
+  white-space: nowrap;
+  color: #f3ecd8;
+  background: #0a0f2b;
+  border: 1px solid rgba(224, 176, 74, 0.6);
+  border-radius: 999px;
+  pointer-events: none;
+}
+/* 点中的那张在行动区里有完整的账单，小签收起来，免得盖住上面那排的造价 */
+.gw-card.is-picked .gw-short {
+  display: none;
+}
+/* 余温眼下能用在哪一档：那一排透出炉火，牌堆角上写省几块 */
+.gw-row.is-warm {
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(232, 132, 58, 0.28), rgba(232, 132, 58, 0.06) 55%, transparent);
+  box-shadow: -4px 0 0 -1px #e8843a;
+}
+.gw-row-heat {
+  position: absolute;
+  left: -5px;
+  top: -6px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 6px 0 2px;
+  font-family: var(--font-numeral);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 20px;
+  color: #1b1404;
+  background: #f0b27a;
+  border: 1px solid var(--lead);
+  border-radius: 999px;
+}
+.gw-row-heat .gw-flame {
+  width: 13px;
+  height: 13px;
+}
+
+/* 账单：点中一张窗片后，每种颜色手里有几块 / 要付几块 */
+.gw-bill {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.gw-bill-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 7px 1px 3px;
+  color: #f3ecd8;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+}
+.gw-bill-item svg {
+  width: 17px;
+  height: 17px;
+}
+.gw-bill-item b {
+  font-family: var(--font-numeral);
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.gw-bill-item i {
+  font-style: normal;
+  font-weight: 400;
+  opacity: 0.65;
+}
+.gw-bill-item.is-short {
+  color: #ffc2ae;
+  background: rgba(214, 84, 58, 0.2);
+  border-color: rgba(240, 130, 100, 0.75);
+}
+.gw-bill-item.is-free {
+  opacity: 0.6;
+}
+.gw-bill-item.is-free b {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 400;
+}
+.gw-me .dock-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 3px 0;
+}
+
 .gw-rack-area {
   display: grid;
   justify-items: center;
@@ -337,7 +440,7 @@
   justify-content: center;
   gap: clamp(4px, 1.2vw, 10px);
   min-height: clamp(40px, 9vw, 58px);
-  padding: 8px clamp(10px, 2vw, 20px) 6px;
+  padding: 8px clamp(10px, 2vw, 20px) 10px;
   border-top: 3px solid #6b5a2c;
   border-radius: 2px;
   background: linear-gradient(180deg, rgba(224, 176, 74, 0.12), transparent 70%);
@@ -346,6 +449,7 @@
   border-top-color: var(--gilt);
 }
 .gw-shard {
+  position: relative;
   width: clamp(30px, 8vw, 46px);
   flex: none;
   border-radius: 50%;
@@ -356,6 +460,20 @@
 }
 .gw-shard.is-selected {
   filter: drop-shadow(0 0 10px rgba(246, 217, 138, 1)) brightness(1.15);
+}
+/* 点中的窗片还缺这种颜色：料的下面挂一粒金砂 */
+.gw-shard.is-wanted::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 6px;
+  height: 6px;
+  translate: -50% 0;
+  rotate: 45deg;
+  background: #f6d98a;
+  box-shadow: 0 0 6px rgba(246, 217, 138, 0.9);
+  pointer-events: none;
 }
 .gw-bag {
   display: flex;
@@ -383,6 +501,21 @@
 }
 
 /* 屏幕够宽时委托竖排在画廊左边，把高度让给画廊 */
+/* 平板竖屏：委托排在画廊上面、对手可能占两行，窗片再收一点，三排才都露得出来 */
+@media (min-width: 641px) and (max-width: 899px) {
+  .gw-table {
+    --gw-card: clamp(52px, min(15.5vw, (100dvh - 740px) / 4.2), 100px);
+  }
+  .gw-commissions {
+    flex-wrap: nowrap;
+    width: 100%;
+  }
+  .gw-commission {
+    flex: 0 1 150px;
+    width: auto;
+    min-width: 0;
+  }
+}
 @media (min-width: 900px) {
   .gw-table {
     grid-template-columns: auto auto;
@@ -595,6 +728,23 @@
 }
 .gw-me .ct-actions {
   min-height: 70px;
+}
+/* 宽屏上说明和按钮并排，行动区的高度就不随「有没有按钮」变，画廊不会被顶得上下跳 */
+@media (min-width: 641px) {
+  .gw-me .ct-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px 28px;
+    min-height: 72px;
+  }
+  .gw-me .ct-actions-text {
+    min-width: 0;
+  }
+  .gw-me .ct-buttons {
+    flex: none;
+    flex-wrap: nowrap;
+  }
 }
 
 /* 大厅说明 */
@@ -900,7 +1050,7 @@
   .gw-rack {
     gap: 3px;
     min-height: 0;
-    padding: 6px 4px 2px;
+    padding: 6px 4px 8px;
   }
   .page .gw-rack button.gw-shard {
     width: min(42px, calc((100vw - 2 * var(--gw-pad) - 8px - 21px) / 8));
@@ -953,6 +1103,25 @@
   }
   .gw-me .ct-actions:not(.is-mine) .dock-hint {
     display: none;
+  }
+  /* 点中了一张窗片时，等别人行动也把账单留着 */
+  .gw-me .ct-actions.has-target:not(.is-mine) .dock-hint {
+    display: flex;
+  }
+  .gw-me .ct-actions.has-target:not(.is-mine) .ct-buttons .btn {
+    min-height: 36px;
+  }
+  .gw-short {
+    top: -5px;
+    padding: 0 5px;
+    font-size: 0.64rem;
+    line-height: 15px;
+  }
+  .gw-row-heat {
+    left: -3px;
+    top: -5px;
+    font-size: 0.74rem;
+    line-height: 17px;
   }
   .gw-me .dock-prompt {
     font-size: 1.05rem;
@@ -1009,5 +1178,12 @@
   }
   .gw-seat-who {
     flex: 1;
+  }  /* 矮屏上点中窗片时只留账单和按钮，窗片的名字让给画廊 */
+  .gw-me .ct-actions.shows-target .dock-prompt {
+    display: none;
+  }
+  .gw-me .ct-actions.shows-target .dock-hint {
+    margin-top: 0;
+    font-size: 0.86rem;
   }
 }

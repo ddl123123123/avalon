@@ -48,10 +48,10 @@ export function GlassworksOptions({ playerCount }: { playerCount: number }) {
           </span>
         </li>
       </ol>
-      <h2 className="av-options-heading">余温</h2>
+      <h2 className="av-options-heading">余温：一档一档往上烧</h2>
       <p className="av-options-summary">
-        烧制之后炉子还热着。下一回合接着烧，花窗少付 {Glassworks.HEAT_DISCOUNT[2]} 块料，玫瑰窗少付 {Glassworks.HEAT_DISCOUNT[3]}{' '}
-        块；中间去取料或描样，炉子就凉了。先攒够两块窗片的料再连着烧，比烧一块取一次料划算。
+        上一回合烧的是小窗，这一回合接着烧花窗，少付 {Glassworks.HEAT_DISCOUNT[2]} 块料；上一回合烧的是花窗，接着烧玫瑰窗，少付{' '}
+        {Glassworks.HEAT_DISCOUNT[3]} 块。{'同一档连着烧不减，跳过一档也不减；中间去取料或描样，炉子就凉了。'}
       </p>
       <h2 className="av-options-heading">三档窗片</h2>
       <div className="gw-samples">
@@ -62,7 +62,10 @@ export function GlassworksOptions({ playerCount }: { playerCount: number }) {
           </figure>
         ))}
       </div>
-      <p className="av-options-summary">左上是声望，右上是炉色，下面一行是造价。窗片共 {PANELS.length} 张，越大的越少。</p>
+      <p className="av-options-summary">
+        左上是声望，右上是炉色，下面一行是造价。窗片共 {PANELS.length} 张，越大的越少。
+        {'同一档的窗片要的料总数差不多，但同一种颜色要得越多越难凑，声望也越高。'}
+      </p>
       <h2 className="av-options-heading">两种套组</h2>
       <ol className="ct-roster gw-howto">
         <li>

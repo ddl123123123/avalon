@@ -8,13 +8,13 @@ import { net } from '../../net/client';
 import { Ticker } from '../../ui/Ticker';
 import { ResponsiveSheet } from '../../ui/ResponsiveSheet';
 import { CommissionTile, Flame, GlassworksCardStyleContext, KilnMark, PanelBack, PanelCard, Shard, type GlassworksCardStyle } from './art';
-import { describe, listPieces, scoreParts, shortfall, toneOf } from './text';
+import { describe, heatTarget, listPieces, scoreParts, toneOf } from './text';
 
 type View = Glassworks.GlassworksView;
 type Seat = Glassworks.GlassworksSeat;
 type Piece = Glassworks.Piece;
 type Tier = Glassworks.Tier;
-const { HUES, PIECES, PIECE_NAMES, TIER_NAMES, TIERS, SKETCH_LIMIT, HAND_LIMIT, TAKE_LIMIT, HEAT_DISCOUNT, panelOf, commissionOf } = Glassworks;
+const { HUES, PIECES, PIECE_NAMES, TIER_NAMES, TIERS, SKETCH_LIMIT, HAND_LIMIT, TAKE_LIMIT, panelOf, commissionOf } = Glassworks;
 
 const NO_GLASS: Record<Piece, number> = { blue: 0, red: 0, green: 0, amber: 0, violet: 0, gold: 0 };
 
@@ -97,6 +97,54 @@ function CommissionChip({ commission, kilns }: { commission: string; kilns: Reco
   );
 }
 
+/**
+ * 一张窗片的账单：造价里的每种颜色，手里有几块 / 实际要付几块（已经扣掉炉色和余温）。
+ * 炉色全包了的写「免」，手里不够的标出来。
+ */
+function Bill({ seat, panel }: { seat: Seat; panel: string }) {
+  const def = panelOf(panel);
+  const owed = Glassworks.owedFor(seat.glass, seat.kilns, panel, seat.heat);
+  return (
+    <span className="gw-bill">
+      {HUES.filter((h) => def.cost[h]).map((h) => {
+        const have = Math.min(seat.glass[h], owed[h]);
+        const state = owed[h] === 0 ? 'is-free' : have < owed[h] ? 'is-short' : 'is-met';
+        return (
+          <span key={h} className={`gw-bill-item ${state}`} title={PIECE_NAMES[h]}>
+            <Shard piece={h} />
+            {owed[h] === 0 ? (
+              <b>免</b>
+            ) : (
+              <b>
+                {have}
+                <i>/{owed[h]}</i>
+              </b>
+            )}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+/** 只差一两步的窗片标出来：还差几块料（金箔已经算进去）。差得远的不标，免得满屏都是数字 */
+function ShortTag({ short }: { short: number }) {
+  if (short <= 0 || short > 3) return null;
+  return <span className="gw-short">差 {short}</span>;
+}
+
+/** 余温现在能给哪一档省料 */
+function HeatTag({ heat, long = false }: { heat: Glassworks.Heat; long?: boolean }) {
+  const target = heatTarget(heat);
+  if (!target) return null;
+  return (
+    <span className="gw-hot" title={`上一回合烧的是${TIER_NAMES[heat as Tier]}：这一回合接着烧${TIER_NAMES[target.tier]}少付 ${target.saves} 块料`}>
+      <Flame />
+      {long ? `趁热烧${TIER_NAMES[target.tier]}少付 ${target.saves} 块` : `${TIER_NAMES[target.tier]} −${target.saves}`}
+    </span>
+  );
+}
+
 export function GlassworksBoard({ room }: { room: RoomSnapshot }) {
   const [cardStyle, setCardStyle] = useState<GlassworksCardStyle>(() => {
     try {
@@ -134,7 +182,7 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
   const mine = meId ? view.seats[meId]! : null;
 
   const [run, setRun] = useState<{ from: number; count: number } | null>(null);
-  const [pick, setPick] = useState<Pick | null>(null);
+  const [picked, setPick] = useState<Pick | null>(null);
   const [giveBack, setGiveBack] = useState<Piece[]>([]);
   const [showLog, setShowLog] = useState(false);
   /** 打开「各家作坊」时先看谁 */
@@ -143,11 +191,42 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
   // 局面一变，之前选中的东西可能已经不在原位了
   const rackKey = view.rackIds.join(',');
   useEffect(() => setRun(null), [rackKey, view.turn]);
-  useEffect(() => setPick(null), [view.turn, JSON.stringify(view.gallery), mine?.sketches.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  // 点中的窗片是「目标」：别人行动时也留着，直到它被烧掉或被人拿走。牌堆顶只在自己的回合里选
+  useEffect(() => setPick((cur) => (cur?.kind === 'deck' ? null : cur)), [view.turn]);
+  const pick: Pick | null =
+    picked === null
+      ? null
+      : picked.kind === 'deck'
+        ? picked
+        : picked.kind === 'gallery'
+          ? TIERS.some((t) => view.gallery[t].includes(picked.id))
+            ? picked
+            : null
+          : mine?.sketches.some((s) => s.id === picked.id)
+            ? picked
+            : null;
   useEffect(() => setGiveBack([]), [view.mustDiscard, view.turn]);
 
   const latest = useRef(view);
   latest.current = view;
+  // 点中窗片后行动区会变高，矮屏上可能正好把它盖住：等布局稳了把它滚回视野里
+  const gallery = useRef<HTMLElement>(null);
+  const targetKey = picked && picked.kind !== 'deck' ? picked.id : null;
+  useEffect(() => {
+    if (!targetKey) return;
+    const timer = window.setTimeout(() => gallery.current?.querySelector('.gw-card.is-picked')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 120);
+    return () => window.clearTimeout(timer);
+  }, [targetKey]);
+  // Esc 放下手里选的东西
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setRun(null);
+      setPick(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   if (view.phase === 'ended') return <EndScreen room={room} view={view} />;
 
@@ -156,13 +235,21 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
   const canAct = myTurn && !discarding;
   const myIndex = meId ? view.players.indexOf(meId) : -1;
   const rivals = view.players.map((_, i) => view.players[(myIndex + 1 + i) % view.players.length]!).filter((id) => id !== meId);
-  const payable = (id: string) => (mine ? Glassworks.paymentFor(mine.glass, mine.kilns, id, mine.hot) : null);
+  const payable = (id: string) => (mine ? Glassworks.paymentFor(mine.glass, mine.kilns, id, mine.heat) : null);
+  /** 烧这块还差几块料（金箔已经算进去）；0 就是付得起 */
+  const gapOf = (id: string) => (mine ? Glassworks.missingFor(mine.glass, mine.kilns, id, mine.heat) : null);
   /** 趁余温烧这块能省几块料 */
   const heatSaving = (id: string) => {
-    if (!mine?.hot) return 0;
+    if (!mine?.heat) return 0;
     // 手里一块料都没有时的缺口，就是扣掉炉色后要付的总数
-    return Glassworks.missingFor(NO_GLASS, mine.kilns, id, false).total - Glassworks.missingFor(NO_GLASS, mine.kilns, id, true).total;
+    return Glassworks.missingFor(NO_GLASS, mine.kilns, id, 0).total - Glassworks.missingFor(NO_GLASS, mine.kilns, id, mine.heat).total;
   };
+  const warm = mine ? heatTarget(mine.heat) : null;
+  /** 目标窗片：点中的那一张（画廊里的或自己的图稿） */
+  const target = pick && pick.kind !== 'deck' ? pick.id : null;
+  const targetGap = target ? gapOf(target) : null;
+  /** 晾架上这种颜色是不是目标窗片还缺的 */
+  const wanted = (hue: Glassworks.Hue) => (targetGap ? targetGap.byHue[hue] > 0 : false);
 
   // 按编号而不是按位置认料：正在退场的料还留在页面上几百毫秒，点到它时应当被忽略，
   // 而不是按旧位置选中另一块
@@ -170,7 +257,8 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
     const now = latest.current;
     const i = now.rackIds.indexOf(pieceId);
     if (i < 0 || now.turn !== meId || now.mustDiscard > 0) return;
-    setPick(null);
+    // 目标窗片留着，只把牌堆顶的选择放下
+    setPick((cur) => (cur?.kind === 'deck' ? null : cur));
     setRun((r) => {
       if (!r) return { from: i, count: 1 };
       const end = r.from + r.count - 1;
@@ -184,20 +272,54 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
   };
   const choose = (next: Pick) => {
     setRun(null);
-    setPick((cur) => (JSON.stringify(cur) === JSON.stringify(next) ? null : next));
+    setPick(JSON.stringify(pick) === JSON.stringify(next) ? null : next);
   };
   const isPicked = (next: Pick) => JSON.stringify(pick) === JSON.stringify(next);
+  /** 画廊和图稿里的一张窗片：烧得起、还差几块、是不是目标 */
+  const cardState = (id: string, kind: 'gallery' | 'sketch') => {
+    const gap = gapOf(id);
+    return { on: isPicked({ kind, id }), ready: gap !== null && payable(id) !== null, short: gap && payable(id) === null ? gap.total : 0 };
+  };
 
   /* ---------- 行动区 ---------- */
   let prompt = '';
   let hint: ReactNode = null;
   let buttons: ReactNode = null;
+  /** 行动区现在显示的是不是目标窗片的账单 */
+  let showsTarget = false;
+
+  /** 目标窗片：名字、账单、付得起还是差几块 */
+  const showTarget = (id: string) => {
+    const def = panelOf(id);
+    prompt = `${PIECE_NAMES[def.hue]}${TIER_NAMES[def.tier]}${def.points ? `，声望 ${def.points}` : ''}`;
+    showsTarget = true;
+    if (!mine) {
+      hint = `造价：${listPieces(def.cost)}`;
+      return;
+    }
+    const pay = payable(id);
+    const saved = heatSaving(id);
+    const status = pay
+      ? PIECES.every((p) => pay[p] === 0)
+        ? '炉色已经够了，不用付料'
+        : pay.gold > 0
+          ? `付得起，用 ${pay.gold} 片金箔补缺`
+          : '付得起'
+      : `还差 ${gapOf(id)!.total} 块${mine.glass.gold > 0 ? '（金箔已经算上）' : ''}`;
+    hint = (
+      <>
+        <Bill seat={mine} panel={id} />
+        <span>
+          {status}
+          {saved > 0 ? `，余温省 ${saved} 块` : ''}
+        </span>
+      </>
+    );
+  };
 
   if (!mine) {
     prompt = '你正在旁观这一局';
-  } else if (!myTurn) {
-    prompt = `${nameOf(view.turn)} 正在行动`;
-    hint = view.finalRound ? '已经有人达到目标声望，这是最后一圈' : '可以先看看画廊，想好下一步';
+    if (target) showTarget(target);
   } else if (discarding) {
     const left = view.mustDiscard - giveBack.length;
     prompt = `手里最多留 ${HAND_LIMIT} 块料，点选 ${view.mustDiscard} 块放回去`;
@@ -212,16 +334,36 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
         </button>
       </>
     );
-  } else if (run) {
+  } else if (canAct && run) {
     const pieces = view.rack.slice(run.from, run.from + run.count);
     prompt = `取走${pieces.map((h) => PIECE_NAMES[h]).join('、')}`;
-    hint = run.count < TAKE_LIMIT ? `还可以再点旁边相邻的料，一次最多 ${TAKE_LIMIT} 块` : '已经选满三块';
+    const over = PIECES.reduce((sum, p) => sum + mine.glass[p], 0) + run.count - HAND_LIMIT;
+    // 这几块里有几块是目标窗片还缺的
+    const need = { ...(targetGap?.byHue ?? {}) } as Partial<Record<Glassworks.Hue, number>>;
+    const useful = pieces.filter((h) => (need[h] ?? 0) > 0 && need[h]!-- > 0).length;
+    hint =
+      over > 0
+        ? `拿了就超过 ${HAND_LIMIT} 块，得放回 ${over} 块`
+        : warm
+          ? `取料之后炉子就凉了，${TIER_NAMES[warm.tier]}少付 ${warm.saves} 块的余温就没了`
+          : target
+            ? useful > 0
+              ? `其中 ${useful} 块是你点中的那张窗片要的`
+              : '这几块里没有你点中的那张窗片要的料'
+            : run.count < TAKE_LIMIT
+              ? `还可以再点旁边相邻的料，一次最多 ${TAKE_LIMIT} 块`
+              : '已经选满三块';
     buttons = (
-      <button type="button" className="btn btn-primary" onClick={() => act({ type: 'take', from: run.from, count: run.count })}>
-        取走这 {run.count} 块
-      </button>
+      <>
+        <button type="button" className="btn btn-primary" onClick={() => act({ type: 'take', from: run.from, count: run.count })}>
+          取走这 {run.count} 块
+        </button>
+        <button type="button" className="btn btn-ghost btn-small" onClick={() => setRun(null)}>
+          不取了
+        </button>
+      </>
     );
-  } else if (pick?.kind === 'deck') {
+  } else if (canAct && pick?.kind === 'deck') {
     const full = mine.sketches.length >= SKETCH_LIMIT;
     prompt = `从${TIER_NAMES[pick.tier]}牌堆顶摸一张，收作图稿`;
     hint = full ? `手里已经有 ${SKETCH_LIMIT} 张图稿了，先烧掉一张` : `摸到什么只有你知道${view.gold > 0 ? '，并拿 1 片金箔' : '。金箔已经发完了'}`;
@@ -230,44 +372,40 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
         摸一张图稿
       </button>
     );
-  } else if (pick) {
-    const def = panelOf(pick.id);
-    const pay = payable(pick.id);
-    const gap = shortfall(mine, pick.id);
-    const full = mine.sketches.length >= SKETCH_LIMIT;
-    prompt = `${PIECE_NAMES[def.hue]}${TIER_NAMES[def.tier]}${def.points ? `，声望 ${def.points}` : ''}`;
-    const paid = pay ? listPieces(pay) : '';
-    const saved = heatSaving(pick.id);
-    const warm = saved > 0 ? `，趁余温省 ${saved} 块` : '';
-    hint = pay
-      ? paid
-        ? `烧制要付：${paid}${warm}`
-        : `不用付料：炉色${saved > 0 ? '和余温' : ''}已经够了`
-      : `还差：${listPieces(gap.missing)}${mine.glass.gold > 0 ? `（金箔可以顶 ${mine.glass.gold} 块）` : ''}${warm}`;
-    buttons = (
-      <>
-        <button type="button" className="btn btn-primary" disabled={!pay} onClick={() => act({ type: 'build', panel: pick.id })}>
-          {pay && saved > 0 ? '趁热烧制' : '烧制'}
-        </button>
-        {pick.kind === 'gallery' && (
-          <button
-            type="button"
-            className="btn btn-ghost"
-            disabled={full}
-            onClick={() => {
-              const slot = view.gallery[def.tier].indexOf(pick.id);
-              if (slot >= 0) act({ type: 'sketch', tier: def.tier, slot });
-            }}
-          >
-            {full ? '图稿已满' : view.gold > 0 ? '描样，拿 1 片金箔' : '描样（金箔发完了）'}
+  } else if (target && pick && pick.kind !== 'deck') {
+    showTarget(target);
+    if (canAct) {
+      const def = panelOf(target);
+      const pay = payable(target);
+      const full = mine.sketches.length >= SKETCH_LIMIT;
+      buttons = (
+        <>
+          <button type="button" className="btn btn-primary" disabled={!pay} onClick={() => act({ type: 'build', panel: target })}>
+            {pay && heatSaving(target) > 0 ? '趁热烧制' : '烧制'}
           </button>
-        )}
-      </>
-    );
+          {pick.kind === 'gallery' && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={full}
+              onClick={() => {
+                const slot = view.gallery[def.tier].indexOf(target);
+                if (slot >= 0) act({ type: 'sketch', tier: def.tier, slot });
+              }}
+            >
+              {full ? '图稿已满' : view.gold > 0 ? '描样，拿 1 片金箔' : '描样（金箔发完了）'}
+            </button>
+          )}
+        </>
+      );
+    }
+  } else if (!myTurn) {
+    prompt = `${nameOf(view.turn)} 正在行动`;
+    hint = view.finalRound ? '已经有人达到目标声望，这是最后一圈' : '可以先点一张窗片，看看还差哪些料';
   } else {
     prompt = '轮到你了。取料、描样、烧制，三选一';
-    hint = mine.hot
-      ? `炉子还热着：这回合接着烧花窗少付 ${HEAT_DISCOUNT[2]} 块，玫瑰窗少付 ${HEAT_DISCOUNT[3]} 块`
+    hint = warm
+      ? `炉子还热着：这回合接着烧${TIER_NAMES[warm.tier]}少付 ${warm.saves} 块`
       : view.rack.length > 0
         ? '点晾架上相邻的料来取，或者点一张窗片看能不能烧'
         : '晾架空了。可以烧制、描样，实在没事可做就跳过';
@@ -345,9 +483,9 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
           {view.commissions.length === 0 && <span className="gw-chips-label">都被接走了</span>}
         </section>
 
-        <section className="gw-gallery" aria-label="画廊">
+        <section className="gw-gallery" aria-label="画廊" ref={gallery}>
           {([3, 2, 1] as Tier[]).map((tier) => (
-            <div key={tier} className="gw-row">
+            <div key={tier} className={`gw-row ${warm?.tier === tier ? 'is-warm' : ''}`}>
               <button
                 type="button"
                 className={`gw-card gw-deck ${isPicked({ kind: 'deck', tier }) ? 'is-picked' : ''}`}
@@ -357,26 +495,33 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
               >
                 <PanelBack tier={tier} />
                 <span className="gw-deck-count">{view.deckCounts[tier]}</span>
+                {warm?.tier === tier && (
+                  <span className="gw-row-heat">
+                    <Flame />−{warm.saves}
+                  </span>
+                )}
               </button>
-              {view.gallery[tier].map((id, slot) =>
-                id ? (
+              {view.gallery[tier].map((id, slot) => {
+                if (!id) return <span key={`empty-${slot}`} className="gw-card gw-card-empty" aria-hidden="true" />;
+                const st = cardState(id, 'gallery');
+                return (
                   <motion.button
                     key={id}
                     type="button"
-                    className={`gw-card ${isPicked({ kind: 'gallery', id }) ? 'is-picked' : ''} ${canAct && payable(id) ? 'is-ready' : ''}`}
-                    disabled={!canAct}
+                    className={`gw-card ${st.on ? 'is-picked' : ''} ${st.ready ? 'is-ready' : ''}`}
+                    aria-pressed={st.on}
                     onClick={() => choose({ kind: 'gallery', id })}
                     initial={{ opacity: 0, rotateY: 90, scale: 0.9 }}
                     // 上浮交给动画库：它会写内联 transform，CSS 里的 transform 不起作用
-                    animate={{ opacity: 1, rotateY: 0, scale: isPicked({ kind: 'gallery', id }) ? 1.06 : 1, y: isPicked({ kind: 'gallery', id }) ? -6 : 0 }}
+                    // 只抬一点：抬高了会盖住上面那排窗片的造价
+                    animate={{ opacity: 1, rotateY: 0, scale: st.on ? 1.04 : 1, y: st.on ? -3 : 0 }}
                     transition={{ type: 'spring', stiffness: 220, damping: 20 }}
                   >
                     <PanelCard panel={id} />
+                    <ShortTag short={st.short} />
                   </motion.button>
-                ) : (
-                  <span key={`empty-${slot}`} className="gw-card gw-card-empty" aria-hidden="true" />
-                ),
-              )}
+                );
+              })}
             </div>
           ))}
           {mine && mine.sketches.length > 0 && (
@@ -386,19 +531,17 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
                 <br />
                 图稿
               </span>
-              {mine.sketches.map((sk) =>
-                sk.id ? (
-                  <button
-                    key={sk.id}
-                    type="button"
-                    className={`gw-card ${isPicked({ kind: 'sketch', id: sk.id }) ? 'is-picked' : ''} ${canAct && payable(sk.id) ? 'is-ready' : ''}`}
-                    disabled={!canAct}
-                    onClick={() => choose({ kind: 'sketch', id: sk.id! })}
-                  >
-                    <PanelCard panel={sk.id} />
+              {mine.sketches.map((sk) => {
+                if (!sk.id) return null;
+                const id = sk.id;
+                const st = cardState(id, 'sketch');
+                return (
+                  <button key={id} type="button" className={`gw-card ${st.on ? 'is-picked' : ''} ${st.ready ? 'is-ready' : ''}`} aria-pressed={st.on} onClick={() => choose({ kind: 'sketch', id })}>
+                    <PanelCard panel={id} />
+                    <ShortTag short={st.short} />
                   </button>
-                ) : null,
-              )}
+                );
+              })}
             </div>
           )}
         </section>
@@ -415,10 +558,10 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
                     key={view.rackIds[i]}
                     type="button"
                     layout
-                    className={`gw-shard ${selected ? 'is-selected' : ''}`}
+                    className={`gw-shard ${selected ? 'is-selected' : ''} ${wanted(hue) ? 'is-wanted' : ''}`}
                     disabled={!canAct}
                     aria-pressed={selected}
-                    aria-label={`晾架第 ${i + 1} 块，${PIECE_NAMES[hue]}`}
+                    aria-label={`晾架第 ${i + 1} 块，${PIECE_NAMES[hue]}${wanted(hue) ? '，你点中的窗片还缺这种' : ''}`}
                     onClick={() => onShard(view.rackIds[i]!)}
                     initial={{ opacity: 0, x: 40, scale: 0.5 }}
                     animate={{ opacity: 1, x: 0, scale: 1, y: selected ? -8 : 0 }}
@@ -448,41 +591,34 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
         </section>
         <Ticker log={view.log} describe={(e) => describe(e, nameOf, view.target)} tone={toneOf} />
         {mine && meId && (
-          <div className={`gw-mine ${myTurn ? 'is-active' : ''} ${mine.hot ? 'is-hot' : ''}`}>
+          <div className={`gw-mine ${myTurn ? 'is-active' : ''} ${warm ? 'is-hot' : ''}`}>
             <div className="gw-mine-head">
               <button type="button" className="gw-score gw-score-button" onClick={() => setShowSeats(meId)} aria-label={`你的声望 ${mine.score.total}，看各家作坊的明细`}>
                 {mine.score.total}
                 <small>声望</small>
-                {mine.hot && (
-                  <span className="gw-hot" title="炉子还热着">
-                    <Flame />
-                    余温
-                  </span>
-                )}
+                <HeatTag heat={mine.heat} />
               </button>
               <Palette seat={mine} onPiece={discarding ? (piece) => giveBack.length < view.mustDiscard && setGiveBack((g) => [...g, piece]) : undefined} chosen={giveBack} />
             </div>
             {mine.sketches.length > 0 && (
               <div className="gw-sketches" aria-label="你的图稿">
                 <span className="gw-sketches-label">图稿</span>
-                {mine.sketches.map((s) =>
-                  s.id ? (
-                    <button
-                      key={s.id}
-                      type="button"
-                      className={`gw-card gw-sketch ${isPicked({ kind: 'sketch', id: s.id }) ? 'is-picked' : ''} ${canAct && payable(s.id) ? 'is-ready' : ''}`}
-                      disabled={!canAct}
-                      onClick={() => choose({ kind: 'sketch', id: s.id! })}
-                    >
-                      <PanelCard panel={s.id} />
+                {mine.sketches.map((sk) => {
+                  if (!sk.id) return null;
+                  const id = sk.id;
+                  const st = cardState(id, 'sketch');
+                  return (
+                    <button key={id} type="button" className={`gw-card gw-sketch ${st.on ? 'is-picked' : ''} ${st.ready ? 'is-ready' : ''}`} aria-pressed={st.on} onClick={() => choose({ kind: 'sketch', id })}>
+                      <PanelCard panel={id} />
+                      <ShortTag short={st.short} />
                     </button>
-                  ) : null,
-                )}
+                  );
+                })}
               </div>
             )}
           </div>
         )}
-        <div className={`ct-actions ${myTurn ? 'is-mine' : ''}`}>
+        <div className={`ct-actions ${myTurn ? 'is-mine' : ''} ${target ? 'has-target' : ''} ${showsTarget ? 'shows-target' : ''}`}>
           <div className="ct-actions-text">
             <p className="dock-prompt" aria-live="polite">
               {prompt}
@@ -490,6 +626,13 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
             {hint && <p className="dock-hint">{hint}</p>}
           </div>
           {buttons && <div className="ct-buttons">{buttons}</div>}
+          {target && !buttons && (
+            <div className="ct-buttons">
+              <button type="button" className="btn btn-ghost btn-small" onClick={() => setPick(null)}>
+                放下这张
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -557,7 +700,7 @@ function SeatStrip({ player, seat, active, first, onOpen }: { player: RoomPlayer
         </span>
         <span className="gw-seat-name">
           {player.name}
-          {seat.hot && <Flame />}
+          {heatTarget(seat.heat) && <Flame />}
           <small>
             {first ? '先手' : ''}
             {!player.connected ? ' 掉线' : ''}
@@ -604,12 +747,7 @@ function Workshop({ player, seat, isMe, target }: { player: RoomPlayer; seat: Se
       </header>
       <p className="gw-workshop-parts">
         {scoreParts(seat.score)}
-        {seat.hot && (
-          <span className="gw-hot">
-            <Flame />
-            炉子还热着
-          </span>
-        )}
+        <HeatTag heat={seat.heat} long />
       </p>
       <table className="gw-matrix">
         <thead>

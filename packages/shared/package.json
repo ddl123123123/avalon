@@ -8,7 +8,8 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json",
-    "sim:glassworks": "tsx scripts/glassworks-sim.ts"
+    "sim:glassworks": "tsx scripts/glassworks-sim.ts",
+    "cost:glassworks": "tsx scripts/glassworks-cost.ts"
   },
   "devDependencies": {
     "tsx": "^4.19.2",

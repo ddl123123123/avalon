@@ -45,8 +45,8 @@ export function toneOf(e: Glassworks.GlassLogEvent): 'plain' | 'gilt' | 'danger'
 }
 
 /** 烧这块窗片还差哪些料（已经扣掉炉色、余温和手里的料；金箔另算） */
-export function shortfall(seat: Glassworks.GlassworksSeat, panel: string, hot = seat.hot): { missing: Partial<Record<Glassworks.Hue, number>>; total: number } {
-  const { byHue, total } = Glassworks.missingFor(seat.glass, seat.kilns, panel, hot);
+export function shortfall(seat: Glassworks.GlassworksSeat, panel: string, heat = seat.heat): { missing: Partial<Record<Glassworks.Hue, number>>; total: number } {
+  const { byHue, total } = Glassworks.missingFor(seat.glass, seat.kilns, panel, heat);
   const missing: Partial<Record<Glassworks.Hue, number>> = {};
   for (const hue of HUES) if (byHue[hue] > 0) missing[hue] = byHue[hue];
   return { missing, total };
@@ -57,4 +57,11 @@ export function scoreParts(score: Glassworks.ScoreBreakdown): string {
   return [`窗片 ${score.panels}`, score.commissions ? `委托 ${score.commissions}` : '', score.spectrum ? `光谱 ${score.spectrum}` : '', score.triptych ? `联窗 ${score.triptych}` : '']
     .filter(Boolean)
     .join(' + ');
+}
+
+/** 炉温能给哪一档省料：小窗之后是花窗，花窗之后是玫瑰窗；凉的或已经烧到顶就没有 */
+export function heatTarget(heat: Glassworks.Heat): { tier: Glassworks.Tier; saves: number } | null {
+  if (heat !== 1 && heat !== 2) return null;
+  const tier = (heat + 1) as Glassworks.Tier;
+  return { tier, saves: Glassworks.HEAT_DISCOUNT[tier] };
 }

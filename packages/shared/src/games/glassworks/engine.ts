@@ -4,6 +4,7 @@ import {
   GALLERY_SIZE,
   GOLD_SUPPLY,
   HAND_LIMIT,
+  HEAT_DISCOUNT,
   HUES,
   MAX_PLAYERS,
   MIN_PLAYERS,
@@ -14,6 +15,7 @@ import {
   TAKE_LIMIT,
   TARGET_POINTS,
   TIERS,
+  TRIPTYCH_BONUS,
   commissionCount,
   commissionOf,
   panelOf,
@@ -34,14 +36,17 @@ export interface Sketch {
 export interface ScoreBreakdown {
   panels: number;
   commissions: number;
+  /** 光谱：五种炉色每凑齐一套 */
   spectrum: number;
+  /** 联窗：同一种炉色的小窗、花窗、玫瑰窗每凑齐一组 */
+  triptych: number;
   total: number;
 }
 
 export type GlassLogEvent =
   | { t: 'take'; player: PlayerId; pieces: Hue[] }
   | { t: 'sketch'; player: PlayerId; panel: string | null; tier: Tier; gold: boolean }
-  | { t: 'build'; player: PlayerId; panel: string; fromSketch: boolean }
+  | { t: 'build'; player: PlayerId; panel: string; fromSketch: boolean; /** 趁余温省下的料 */ saved?: number }
   | { t: 'discard'; player: PlayerId; count: number }
   | { t: 'commission'; player: PlayerId; commission: string }
   | { t: 'final'; player: PlayerId }
@@ -70,6 +75,8 @@ export interface GlassworksState {
   panels: Record<PlayerId, string[]>;
   sketches: Record<PlayerId, Sketch[]>;
   claimed: Record<PlayerId, string[]>;
+  /** 余温：这位玩家上一回合烧制过，炉子还热着 */
+  hot: Record<PlayerId, boolean>;
   /** 当前玩家还要放回几块料才能结束回合 */
   mustDiscard: number;
   /** 连续跳过的人数；所有人都只能跳过时牌局结束 */
@@ -98,6 +105,10 @@ export interface GlassworksSeat {
   kilns: Record<Hue, number>;
   sketches: { id: string | null; tier: Tier; open: boolean }[];
   claimed: string[];
+  /** 炉子还热着：下一次行动若是烧制花窗或玫瑰窗，可以少付料 */
+  hot: boolean;
+  /** 每种炉色里已经有哪几档窗片（凑联窗用），下标 0–2 对应小窗、花窗、玫瑰窗 */
+  tiers: Record<Hue, [number, number, number]>;
   score: ScoreBreakdown;
 }
 
@@ -139,27 +150,73 @@ export function kilnsOf(panels: string[]): Record<Hue, number> {
   return kilns;
 }
 
+/** 每种炉色里各档窗片的数量 */
+export function tiersOf(panels: string[]): Record<Hue, [number, number, number]> {
+  const tiers = Object.fromEntries(HUES.map((h) => [h, [0, 0, 0]])) as Record<Hue, [number, number, number]>;
+  for (const id of panels) {
+    const def = panelOf(id);
+    tiers[def.hue][def.tier - 1]! += 1;
+  }
+  return tiers;
+}
+
 export function scoreOf(panels: string[], claimed: string[]): ScoreBreakdown {
   const panelPoints = panels.reduce((sum, id) => sum + panelOf(id).points, 0);
   const commissions = claimed.reduce((sum, id) => sum + commissionOf(id).points, 0);
   const kilns = kilnsOf(panels);
+  const tiers = tiersOf(panels);
   const spectrum = Math.min(...HUES.map((h) => kilns[h])) * SPECTRUM_BONUS;
-  return { panels: panelPoints, commissions, spectrum, total: panelPoints + commissions + spectrum };
+  const triptych = HUES.reduce((sum, h) => sum + Math.min(...tiers[h]), 0) * TRIPTYCH_BONUS;
+  return { panels: panelPoints, commissions, spectrum, triptych, total: panelPoints + commissions + spectrum + triptych };
+}
+
+/** 扣掉炉色（和余温）之后，每种颜色实际要付几块 */
+function owedFor(glass: Record<Piece, number>, kilns: Record<Hue, number>, panel: string, hot: boolean): Record<Hue, number> {
+  const def = panelOf(panel);
+  const owed = zeroHues();
+  for (const hue of HUES) owed[hue] = Math.max(0, (def.cost[hue] ?? 0) - kilns[hue]);
+  // 余温省下的料：先省手里缺的（等于省金箔），都不缺就省手里最紧的那种颜色
+  for (let i = 0; hot && i < HEAT_DISCOUNT[def.tier]; i++) {
+    const hue = HUES.filter((h) => owed[h] > 0).sort((a, b) => glass[a] - owed[a] - (glass[b] - owed[b]))[0];
+    if (hue) owed[hue] -= 1;
+  }
+  return owed;
 }
 
 /**
- * 烧制这块窗片要付出哪些料：先扣炉色，再用同色料，不够的用金箔补。
- * 付不起时返回 null。
+ * 烧制这块窗片要付出哪些料：先扣炉色，炉子还热着（hot）再少付 1 块，
+ * 然后用同色料，不够的用金箔补。付不起时返回 null。
  */
-export function paymentFor(glass: Record<Piece, number>, kilns: Record<Hue, number>, panel: string): Record<Piece, number> | null {
-  const def = panelOf(panel);
+export function paymentFor(
+  glass: Record<Piece, number>,
+  kilns: Record<Hue, number>,
+  panel: string,
+  hot = false,
+): Record<Piece, number> | null {
+  const owed = owedFor(glass, kilns, panel, hot);
   const pay: Record<Piece, number> = { ...zeroHues(), gold: 0 };
   for (const hue of HUES) {
-    const need = Math.max(0, (def.cost[hue] ?? 0) - kilns[hue]);
-    pay[hue] = Math.min(need, glass[hue]);
-    pay.gold += need - pay[hue];
+    pay[hue] = Math.min(owed[hue], glass[hue]);
+    pay.gold += owed[hue] - pay[hue];
   }
   return pay.gold <= glass.gold ? pay : null;
+}
+
+/** 烧这块窗片还差哪些料（已经扣掉炉色、余温和手里的同色料；金箔另算） */
+export function missingFor(
+  glass: Record<Piece, number>,
+  kilns: Record<Hue, number>,
+  panel: string,
+  hot = false,
+): { total: number; byHue: Record<Hue, number> } {
+  const owed = owedFor(glass, kilns, panel, hot);
+  const byHue = zeroHues();
+  let total = -glass.gold;
+  for (const hue of HUES) {
+    byHue[hue] = Math.max(0, owed[hue] - glass[hue]);
+    total += byHue[hue];
+  }
+  return { total: Math.max(0, total), byHue };
 }
 
 const handSize = (glass: Record<Piece, number>) => PIECES.reduce((sum, p) => sum + glass[p], 0);
@@ -222,6 +279,7 @@ function setup(players: PlayerId[], _options: GlassworksOptions, rng: Rng): Glas
     panels: {},
     sketches: {},
     claimed: {},
+    hot: {},
     mustDiscard: 0,
     passes: 0,
     finalRound: false,
@@ -243,6 +301,7 @@ function setup(players: PlayerId[], _options: GlassworksOptions, rng: Rng): Glas
     state.panels[p] = [];
     state.sketches[p] = [];
     state.claimed[p] = [];
+    state.hot[p] = false;
   }
   refillGallery(state);
   refillRack(state, rng);
@@ -347,6 +406,7 @@ function reduce(prev: GlassworksState, player: PlayerId, action: GlassworksActio
       const pieces = state.rack.splice(from, count);
       state.rackIds.splice(from, count);
       for (const hue of pieces) glass[hue] += 1;
+      state.hot[player] = false;
       state.passes = 0;
       log(state, { t: 'take', player, pieces });
       break;
@@ -371,6 +431,7 @@ function reduce(prev: GlassworksState, player: PlayerId, action: GlassworksActio
         state.gold -= 1;
         glass.gold += 1;
       }
+      state.hot[player] = false;
       state.passes = 0;
       log(state, { t: 'sketch', player, panel: open ? id : null, tier: action.tier, gold });
       break;
@@ -378,8 +439,12 @@ function reduce(prev: GlassworksState, player: PlayerId, action: GlassworksActio
     case 'build': {
       const where = typeof action.panel === 'string' ? findPanel(state, player, action.panel) : null;
       if (!where) throw new GameError('这块窗片不在画廊里，也不在你的图稿里');
-      const pay = paymentFor(glass, kilnsOf(state.panels[player]!), action.panel);
+      const kilns = kilnsOf(state.panels[player]!);
+      const pay = paymentFor(glass, kilns, action.panel, state.hot[player]);
       if (!pay) throw new GameError('玻璃料不够');
+      // 余温实际省下了几块（炉色已经够用时省不到）
+      const cold = paymentFor({ ...glass, gold: 99 }, kilns, action.panel)!;
+      const saved = PIECES.reduce((sum, piece) => sum + cold[piece] - pay[piece], 0);
       for (const piece of PIECES) {
         glass[piece] -= pay[piece];
         if (piece === 'gold') state.gold += pay.gold;
@@ -388,13 +453,15 @@ function reduce(prev: GlassworksState, player: PlayerId, action: GlassworksActio
       if ('sketch' in where) state.sketches[player]!.splice(where.sketch, 1);
       else state.gallery[where.tier][where.slot] = null;
       state.panels[player]!.push(action.panel);
+      state.hot[player] = true;
       state.passes = 0;
-      log(state, { t: 'build', player, panel: action.panel, fromSketch: 'sketch' in where });
+      log(state, { t: 'build', player, panel: action.panel, fromSketch: 'sketch' in where, ...(saved > 0 ? { saved } : {}) });
       break;
     }
     case 'pass': {
       if (state.rack.length > 0) throw new GameError('晾架上还有料，不能跳过');
       state.passes += 1;
+      state.hot[player] = false;
       log(state, { t: 'pass', player });
       break;
     }
@@ -422,6 +489,8 @@ function view(state: GlassworksState, viewer: PlayerId | null): GlassworksView {
         open: s.open,
       })),
       claimed: state.claimed[p]!,
+      hot: state.hot[p] === true,
+      tiers: tiersOf(state.panels[p]!),
       score: scoreOf(state.panels[p]!, state.claimed[p]!),
     };
   }
@@ -452,22 +521,10 @@ function view(state: GlassworksState, viewer: PlayerId | null): GlassworksView {
 
 /* ---------- 试玩机器人 ---------- */
 
-/** 离烧成这块窗片还差几块料（金箔已经算进去） */
-function missingFor(glass: Record<Piece, number>, kilns: Record<Hue, number>, panel: string): { total: number; byHue: Record<Hue, number> } {
-  const def = panelOf(panel);
-  const byHue = zeroHues();
-  let total = -glass.gold;
-  for (const hue of HUES) {
-    byHue[hue] = Math.max(0, (def.cost[hue] ?? 0) - kilns[hue] - glass[hue]);
-    total += byHue[hue];
-  }
-  return { total: Math.max(0, total), byHue };
-}
-
 /**
  * 机器人的两种打法：
  * - sprawl「铺摊子」：什么便宜烧什么，靠炉色和光谱慢慢攒分；
- * - climb「攀高枝」：先搭六七个炉色，之后只盯着带声望的花窗和玫瑰窗。
+ * - climb「攀高枝」：先搭九个炉色，之后只盯着能加分的窗片（带声望的，或者能凑成光谱、联窗的）。
  */
 export type BotStyle = 'sprawl' | 'climb';
 
@@ -483,11 +540,15 @@ export function chooseAction(state: GlassworksState, player: PlayerId, rng: Rng,
   const glass = state.glass[player]!;
   const kilns = kilnsOf(state.panels[player]!);
   const mine = state.sketches[player]!.map((s) => s.id);
-  const engine = state.panels[player]!.length;
-  // 攀高枝：炉色够用之后不再看没有声望的小窗
-  const picky = style === 'climb' && engine >= 6;
+  const built = state.panels[player]!;
+  const engine = built.length;
+  const scoreNow = scoreOf(built, []).total;
+  /** 烧成这块能多几分：窗片自己的声望，加上它凑成的光谱、联窗 */
+  const gainOf = (id: string) => scoreOf([...built, id], []).total - scoreNow;
+  // 攀高枝：炉色够用之后不再看不加分的小窗
+  const picky = style === 'climb' && engine >= 9;
   const visible = [...mine, ...TIERS.flatMap((t) => state.gallery[t].filter((id): id is string => id !== null))].filter(
-    (id) => !picky || panelOf(id).points > 0 || mine.includes(id),
+    (id) => !picky || gainOf(id) > 0 || mine.includes(id),
   );
 
   // 委托还缺哪些炉色：朝着它们走的窗片更值钱
@@ -498,8 +559,8 @@ export function chooseAction(state: GlassworksState, player: PlayerId, rng: Rng,
   const worth = (id: string) => {
     const def = panelOf(id);
     const scarce = kilns[def.hue] === Math.min(...HUES.map((h) => kilns[h])) ? 0.6 : 0;
-    if (picky) return def.points * 3 + 0.5 + Math.min(1.2, wanted[def.hue] * 0.4);
-    return def.points * 2.2 + 1.4 + Math.min(1.2, wanted[def.hue] * 0.4) + scarce;
+    if (picky) return gainOf(id) * 3 + 0.5 + Math.min(1.2, wanted[def.hue] * 0.4);
+    return gainOf(id) * 2.2 + 1.4 + Math.min(1.2, wanted[def.hue] * 0.4) + scarce;
   };
 
   if (state.mustDiscard > 0) {
@@ -519,7 +580,8 @@ export function chooseAction(state: GlassworksState, player: PlayerId, rng: Rng,
     return { type: 'discard', pieces: spare };
   }
 
-  const affordable = visible.filter((id) => paymentFor(glass, kilns, id) !== null).sort((a, b) => worth(b) - worth(a));
+  // 炉子还热着时，这一回合接着烧可以少付 1 块；去取料的话余温就没了，所以后面算缺口时不算它
+  const affordable = visible.filter((id) => paymentFor(glass, kilns, id, state.hot[player]) !== null).sort((a, b) => worth(b) - worth(a));
   if (affordable[0]) return { type: 'build', panel: affordable[0] };
 
   const ranked = visible

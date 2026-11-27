@@ -85,7 +85,8 @@ export function SpeechDesk({ view, gameSeq, speechSecondsRemaining, text, setTex
   }
 
   return (
-    <form className="av-speech-composer" onSubmit={submit}>
+    // 没轮到自己、也还没写草稿时，手机上把编辑框收成一行，把高度让给发言记录
+    <form className="av-speech-composer" data-idle={!myTurn && !text.trim() && suggestion === undefined ? '' : undefined} onSubmit={submit}>
       <div className="av-editor-head">
         <label htmlFor={textId}>我的发言</label>
         <span id={statusId} role="status">

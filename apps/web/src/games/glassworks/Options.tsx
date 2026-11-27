@@ -48,6 +48,11 @@ export function GlassworksOptions({ playerCount }: { playerCount: number }) {
           </span>
         </li>
       </ol>
+      <h2 className="av-options-heading">余温</h2>
+      <p className="av-options-summary">
+        烧制之后炉子还热着。下一回合接着烧，花窗少付 {Glassworks.HEAT_DISCOUNT[2]} 块料，玫瑰窗少付 {Glassworks.HEAT_DISCOUNT[3]}{' '}
+        块；中间去取料或描样，炉子就凉了。先攒够两块窗片的料再连着烧，比烧一块取一次料划算。
+      </p>
       <h2 className="av-options-heading">三档窗片</h2>
       <div className="gw-samples">
         {SAMPLES.map((p) => (
@@ -57,7 +62,22 @@ export function GlassworksOptions({ playerCount }: { playerCount: number }) {
           </figure>
         ))}
       </div>
-      <p className="av-options-summary">左上是声望，右上是炉色，下面一行是造价。五种炉色每凑齐一整套，额外加 {Glassworks.SPECTRUM_BONUS} 分。</p>
+      <p className="av-options-summary">左上是声望，右上是炉色，下面一行是造价。窗片共 {PANELS.length} 张，越大的越少。</p>
+      <h2 className="av-options-heading">两种套组</h2>
+      <ol className="ct-roster gw-howto">
+        <li>
+          <span>
+            <strong>光谱，每套 +{Glassworks.SPECTRUM_BONUS}</strong>
+            五种炉色各有一块，凑成一套。什么颜色都烧一点的人拿这份分。
+          </span>
+        </li>
+        <li>
+          <span>
+            <strong>联窗，每组 +{Glassworks.TRIPTYCH_BONUS}</strong>
+            同一种炉色的小窗、花窗、玫瑰窗各有一块，凑成一组。把一种颜色烧到顶的人拿这份分。
+          </span>
+        </li>
+      </ol>
     </div>
   );
 }

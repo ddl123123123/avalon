@@ -5,6 +5,7 @@ import test from 'node:test';
 import type { ClientMessage, ServerMessage } from '@tabletop/shared';
 import { AccountStore, BROWSER_SESSION_IDLE_MS, SESSION_IDLE_MS, SESSION_MAX_MS, SESSION_REFRESH_MS } from './accounts';
 import { createAuthHandler, SESSION_COOKIE } from './auth-http';
+import { Stats } from './stats';
 import { openPglite } from './db';
 import { RoomManager, type Connection } from './rooms';
 
@@ -151,7 +152,7 @@ test('房间：账号入座时用账号昵称，改昵称同步到大厅', () =>
 async function withServer(fn: (base: string) => Promise<void>) {
   const { db, store } = await freshStore();
   const revoked: string[][] = [];
-  const handle = createAuthHandler(store, { revoked: (hashes) => revoked.push(hashes), profileChanged() {} });
+  const handle = createAuthHandler(store, { revoked: (hashes) => revoked.push(hashes), profileChanged() {} }, new Stats(db));
   const server: Server = createServer((req, res) => void handle(req, res, new URL(req.url!, 'http://x').pathname));
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   try {
@@ -180,6 +181,10 @@ test('HTTP：HttpOnly Cookie、记住我、跨站请求、退出登录', () => w
   const me = await (await fetch(`${base}/api/auth/me`, { headers: { cookie } })).json();
   assert.equal(me.user.username, 'percival');
   assert.equal(me.session.persistent, true);
+  const profile = await fetch(`${base}/api/auth/stats`, { headers: { cookie } });
+  assert.equal(profile.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(await profile.json(), { games: [], avalonRoles: [] });
+  assert.equal((await fetch(`${base}/api/auth/stats`)).status, 401);
 
   const shortLogin = await post('login', { username: 'Percival', password: 'holy grail', remember: false });
   assert.equal(shortLogin.status, 200);

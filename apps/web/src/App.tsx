@@ -8,6 +8,7 @@ import { dismissNotice, useNet } from './net/client';
 import { navigate, roomPath, useRoute } from './net/route';
 import { AccountSheet } from './pages/AccountSheet';
 import { Home } from './pages/Home';
+import { ProfilePage } from './pages/ProfilePage';
 import { RoomPage } from './pages/RoomPage';
 
 // 管理页只有管理员会打开，单独打包，不拖慢玩家的首屏
@@ -21,14 +22,14 @@ export function App() {
   // 进入（或被带回）某个房间时，把地址栏同步过去，方便直接分享链接
   const code = room?.code;
   useEffect(() => {
-    if (code && route.page !== 'admin') navigate(roomPath(code));
-    // 只在换房间时跳转；在管理页里不被房间拽走
+    if (code && (route.page === 'home' || route.page === 'room')) navigate(roomPath(code));
   }, [code]);
 
   // 标签页标题跟着所在的房间走，开着几个标签页时好分辨
   const gameName = room ? GAME_CLIENTS[room.gameId]?.name : undefined;
   useEffect(() => {
     document.title = route.page === 'admin' ? '管理 - 桌游厅'
+      : route.page === 'profile' ? '个人主页 - 桌游厅'
       : code && route.page === 'room' ? `${gameName ?? '房间'} ${code} - 桌游厅` : '桌游厅';
   }, [code, gameName, route.page]);
 
@@ -48,7 +49,7 @@ export function App() {
           <Suspense fallback={<main className="gate"><p className="admin-muted">正在打开管理页…</p></main>}>
             <AdminPage />
           </Suspense>
-        ) : <RoomPage code={route.code} key={route.code} />}
+        ) : route.page === 'profile' ? <ProfilePage /> : <RoomPage code={route.code} key={route.code} />}
       </div>
       <ClickSpark />
       <AnimatePresence>{accountSheet.open && <AccountSheet key="account" />}</AnimatePresence>

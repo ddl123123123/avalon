@@ -106,6 +106,25 @@ function getSeats(players: RoomPlayer[]) {
   return { seat: (id: PlayerId | null | undefined) => id == null ? null : numbers.get(id) ?? null, ids };
 }
 
+/** 模型不可用时，只用公开信息补上一条简短讨论。 */
+export function localAvalonSpeech(view: Avalon.AvalonView, players: RoomPlayer[]): string {
+  const { seat } = getSeats(players);
+  const last = view.proposals.at(-1);
+  if (last && !last.approved) {
+    return `上一车有 ${last.rejections} 张反对票。我想先听听这次换人的理由，再决定跟不跟车。`;
+  }
+  const quest = view.quests.at(-1);
+  if (quest && !quest.success) {
+    const previousTeam = quest.team.map((id) => `${seat(id)} 号`).join('、');
+    return `上一轮 ${previousTeam} 的队伍出了 ${quest.fails} 张失败牌。这次如果还带原车的人，我想听听理由。`;
+  }
+  if (view.team.length) {
+    const currentTeam = view.team.map((id) => `${seat(id)} 号`).join('、');
+    return `这车先选了 ${currentTeam}。我想听听车头是按什么理由搭的这组人。`;
+  }
+  return view.rejectCount ? '这轮已经换过车头了，我先看新队伍，再结合前面的票判断。' : '我先等车头报队，提名的时候说一下为什么选这几位，我再决定怎么投。';
+}
+
 export function rememberAction(memory: BotMemory, view: Avalon.AvalonView, action: BotAction, players: RoomPlayer[]) {
   const { seat } = getSeats(players);
   const info = 'team' in action ? { team: action.team.map(seat) } :
@@ -128,7 +147,7 @@ function instructions(view: Avalon.AvalonView, action: Decision, players: RoomPl
     case 'finish_speech': return { action: 'text_speech', fields: { speech: '全桌可见的一段中文发言' } };
     case 'vote': return { action: 'vote', fields: { approve: '布尔值，是否赞成' } };
     case 'quest': return { action: 'quest', fields: { success: '布尔值，true 成功，false 失败' },
-      permitted: view.me?.alignment === 'good' ? [true] : [true, false] };
+      permitted: view.me?.alignment === 'good' ? [true] : Avalon.mustSabotage(view.me?.alignment, view.quests) ? [false] : [true, false] };
     case 'lady':
     case 'assassinate': return { action: action.type, fields: { target: '一个座位号' }, permitted: targets(action.type, view).map(seat) };
   }
@@ -205,7 +224,7 @@ export function decodeAvalonBotReply(content: string, view: Avalon.AvalonView, p
       break;
     case 'quest':
       if (typeof reply.success !== 'boolean' || (reply.success === false && view.me?.alignment !== 'evil')) return null;
-      action = { type: 'quest', success: reply.success };
+      action = { type: 'quest', success: reply.success && !Avalon.mustSabotage(view.me?.alignment, view.quests) };
       break;
     case 'lady':
     case 'assassinate': {

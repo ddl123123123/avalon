@@ -10,3 +10,4 @@ export * as GreyTide from './games/grey-tide';
 export * as SevenSins from './games/seven-sins';
 export * as StreetStall from './games/street-stall';
 export * from './admin';
+export * from './profile';

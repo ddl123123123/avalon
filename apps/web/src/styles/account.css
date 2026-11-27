@@ -222,3 +222,102 @@
 .my-seats li {
   grid-template-columns: minmax(0, 1fr);
 }
+
+.player-profile {
+  width: min(100%, 960px);
+  margin: 0 auto;
+  padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(40px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+.player-profile-nav,
+.player-profile-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.player-profile-nav {
+  justify-content: space-between;
+}
+.player-profile-nav button,
+.player-profile-card button {
+  min-height: 44px;
+}
+.player-profile-heading {
+  margin-block: 28px 24px;
+}
+.player-profile-heading h1 {
+  font-family: var(--font-display);
+  font-size: clamp(1.9rem, 6vw, 2.75rem);
+  color: var(--vellum);
+}
+.player-profile-heading p,
+.player-profile-card p,
+.player-profile-list span {
+  color: var(--vellum-dim);
+  line-height: 1.6;
+}
+.player-profile-heading p span {
+  margin-inline-start: 0.4em;
+}
+.player-profile-heading .account-avatar {
+  width: 52px;
+  height: 52px;
+  font-size: 1.35rem;
+}
+.player-profile-grid {
+  display: grid;
+  gap: 12px;
+}
+.player-profile-card {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: clamp(14px, 3vw, 22px);
+  border-radius: 12px;
+  border: 1px solid rgba(184, 158, 114, 0.28);
+  background: rgba(22, 31, 45, 0.86);
+}
+.player-profile-card h2 {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  color: var(--gilt-bright);
+}
+.player-profile-card button {
+  justify-self: start;
+}
+.player-profile-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+}
+.player-profile-metrics dt {
+  color: var(--vellum-dim);
+  font-size: 0.88rem;
+}
+.player-profile-metrics dd {
+  margin: 0;
+  color: var(--vellum);
+  font-size: 1.65rem;
+  font-variant-numeric: tabular-nums;
+}
+.player-profile-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.player-profile-list li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding-block: 8px;
+  border-top: 1px solid rgba(184, 158, 114, 0.2);
+}
+@media (min-width: 768px) {
+  .player-profile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .player-profile-roles {
+    grid-column: 1 / -1;
+  }
+}

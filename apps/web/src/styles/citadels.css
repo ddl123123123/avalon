@@ -224,6 +224,9 @@ button.city-head {
   line-height: 1;
   color: var(--gilt-bright);
 }
+.city-count {
+  display: none;
+}
 .city-row {
   display: grid;
   /* 城区牌有上限宽度：面板再宽，牌也不会大到挤占别人的空间 */
@@ -674,27 +677,170 @@ button.city-head {
   color: var(--vellum-dim);
 }
 
+/*
+ * 手机：城市面板只画已经建成的城区，空位换成「3/8」这样的计数，
+ * 对手一人一行；省下的高度留给手牌和行动区。
+ */
 @media (max-width: 640px) {
-  .ct-board .room-bar,
-  .ct-board .room-bar-actions {
-    flex-wrap: wrap;
+  .ct-board .room-bar {
+    flex-wrap: nowrap;
     gap: 6px;
+    padding: max(6px, env(safe-area-inset-top)) 10px 4px;
+  }
+  .ct-board .room-bar .room-code {
+    display: none;
   }
   .ct-board .room-bar-actions {
+    flex: 1;
+    flex-wrap: nowrap;
+    align-items: center;
     justify-content: flex-end;
-  }
-  .ct-rivals {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
+    min-width: 0;
   }
+  .ct-board .ct-round {
+    margin-right: auto;
+    font-size: 1rem;
+  }
+  .ct-card-style {
+    min-width: 0;
+    flex: 0 1 auto;
+  }
+  .ct-rivals,
   .ct-rivals[data-count='1'] {
     grid-template-columns: 1fr;
+    gap: 5px;
+    padding: 2px 10px 6px;
   }
-  .city-panel {
-    padding: 6px 7px 8px;
+  .ct-board .city-panel {
+    container-type: normal;
+    padding: 5px 8px;
   }
-  .city-crest {
-    width: 26px;
+  .ct-board .city-head {
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+  .ct-board .city-crest {
+    width: 24px;
+  }
+  .ct-board .city-who {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  .ct-board .city-name {
+    flex: 0 1 auto;
+    min-width: 2em;
+    font-size: 0.92rem;
+  }
+  .ct-board .city-chars {
+    flex: none;
+    flex-wrap: nowrap;
+    min-height: 0;
+  }
+  .ct-board .city-stats {
+    gap: 8px;
+  }
+  .ct-board .stat b {
+    font-size: 1.1rem;
+  }
+  .ct-board .stat .coin,
+  .ct-board .stat-icon {
+    width: 16px;
+    height: 16px;
+  }
+  .ct-board .city-count {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0;
+    padding: 1px 6px;
+    border: 1px solid rgba(224, 176, 74, 0.3);
+    border-radius: 999px;
+  }
+  .ct-board .city-count b {
+    min-width: 0;
+    color: var(--vellum);
+  }
+  .ct-board .city-count small {
+    color: var(--vellum-dim);
+    font-size: 0.72rem;
+  }
+  .ct-board .city-row {
+    grid-template-columns: repeat(8, minmax(0, 38px));
+    gap: 3px;
+    margin-top: 4px;
+  }
+  .ct-board .ct-hand {
+    padding-top: 24px;
+  }
+  .ct-board .tile-empty,
+  .ct-board .city-panel[data-built='0'] .city-row {
+    display: none;
+  }
+  .ct-board .city-done {
+    right: auto;
+    left: 34px;
+  }
+  .ct-stage {
+    padding: 4px 10px 2px;
+  }
+  .ct-me {
+    gap: 6px;
+    padding: 6px 10px max(8px, env(safe-area-inset-bottom));
+  }
+  .ct-me .ct-actions {
+    min-height: 56px;
+    gap: 6px;
+  }
+  .ct-me .dock-prompt {
+    font-size: 1.05rem;
+    line-height: 1.3;
+  }
+  .ct-me .dock-hint {
+    margin-top: 2px;
+    font-size: 0.8rem;
+  }
+  .ct-me .ct-buttons {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .ct-me .ct-buttons .btn {
+    flex: 1 1 30%;
+    min-width: 0;
+    min-height: 46px;
+    padding: 0 0.5em;
+    font-size: 1rem;
+  }
+  /* 选角：几张牌都在一屏里排开，不用横向滚动 */
+  .draft {
+    gap: 6px;
+  }
+  .draft-cards {
+    width: 100%;
+    gap: 6px;
+    padding: 14px 2px 4px;
+    overflow: visible;
+    justify-content: center;
+  }
+  .page .draft-cards button.draft-card {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    max-width: 92px;
+    min-inline-size: 0;
+  }
+  .draft-foot {
+    display: grid;
+    width: 100%;
+    gap: 8px;
+  }
+  .draft-ability {
+    min-height: 2.9em;
+    font-size: 0.88rem;
+  }
+  .draft-foot .btn {
+    width: 100%;
   }
   .ct-rank {
     grid-template-columns: 1fr auto;

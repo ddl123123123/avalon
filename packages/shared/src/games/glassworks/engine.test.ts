@@ -25,17 +25,33 @@ const total = (s: GlassworksState) =>
   HUES.reduce((sum, h) => sum + s.bag[h] + s.rack.filter((x) => x === h).length + s.players.reduce((n, p) => n + s.glass[p]![h], 0), 0);
 
 describe('物料', () => {
-  it('窗片共 60 张，五种炉色完全对称', () => {
-    expect(PANELS).toHaveLength(60);
-    expect(PANELS.filter((p) => p.tier === 1)).toHaveLength(25);
-    expect(PANELS.filter((p) => p.tier === 2)).toHaveLength(20);
+  it('窗片共 75 张，越贵的越少，五种炉色完全对称', () => {
+    expect(PANELS).toHaveLength(75);
+    expect(PANELS.filter((p) => p.tier === 1)).toHaveLength(35);
+    expect(PANELS.filter((p) => p.tier === 2)).toHaveLength(25);
     expect(PANELS.filter((p) => p.tier === 3)).toHaveLength(15);
     for (const hue of HUES) {
-      expect(PANELS.filter((p) => p.hue === hue)).toHaveLength(12);
+      expect(PANELS.filter((p) => p.hue === hue)).toHaveLength(15);
       // 每种颜色被要求的总量也相同
       expect(PANELS.reduce((sum, p) => sum + (p.cost[hue] ?? 0), 0)).toBe(PANELS.reduce((sum, p) => sum + (p.cost.blue ?? 0), 0));
     }
-    expect(new Set(PANELS.map((p) => p.id)).size).toBe(60);
+    expect(new Set(PANELS.map((p) => p.id)).size).toBe(75);
+  });
+  it('档位越高造价越贵，每块料换到的声望也越多', () => {
+    const size = (p: (typeof PANELS)[number]) => Object.values(p.cost).reduce((a, b) => a + b, 0);
+    const range = (tier: number, f: (p: (typeof PANELS)[number]) => number) => {
+      const values = PANELS.filter((p) => p.tier === tier).map(f);
+      return [Math.min(...values), Math.max(...values)];
+    };
+    expect(range(1, size)).toEqual([3, 5]);
+    expect(range(2, size)).toEqual([5, 8]);
+    expect(range(3, size)).toEqual([10, 11]);
+    expect(range(1, (p) => p.points)).toEqual([0, 1]);
+    expect(range(2, (p) => p.points)).toEqual([1, 3]);
+    expect(range(3, (p) => p.points)).toEqual([4, 6]);
+    const best = (tier: number) => Math.max(...PANELS.filter((p) => p.tier === tier).map((p) => p.points / size(p)));
+    expect(best(1)).toBeLessThan(best(2));
+    expect(best(2)).toBeLessThan(best(3));
   });
   it('委托共 12 张，要求的炉色越多声望越高', () => {
     expect(COMMISSIONS).toHaveLength(12);
@@ -51,7 +67,7 @@ describe('物料', () => {
       expect(total(s)).toBe(5 * (n + 4));
       expect(s.commissions).toHaveLength(n + 1);
       for (const tier of [1, 2, 3] as const) expect(s.gallery[tier].every((id) => id && panelOf(id).tier === tier)).toBe(true);
-      expect(s.decks[1]).toHaveLength(21);
+      expect(s.decks[1]).toHaveLength(31);
       expect(s.gold).toBe(5);
     }
   });
@@ -165,7 +181,7 @@ describe('烧制', () => {
     expect(() => act(s, 'p0', { type: 'build', panel: s.sketches.p1![0]!.id })).toThrow(/不在画廊/);
   });
   it('炉色抵扣造价，金箔顶替缺的料', () => {
-    const panel = PANELS.find((p) => p.tier === 2 && p.points === 3 && p.cost.blue === 5)!;
+    const panel = PANELS.find((p) => p.tier === 2 && p.points === 2 && p.cost.blue === 5)!;
     expect(paymentFor(glassOf({ blue: 5 }), kilnsOf([]), panel.id)).toMatchObject({ blue: 5, gold: 0 });
     const twoBlue = PANELS.filter((p) => p.hue === 'blue').slice(0, 2).map((p) => p.id);
     expect(paymentFor(glassOf({ blue: 3 }), kilnsOf(twoBlue), panel.id)).toMatchObject({ blue: 3, gold: 0 });
@@ -189,6 +205,52 @@ describe('烧制', () => {
   });
 });
 
+describe('余温', () => {
+  const cost = (id: string) => panelOf(id).cost;
+  const find = (tier: number, points: number, blue: number) => PANELS.find((p) => p.tier === tier && p.points === points && p.cost.blue === blue)!.id;
+  it('花窗少付 1 块，玫瑰窗少付 2 块，小窗不省', () => {
+    const small = PANELS.find((p) => p.tier === 1 && p.cost.blue === 3)!.id;
+    expect(paymentFor(glassOf({ blue: 3 }), kilnsOf([]), small, true)).toMatchObject({ blue: 3 });
+    expect(paymentFor(glassOf({ blue: 2 }), kilnsOf([]), small, true)).toBeNull();
+    const flower = find(2, 2, 5);
+    expect(paymentFor(glassOf({ blue: 4 }), kilnsOf([]), flower, true)).toMatchObject({ blue: 4, gold: 0 });
+    expect(paymentFor(glassOf({ blue: 4 }), kilnsOf([]), flower, false)).toBeNull();
+    const rose = find(3, 6, 7);
+    const other = (Object.keys(cost(rose)) as Hue[]).find((h) => h !== 'blue')!;
+    expect(paymentFor(glassOf({ blue: 5, [other]: 3 }), kilnsOf([]), rose, true)).toMatchObject({ blue: 5, [other]: 3, gold: 0 });
+    expect(paymentFor(glassOf({ blue: 5, [other]: 3 }), kilnsOf([]), rose, false)).toBeNull();
+  });
+  it('先省手里缺的料，等于省下金箔', () => {
+    const flower = PANELS.find((p) => p.tier === 2 && p.points === 1)!;
+    const [a, b, c] = Object.keys(flower.cost) as Hue[];
+    // 三种颜色各要 2 块，手里 a 只有 1 块：余温替你补上缺的那块，金箔留着
+    expect(paymentFor(glassOf({ [a!]: 1, [b!]: 2, [c!]: 2, gold: 1 }), kilnsOf([]), flower.id, true)).toMatchObject({ [a!]: 1, [b!]: 2, [c!]: 2, gold: 0 });
+  });
+  it('烧制后炉子变热，取料或描样就凉了；趁热烧成会记在记录里', () => {
+    const s = fresh(2);
+    const first = s.gallery[1][0]!;
+    const flower = s.gallery[2][0]!;
+    s.glass.p0 = glassOf(cost(first));
+    let next = act(s, 'p0', { type: 'build', panel: first });
+    expect(next.hot.p0).toBe(true);
+    expect(glassworks.view(next, 'p1').seats.p0!.hot).toBe(true);
+    next = act(next, 'p1', { type: 'take', from: 0, count: 1 });
+    // 手里放满花窗的造价：趁热只付掉其中一部分，剩下 1 块
+    next.glass.p0 = glassOf(cost(flower));
+    const built = act(next, 'p0', { type: 'build', panel: flower });
+    const left = Object.values(built.glass.p0!).reduce((a, b) => a + b, 0);
+    const kilnSaved = cost(flower)[panelOf(first).hue] ? 1 : 0;
+    expect(left).toBe(1 + kilnSaved);
+    expect(built.log.at(-1)).toMatchObject({ t: 'build', panel: flower, saved: 1 });
+    expect(built.hot.p0).toBe(true);
+
+    const cooled = act(next, 'p0', { type: 'take', from: 0, count: 1 });
+    expect(cooled.hot.p0).toBe(false);
+    const sketched = act(next, 'p0', { type: 'sketch', tier: 1, slot: 0 });
+    expect(sketched.hot.p0).toBe(false);
+  });
+});
+
 describe('委托与声望', () => {
   const blueIds = PANELS.filter((p) => p.hue === 'blue' && p.points === 0).map((p) => p.id);
   const redIds = PANELS.filter((p) => p.hue === 'red' && p.points === 0).map((p) => p.id);
@@ -203,12 +265,23 @@ describe('委托与声望', () => {
     expect(next.commissions).toEqual(['pair-blue', 'trio-blue']);
     expect(next.log.some((e) => e.t === 'commission' && e.commission === 'full-1')).toBe(true);
   });
-  it('声望 = 窗片 + 委托 + 光谱（每凑齐一套五色 +2）', () => {
+  it('声望 = 窗片 + 委托 + 光谱（每凑齐一套五色 +2）+ 联窗（同色三档各一块 +3）', () => {
     const oneEach = HUES.map((h) => PANELS.find((p) => p.hue === h && p.tier === 1 && p.points === 1)!.id);
-    expect(scoreOf(oneEach, [])).toEqual({ panels: 5, commissions: 0, spectrum: 2, total: 7 });
-    expect(scoreOf(oneEach.slice(0, 4), ['pair-blue'])).toEqual({ panels: 4, commissions: commissionOf('pair-blue').points, spectrum: 0, total: 7 });
+    expect(scoreOf(oneEach, [])).toEqual({ panels: 5, commissions: 0, spectrum: 2, triptych: 0, total: 7 });
+    expect(scoreOf(oneEach.slice(0, 4), ['pair-blue'])).toEqual({
+      panels: 4, commissions: commissionOf('pair-blue').points, spectrum: 0, triptych: 0, total: 7,
+    });
     const twoEach = HUES.flatMap((h) => PANELS.filter((p) => p.hue === h && p.points === 0).slice(0, 2).map((p) => p.id));
     expect(scoreOf(twoEach, []).spectrum).toBe(4);
+
+    const of = (hue: Hue, tier: number, n = 1) => PANELS.filter((p) => p.hue === hue && p.tier === tier).slice(0, n).map((p) => p.id);
+    // 蓝色三档各一块：一组联窗
+    expect(scoreOf([...of('blue', 1), ...of('blue', 2), ...of('blue', 3)], []).triptych).toBe(3);
+    // 缺一档不算；别的颜色不能凑数
+    expect(scoreOf([...of('blue', 1), ...of('blue', 2), ...of('red', 3)], []).triptych).toBe(0);
+    // 同一种颜色凑两组要每档两块
+    expect(scoreOf([...of('blue', 1, 2), ...of('blue', 2, 2), ...of('blue', 3, 1)], []).triptych).toBe(3);
+    expect(scoreOf([...of('blue', 1, 2), ...of('blue', 2, 2), ...of('blue', 3, 2), ...of('red', 1), ...of('red', 2), ...of('red', 3)], []).triptych).toBe(9);
   });
 });
 

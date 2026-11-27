@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Glassworks, type RoomPlayer, type RoomSnapshot } from '@tabletop/shared';
 import { Crest } from '../../art/Crest';
 import { Crown } from '../../art/glass';
@@ -7,22 +7,39 @@ import { SplitText } from '../../fx/SplitText';
 import { net } from '../../net/client';
 import { Ticker } from '../../ui/Ticker';
 import { ResponsiveSheet } from '../../ui/ResponsiveSheet';
-import { CommissionTile, GlassworksCardStyleContext, KilnMark, PanelBack, PanelCard, Shard, type GlassworksCardStyle } from './art';
-import { describe, listPieces, shortfall, toneOf } from './text';
+import { CommissionTile, Flame, GlassworksCardStyleContext, KilnMark, PanelBack, PanelCard, Shard, type GlassworksCardStyle } from './art';
+import { describe, listPieces, scoreParts, shortfall, toneOf } from './text';
 
 type View = Glassworks.GlassworksView;
 type Seat = Glassworks.GlassworksSeat;
 type Piece = Glassworks.Piece;
 type Tier = Glassworks.Tier;
-const { HUES, PIECES, PIECE_NAMES, TIER_NAMES, SKETCH_LIMIT, HAND_LIMIT, TAKE_LIMIT, panelOf } = Glassworks;
+const { HUES, PIECES, PIECE_NAMES, TIER_NAMES, TIERS, SKETCH_LIMIT, HAND_LIMIT, TAKE_LIMIT, HEAT_DISCOUNT, panelOf, commissionOf } = Glassworks;
+
+const NO_GLASS: Record<Piece, number> = { blue: 0, red: 0, green: 0, amber: 0, violet: 0, gold: 0 };
 
 /** 选中了什么：画廊里的一张、某一档的牌堆顶，或自己的一张图稿 */
 type Pick = { kind: 'gallery' | 'sketch'; id: string } | { kind: 'deck'; tier: Tier };
 
-/** 一个人的料和炉色：每种颜色一列，上面是炉色（方章），下面是手里的料 */
+/** 联窗进度：这种炉色的小窗、花窗、玫瑰窗各有没有。三档齐了就是一组联窗 */
+function TierPips({ tiers }: { tiers: [number, number, number] }) {
+  const done = Math.min(...tiers) > 0;
+  return (
+    <span className={`tier-pips ${done ? 'is-done' : ''}`} aria-hidden="true">
+      {tiers.map((n, i) => (
+        <i key={i} className={n > 0 ? 'is-on' : ''} />
+      ))}
+    </span>
+  );
+}
+
+/**
+ * 一个人的料和炉色：每种颜色一列，上面是炉色（方章）和联窗进度，下面是手里的料。
+ * 全部用行内元素，这样对手那一行可以整个做成按钮。
+ */
 function Palette({ seat, onPiece, chosen }: { seat: Seat; onPiece?: (piece: Piece) => void; chosen?: Piece[] }) {
   return (
-    <div className="palette">
+    <span className="palette">
       {PIECES.map((piece) => {
         const kiln = piece === 'gold' ? 0 : seat.kilns[piece];
         const have = seat.glass[piece];
@@ -39,7 +56,7 @@ function Palette({ seat, onPiece, chosen }: { seat: Seat; onPiece?: (piece: Piec
           </>
         );
         return (
-          <div key={piece} className={`palette-col ${have === 0 && kiln === 0 ? 'is-empty' : ''}`} title={PIECE_NAMES[piece]}>
+          <span key={piece} className={`palette-col ${have === 0 && kiln === 0 ? 'is-empty' : ''}`} title={PIECE_NAMES[piece]}>
             <span className={`palette-kiln ${kiln === 0 ? 'is-zero' : ''}`}>
               {piece !== 'gold' && (
                 <>
@@ -48,17 +65,35 @@ function Palette({ seat, onPiece, chosen }: { seat: Seat; onPiece?: (piece: Piec
                 </>
               )}
             </span>
+            {piece !== 'gold' ? <TierPips tiers={seat.tiers[piece]} /> : <span className="tier-pips" aria-hidden="true" />}
             {onPiece ? (
-              <button type="button" className="palette-glass is-pickable" disabled={have - marked <= 0} onClick={() => onPiece(piece)} aria-label={`放回一块${PIECE_NAMES[piece]}`}>
+              <button type="button" className={`palette-glass is-pickable ${have === 0 ? 'is-zero' : ''}`} disabled={have - marked <= 0} onClick={() => onPiece(piece)} aria-label={`放回一块${PIECE_NAMES[piece]}`}>
                 {cell}
               </button>
             ) : (
-              <span className="palette-glass">{cell}</span>
+              <span className={`palette-glass ${have === 0 ? 'is-zero' : ''}`}>{cell}</span>
             )}
-          </div>
+          </span>
         );
       })}
-    </div>
+    </span>
+  );
+}
+
+/** 委托的紧凑写法（手机上用）：声望 + 要求的炉色，已经达到的打上标记 */
+function CommissionChip({ commission, kilns }: { commission: string; kilns: Record<Glassworks.Hue, number> | null }) {
+  const def = commissionOf(commission);
+  const need = HUES.filter((h) => def.need[h]);
+  return (
+    <span className="gw-chip" title={`${def.name}的委托`}>
+      <b className="gw-chip-points">{def.points}</b>
+      {need.map((h) => (
+        <span key={h} className={`gw-chip-need ${kilns && kilns[h] >= def.need[h]! ? 'is-met' : ''}`}>
+          <KilnMark hue={h} />
+          <b>{def.need[h]}</b>
+        </span>
+      ))}
+    </span>
   );
 }
 
@@ -102,6 +137,8 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
   const [pick, setPick] = useState<Pick | null>(null);
   const [giveBack, setGiveBack] = useState<Piece[]>([]);
   const [showLog, setShowLog] = useState(false);
+  /** 打开「各家作坊」时先看谁 */
+  const [showSeats, setShowSeats] = useState<string | null>(null);
 
   // 局面一变，之前选中的东西可能已经不在原位了
   const rackKey = view.rackIds.join(',');
@@ -119,7 +156,13 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
   const canAct = myTurn && !discarding;
   const myIndex = meId ? view.players.indexOf(meId) : -1;
   const rivals = view.players.map((_, i) => view.players[(myIndex + 1 + i) % view.players.length]!).filter((id) => id !== meId);
-  const payable = (id: string) => (mine ? Glassworks.paymentFor(mine.glass, mine.kilns, id) : null);
+  const payable = (id: string) => (mine ? Glassworks.paymentFor(mine.glass, mine.kilns, id, mine.hot) : null);
+  /** 趁余温烧这块能省几块料 */
+  const heatSaving = (id: string) => {
+    if (!mine?.hot) return 0;
+    // 手里一块料都没有时的缺口，就是扣掉炉色后要付的总数
+    return Glassworks.missingFor(NO_GLASS, mine.kilns, id, false).total - Glassworks.missingFor(NO_GLASS, mine.kilns, id, true).total;
+  };
 
   // 按编号而不是按位置认料：正在退场的料还留在页面上几百毫秒，点到它时应当被忽略，
   // 而不是按旧位置选中另一块
@@ -194,15 +237,17 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
     const full = mine.sketches.length >= SKETCH_LIMIT;
     prompt = `${PIECE_NAMES[def.hue]}${TIER_NAMES[def.tier]}${def.points ? `，声望 ${def.points}` : ''}`;
     const paid = pay ? listPieces(pay) : '';
+    const saved = heatSaving(pick.id);
+    const warm = saved > 0 ? `，趁余温省 ${saved} 块` : '';
     hint = pay
       ? paid
-        ? `烧制要付：${paid}`
-        : '你的炉色已经够了，不用付料'
-      : `还差：${listPieces(gap.missing)}${mine.glass.gold > 0 ? `（金箔可以顶 ${mine.glass.gold} 块）` : ''}`;
+        ? `烧制要付：${paid}${warm}`
+        : `不用付料：炉色${saved > 0 ? '和余温' : ''}已经够了`
+      : `还差：${listPieces(gap.missing)}${mine.glass.gold > 0 ? `（金箔可以顶 ${mine.glass.gold} 块）` : ''}${warm}`;
     buttons = (
       <>
         <button type="button" className="btn btn-primary" disabled={!pay} onClick={() => act({ type: 'build', panel: pick.id })}>
-          烧制
+          {pay && saved > 0 ? '趁热烧制' : '烧制'}
         </button>
         {pick.kind === 'gallery' && (
           <button
@@ -221,8 +266,9 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
     );
   } else {
     prompt = '轮到你了。取料、描样、烧制，三选一';
-    hint =
-      view.rack.length > 0
+    hint = mine.hot
+      ? `炉子还热着：这回合接着烧花窗少付 ${HEAT_DISCOUNT[2]} 块，玫瑰窗少付 ${HEAT_DISCOUNT[3]} 块`
+      : view.rack.length > 0
         ? '点晾架上相邻的料来取，或者点一张窗片看能不能烧'
         : '晾架空了。可以烧制、描样，实在没事可做就跳过';
     if (view.rack.length === 0) {
@@ -236,7 +282,7 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
 
   return (
     <main className="board gw-board">
-      <header className="room-bar">
+      <header className="room-bar gw-bar">
         <button type="button" className="link" onClick={net.leaveRoom}>
           离开
         </button>
@@ -265,13 +311,23 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
       </header>
 
       <div className="gw-rivals" data-count={rivals.length}>
+        {/* 手机上对手排成一张表，这一行是表头 */}
+        <span className="gw-rivals-head" aria-hidden="true">
+          <span>炉色与手里的料</span>
+          {HUES.map((hue) => (
+            <KilnMark key={hue} hue={hue} />
+          ))}
+          {PIECES.map((piece) => (
+            <Shard key={piece} piece={piece} />
+          ))}
+        </span>
         {rivals.map((id) => (
-          <SeatStrip key={id} player={playerOf(id)} seat={view.seats[id]!} active={view.turn === id} first={view.startPlayer === id} />
+          <SeatStrip key={id} player={playerOf(id)} seat={view.seats[id]!} active={view.turn === id} first={view.startPlayer === id} onOpen={() => setShowSeats(id)} />
         ))}
       </div>
 
       <div className="gw-table">
-        <section className="gw-commissions" aria-label="委托">
+        <section className="gw-commissions" aria-label="委托" style={{ '--n': Math.max(1, view.commissions.length) } as CSSProperties}>
           <AnimatePresence initial={false}>
             {view.commissions.map((id) => (
               <motion.div key={id} className="gw-commission" layout exit={{ opacity: 0, y: -30, scale: 0.8 }} transition={{ type: 'spring', stiffness: 260, damping: 24 }}>
@@ -280,6 +336,13 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
             ))}
           </AnimatePresence>
           {view.commissions.length === 0 && <p className="dock-hint">委托都被接走了</p>}
+        </section>
+        <section className="gw-chips" aria-label="委托">
+          <span className="gw-chips-label">委托</span>
+          {view.commissions.map((id) => (
+            <CommissionChip key={id} commission={id} kilns={mine?.kilns ?? null} />
+          ))}
+          {view.commissions.length === 0 && <span className="gw-chips-label">都被接走了</span>}
         </section>
 
         <section className="gw-gallery" aria-label="画廊">
@@ -316,6 +379,28 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
               )}
             </div>
           ))}
+          {mine && mine.sketches.length > 0 && (
+            <div className="gw-row gw-row-sketches" aria-label="你的图稿">
+              <span className="gw-row-label">
+                我的
+                <br />
+                图稿
+              </span>
+              {mine.sketches.map((sk) =>
+                sk.id ? (
+                  <button
+                    key={sk.id}
+                    type="button"
+                    className={`gw-card ${isPicked({ kind: 'sketch', id: sk.id }) ? 'is-picked' : ''} ${canAct && payable(sk.id) ? 'is-ready' : ''}`}
+                    disabled={!canAct}
+                    onClick={() => choose({ kind: 'sketch', id: sk.id! })}
+                  >
+                    <PanelCard panel={sk.id} />
+                  </button>
+                ) : null,
+              )}
+            </div>
+          )}
         </section>
       </div>
 
@@ -363,12 +448,18 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
         </section>
         <Ticker log={view.log} describe={(e) => describe(e, nameOf, view.target)} tone={toneOf} />
         {mine && meId && (
-          <div className={`gw-mine ${myTurn ? 'is-active' : ''}`}>
+          <div className={`gw-mine ${myTurn ? 'is-active' : ''} ${mine.hot ? 'is-hot' : ''}`}>
             <div className="gw-mine-head">
-              <span className="gw-score">
+              <button type="button" className="gw-score gw-score-button" onClick={() => setShowSeats(meId)} aria-label={`你的声望 ${mine.score.total}，看各家作坊的明细`}>
                 {mine.score.total}
                 <small>声望</small>
-              </span>
+                {mine.hot && (
+                  <span className="gw-hot" title="炉子还热着">
+                    <Flame />
+                    余温
+                  </span>
+                )}
+              </button>
               <Palette seat={mine} onPiece={discarding ? (piece) => giveBack.length < view.mustDiscard && setGiveBack((g) => [...g, piece]) : undefined} chosen={giveBack} />
             </div>
             {mine.sketches.length > 0 && (
@@ -411,6 +502,20 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
                 关闭
               </button>
             </header>
+            <p className="dock-hint">房间号 {room.code}，先到 {view.target} 分的人敲响终局。</p>
+            <p className="gw-bag">
+              布袋里还剩
+              {HUES.map((hue) => (
+                <span key={hue} className={view.bag[hue] === 0 ? 'is-zero' : ''} title={PIECE_NAMES[hue]}>
+                  <Shard piece={hue} />
+                  {view.bag[hue]}
+                </span>
+              ))}
+              <span className={view.gold === 0 ? 'is-zero' : ''} title="供应里的金箔">
+                <Shard piece="gold" />
+                {view.gold}
+              </span>
+            </p>
             <p className="dock-hint">最新的在最上面。</p>
             <ol className="ct-log">
               {[...view.log].reverse().map((e) => (
@@ -419,39 +524,163 @@ function GlassworksMatch({ room, cardStyle, onCardStyleChange }: {
             </ol>
           </ResponsiveSheet>
         )}
+        {showSeats && (
+          <ResponsiveSheet key="seats" label="各家作坊" onClose={() => setShowSeats(null)} className="gw-seats-sheet">
+            <header className="drawer-head">
+              <h2>各家作坊</h2>
+              <button type="button" className="btn btn-ghost btn-small" onClick={() => setShowSeats(null)}>
+                关闭
+              </button>
+            </header>
+            {[showSeats, ...view.players.filter((id) => id !== showSeats)].map((id) => (
+              <Workshop key={id} player={playerOf(id)} seat={view.seats[id]!} isMe={id === meId} target={view.target} />
+            ))}
+          </ResponsiveSheet>
+        )}
       </AnimatePresence>
     </main>
   );
 }
 
-/** 对手的一行：声望、料与炉色、图稿 */
-function SeatStrip({ player, seat, active, first }: { player: RoomPlayer; seat: Seat; active: boolean; first: boolean }) {
+/** 对手的一行：声望、料与炉色、图稿。点开看这家作坊的明细 */
+function SeatStrip({ player, seat, active, first, onOpen }: { player: RoomPlayer; seat: Seat; active: boolean; first: boolean; onOpen: () => void }) {
   return (
-    <section className={`gw-seat ${active ? 'is-active' : ''} ${player.connected ? '' : 'is-offline'}`} aria-label={`${player.name} 的作坊`}>
-      <div className="gw-seat-who">
+    <button
+      type="button"
+      className={`gw-seat ${active ? 'is-active' : ''} ${player.connected ? '' : 'is-offline'}`}
+      aria-label={`${player.name} 的作坊，声望 ${seat.score.total}。点开看明细`}
+      onClick={onOpen}
+    >
+      <span className="gw-seat-who">
         <span className="city-crest">
           <Crest seed={player.id} />
         </span>
         <span className="gw-seat-name">
           {player.name}
+          {seat.hot && <Flame />}
           <small>
             {first ? '先手' : ''}
             {!player.connected ? ' 掉线' : ''}
           </small>
         </span>
+        {seat.sketches.length > 0 && <span className="gw-seat-sketchcount">稿 {seat.sketches.length}</span>}
         <span className="gw-score">
           {seat.score.total}
           <small>声望</small>
         </span>
-      </div>
+      </span>
       <Palette seat={seat} />
       {seat.sketches.length > 0 && (
-        <div className="gw-seat-sketches" title="图稿">
+        <span className="gw-seat-sketches" title="图稿">
           {seat.sketches.map((s, i) => (
             <span key={s.id ?? `hidden-${i}`} className="gw-mini">
               {s.id ? <PanelCard panel={s.id} /> : <PanelBack tier={s.tier} />}
             </span>
           ))}
+        </span>
+      )}
+    </button>
+  );
+}
+
+/** 一家作坊的明细：分数怎么来的、每种炉色烧了哪几档、手里的料、图稿和委托 */
+function Workshop({ player, seat, isMe, target }: { player: RoomPlayer; seat: Seat; isMe: boolean; target: number }) {
+  const sets = Math.min(...HUES.map((h) => seat.kilns[h]));
+  const lacking = HUES.filter((h) => seat.kilns[h] === sets);
+  return (
+    <section className="gw-workshop" aria-label={`${player.name} 的作坊`}>
+      <header>
+        <span className="city-crest">
+          <Crest seed={player.id} />
+        </span>
+        <h3>
+          {player.name}
+          {isMe && <span className="seat-you">你</span>}
+        </h3>
+        <span className="gw-score">
+          {seat.score.total}
+          <small>/ {target}</small>
+        </span>
+      </header>
+      <p className="gw-workshop-parts">
+        {scoreParts(seat.score)}
+        {seat.hot && (
+          <span className="gw-hot">
+            <Flame />
+            炉子还热着
+          </span>
+        )}
+      </p>
+      <table className="gw-matrix">
+        <thead>
+          <tr>
+            <th scope="col">炉色</th>
+            {HUES.map((h) => (
+              <th key={h} scope="col" title={PIECE_NAMES[h]}>
+                <KilnMark hue={h} />
+                <b>{seat.kilns[h]}</b>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {[...TIERS].reverse().map((tier) => (
+            <tr key={tier}>
+              <th scope="row">{TIER_NAMES[tier]}</th>
+              {HUES.map((h) => {
+                const n = seat.tiers[h][tier - 1];
+                return (
+                  <td key={h} className={n > 0 ? 'is-on' : ''}>
+                    {n > 0 ? n : '·'}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+          <tr className="gw-matrix-sets">
+            <th scope="row">联窗</th>
+            {HUES.map((h) => {
+              const n = Math.min(...seat.tiers[h]);
+              return (
+                <td key={h} className={n > 0 ? 'is-on' : ''}>
+                  {n > 0 ? `+${n * Glassworks.TRIPTYCH_BONUS}` : ''}
+                </td>
+              );
+            })}
+          </tr>
+        </tbody>
+      </table>
+      <p className="gw-workshop-note">
+        光谱 {sets} 套{sets > 0 ? `，+${sets * Glassworks.SPECTRUM_BONUS}` : ''}。下一套还差{lacking.map((h) => PIECE_NAMES[h]).join('、')}。
+      </p>
+      <div className="gw-workshop-row">
+        <span className="gw-workshop-label">手里的料</span>
+        <span className="gw-workshop-glass">
+          {PIECES.filter((piece) => seat.glass[piece] > 0).map((piece) => (
+            <span key={piece}>
+              <Shard piece={piece} />
+              {seat.glass[piece]}
+            </span>
+          ))}
+          {PIECES.every((piece) => seat.glass[piece] === 0) && '没有'}
+        </span>
+      </div>
+      {seat.sketches.length > 0 && (
+        <div className="gw-workshop-row">
+          <span className="gw-workshop-label">图稿</span>
+          <span className="gw-workshop-cards">
+            {seat.sketches.map((s, i) => (
+              <span key={s.id ?? `hidden-${i}`} className="gw-workshop-card">
+                {s.id ? <PanelCard panel={s.id} /> : <PanelBack tier={s.tier} />}
+              </span>
+            ))}
+          </span>
+        </div>
+      )}
+      {seat.claimed.length > 0 && (
+        <div className="gw-workshop-row">
+          <span className="gw-workshop-label">委托</span>
+          <span>{seat.claimed.map((c) => `${commissionOf(c).name}（+${commissionOf(c).points}）`).join('、')}</span>
         </div>
       )}
     </section>
@@ -487,7 +716,12 @@ function EndScreen({ room, view }: { room: RoomSnapshot; view: View }) {
           {ranked.map((p, i) => {
             const s = scores[p.id]!;
             const seat = view.seats[p.id]!;
-            const parts = [`窗片 ${s.panels}`, s.commissions ? `委托 +${s.commissions}` : '', s.spectrum ? `光谱 +${s.spectrum}` : ''].filter(Boolean);
+            const parts = [
+              `窗片 ${s.panels}`,
+              s.commissions ? `委托 +${s.commissions}` : '',
+              s.spectrum ? `光谱 +${s.spectrum}` : '',
+              s.triptych ? `联窗 +${s.triptych}` : '',
+            ].filter(Boolean);
             return (
               <motion.li
                 key={p.id}
@@ -512,7 +746,7 @@ function EndScreen({ room, view }: { room: RoomSnapshot; view: View }) {
                     </div>
                     <div className="ct-rank-parts">{parts.join('，')}</div>
                     <div className="ct-rank-parts">
-                      烧成 {seat.panels.length} 块窗片{seat.claimed.length ? `，接下${seat.claimed.map((c) => Glassworks.commissionOf(c).name).join('、')}的委托` : ''}
+                      烧成 {seat.panels.length} 块窗片{seat.claimed.length ? `，接下${seat.claimed.map((c) => commissionOf(c).name).join('、')}的委托` : ''}
                     </div>
                   </div>
                 </div>

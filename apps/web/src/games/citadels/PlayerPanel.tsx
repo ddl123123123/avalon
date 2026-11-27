@@ -88,6 +88,10 @@ export function PlayerPanel({
         </span>
       </span>
       <span className="city-stats">
+        <span className="stat city-count" title={`已建成 ${seat.city.length} 座，建满 ${view.citySize} 座触发终局`}>
+          <b>{seat.city.length}</b>
+          <small>/{view.citySize}</small>
+        </span>
         <span className="stat" title="金币">
           <Coin />
           <AnimatePresence mode="popLayout" initial={false}>
@@ -105,7 +109,7 @@ export function PlayerPanel({
   );
 
   return (
-    <section className={classes} aria-label={`${player.name} 的城市`}>
+    <section className={classes} data-built={seat.city.length} aria-label={`${player.name} 的城市`}>
       {onPickPlayer ? (
         <button type="button" className="city-head" aria-pressed={pickedPlayer} onClick={onPickPlayer}>
           {head}

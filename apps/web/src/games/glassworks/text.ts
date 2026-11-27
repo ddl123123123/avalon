@@ -23,7 +23,7 @@ export function describe(e: Glassworks.GlassLogEvent, nameOf: (id: string) => st
     }
     case 'build': {
       const def = panelOf(e.panel);
-      return `${who} 烧成了一块${PIECE_NAMES[def.hue]}${TIER_NAMES[def.tier]}${def.points ? `，声望 +${def.points}` : ''}`;
+      return `${who} ${e.saved ? '趁余温' : ''}烧成了一块${PIECE_NAMES[def.hue]}${TIER_NAMES[def.tier]}${def.points ? `，声望 +${def.points}` : ''}${e.saved ? `，省了 ${e.saved} 块料` : ''}`;
     }
     case 'discard':
       return `${who} 手里的料太多，放回了 ${e.count} 块`;
@@ -44,15 +44,17 @@ export function toneOf(e: Glassworks.GlassLogEvent): 'plain' | 'gilt' | 'danger'
   return 'plain';
 }
 
-/** 烧这块窗片还差哪些料（已经扣掉炉色和手里的料；金箔另算） */
-export function shortfall(seat: Glassworks.GlassworksSeat, panel: string): { missing: Partial<Record<Glassworks.Hue, number>>; total: number } {
-  const def = panelOf(panel);
+/** 烧这块窗片还差哪些料（已经扣掉炉色、余温和手里的料；金箔另算） */
+export function shortfall(seat: Glassworks.GlassworksSeat, panel: string, hot = seat.hot): { missing: Partial<Record<Glassworks.Hue, number>>; total: number } {
+  const { byHue, total } = Glassworks.missingFor(seat.glass, seat.kilns, panel, hot);
   const missing: Partial<Record<Glassworks.Hue, number>> = {};
-  let total = -seat.glass.gold;
-  for (const hue of HUES) {
-    const gap = Math.max(0, (def.cost[hue] ?? 0) - seat.kilns[hue] - seat.glass[hue]);
-    if (gap > 0) missing[hue] = gap;
-    total += gap;
-  }
-  return { missing, total: Math.max(0, total) };
+  for (const hue of HUES) if (byHue[hue] > 0) missing[hue] = byHue[hue];
+  return { missing, total };
+}
+
+/** 「窗片 7 + 委托 3 + 光谱 2」 */
+export function scoreParts(score: Glassworks.ScoreBreakdown): string {
+  return [`窗片 ${score.panels}`, score.commissions ? `委托 ${score.commissions}` : '', score.spectrum ? `光谱 ${score.spectrum}` : '', score.triptych ? `联窗 ${score.triptych}` : '']
+    .filter(Boolean)
+    .join(' + ');
 }

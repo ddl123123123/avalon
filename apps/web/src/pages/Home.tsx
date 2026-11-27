@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useRef, useState, type CSSProperties, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { Avalon, Citadels, NAME_MAX_LENGTH } from '@tabletop/shared';
 import { DecodedImage } from '../art/DecodedImage';
 import avalonHero from '../assets/avalon/home-duel-v2.webp';
@@ -39,6 +39,7 @@ export function Home() {
   const [showAllRooms, setShowAllRooms] = useState(false);
   const visibleRooms = showAllRooms ? recentRooms : recentRooms.slice(0, 3);
   const nameRef = useRef<HTMLInputElement>(null);
+  const tabsRef = useRef<HTMLDivElement>(null);
   const resumeCode = room?.code ?? lastRoomCode;
   const game = GAME_CLIENTS[gameId]!;
   const isAvalon = game.id === Avalon.avalon.id;
@@ -48,6 +49,14 @@ export function Home() {
   const avalonPig = useAvalonCardStyle() === 'pig';
   const pigTheme = isAvalon ? avalonPig : isCitadels && citadelsPig;
   const resume = (roomCode: string) => navigate(roomPath(roomCode));
+
+  // 手机上桌游页签排成一行横向滚动：选中的那一个要滚进视野（只动这一行，不带动页面）
+  useEffect(() => {
+    const row = tabsRef.current;
+    const tab = row?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    if (!row || !tab || row.scrollWidth <= row.clientWidth) return;
+    row.scrollTo({ left: tab.offsetLeft - (row.clientWidth - tab.offsetWidth) / 2, behavior: 'smooth' });
+  }, [gameId]);
 
   const choose = (id: string) => {
     setGameId(id);
@@ -104,7 +113,7 @@ export function Home() {
             <span>选一款桌游，开一张新桌</span>
             <span className="hero-kicker-index">GAME ROOM / 01</span>
           </div>
-          <div className="game-tabs" role="group" aria-label="选择桌游">
+          <div className="game-tabs" role="group" aria-label="选择桌游" ref={tabsRef}>
             {GAMES.map((g) => (
               <button key={g.id} type="button" className="game-tab" aria-pressed={g.id === game.id} onClick={() => choose(g.id)}>
                 <span className="game-tab-icon">{g.icon}</span>

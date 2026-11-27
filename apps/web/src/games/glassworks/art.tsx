@@ -191,6 +191,16 @@ export function KilnMark({ hue, className = '' }: { hue: Hue; className?: string
   );
 }
 
+/** 余温：炉子还热着 */
+export function Flame({ className = '' }: { className?: string }) {
+  return (
+    <svg className={`gw-flame ${className}`} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3 2-5 0 2 1 3 2 3 0-3-1-6 1-9z" fill="#e8843a" stroke={LEAD} strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="M12 12c1 1.500 2 2.400 2 4a2 2 0 0 1-4 0c0-1.300 1-2 2-4z" fill="#ffe2a3" />
+    </svg>
+  );
+}
+
 /* ---------- 首页的作坊彩窗 ---------- */
 
 const ARCH = 'M60 588V250Q60 70 300 16Q540 70 540 250V588Z';

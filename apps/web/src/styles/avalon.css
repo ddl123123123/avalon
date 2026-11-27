@@ -2241,3 +2241,58 @@
     min-height: 44px;
   }
 }
+
+/* 手机上的细节 */
+@media (max-width: 640px) {
+  /* 圆桌：座位牌上已经有号码，名字条里不再重复「3号」，把宽度留给名字 */
+  .av-playfield .seat-name .av-seat-number {
+    display: none;
+  }
+  .av-playfield .seat-name {
+    justify-content: center;
+    max-width: 100%;
+  }
+  .av-playfield .seat-name .av-seat-identity {
+    gap: 0;
+  }
+  /* 人少的时候桌边空，座位放大一号 */
+  .av-playfield .round-table:is([data-seats='5'], [data-seats='6'], [data-seats='7']) {
+    --crest: clamp(40px, 11.5vw, 52px);
+    --seat-w: clamp(76px, 22vw, 96px);
+    --seat-h: calc(var(--crest) * 1.12 + 60px);
+  }
+  /* 投票和出任务牌：两个选项各占一半宽，拇指好按 */
+  .av-game-dock .dock-actions,
+  .av-game-dock .dock-choices {
+    width: 100%;
+  }
+  .av-game-dock .dock-choices .choice {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 52px;
+  }
+  .av-game-dock .dock-choices .choice-label {
+    font-size: 1.1rem;
+    letter-spacing: 0.2em;
+  }
+}
+@media (max-width: 640px) {
+  /* 筛选框里的「全部玩家」「全部轮次」已经说明了用途，标题只留给读屏 */
+  .av-text-board .av-log-filters label > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+@media (max-width: 950px), (max-height: 579px) {
+  .av-text-board .av-speech-composer[data-idle]:not(:focus-within) .av-speech-buttons {
+    display: none;
+  }
+  .av-text-board .av-speech-composer[data-idle]:not(:focus-within) .input {
+    height: 44px;
+    min-height: 44px;
+  }
+}

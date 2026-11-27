@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { GameError, type AccountUser } from '@tabletop/shared';
+import type { Stats } from './stats';
 import type { AccountStore, ResolvedSession, Session } from './accounts';
 
 /**
@@ -140,7 +141,7 @@ class Throttle {
   }
 }
 
-export function createAuthHandler(store: AccountStore, hooks: AuthHooks) {
+export function createAuthHandler(store: AccountStore, hooks: AuthHooks, stats: Pick<Stats, 'playerProfile'>) {
   const ipFailures = new Throttle(FAIL_WINDOW_MS, FAIL_LIMIT_IP);
   const userFailures = new Throttle(FAIL_WINDOW_MS, FAIL_LIMIT_USER);
   const registrations = new Throttle(REGISTER_WINDOW_MS, REGISTER_LIMIT_IP);
@@ -227,6 +228,10 @@ export function createAuthHandler(store: AccountStore, hooks: AuthHooks) {
       // 以下接口要求已登录
       const resolved = await sessionFromRequest(store, req);
       if (!resolved) return send(res, 401, { error: '登录已过期，请重新登录' }, sessionCookie(req, '', null));
+
+      if (route === 'stats' && method === 'GET') {
+        return send(res, 200, await stats.playerProfile(resolved.user.id));
+      }
 
       if (route === 'logout-others' && method === 'POST') {
         hooks.revoked(await store.revokeOtherSessions(resolved.user.id, resolved.session.tokenHash));

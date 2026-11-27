@@ -45,6 +45,24 @@ test('role defaults and seat overrides pick independent server-side profiles', (
   assert.equal(modelFor(directory, 'merlin', 'local'), undefined);
 });
 
+test('Morgana sabotages the decisive third mission even when her model suggests success', () => {
+  const state = {
+    ...fixtures(), phase: 'quest' as const, questIndex: 2, team: ['m', 'g'],
+    quests: [0, 1].map((questIndex) => ({
+      questIndex, leader: 's', team: ['s', 'a'], fails: 1, success: false,
+    })),
+  };
+  const decision = Avalon.avalon.botAction!(state, 'g', () => 0);
+  assert.deepEqual(decision, { type: 'quest', success: false });
+  const view = Avalon.avalon.view(state, 'g');
+  const reply = decodeAvalonBotReply('{"success":true}', view, roster, { type: 'quest', success: false });
+  assert.deepEqual(reply?.action, { type: 'quest', success: false });
+  const afterMerlin = Avalon.avalon.reduce(state, 'm', { type: 'quest', success: true }, rng);
+  const ended = Avalon.avalon.reduce(afterMerlin, 'g', reply!.action, rng);
+  assert.equal(ended.winner, 'evil');
+  assert.equal(ended.winReason, 'quests_failed');
+});
+
 test('a room runs an entire discussion with independently routed bots and one human', async (t) => {
   const env = {
     BOT_PACE: '0.015', DEEPSEEK_API_KEY: 'test-deepseek',
@@ -99,7 +117,7 @@ test('a room runs an entire discussion with independently routed bots and one hu
     const act = (action: Avalon.AvalonAction) => send({ type: 'game_action', action });
     send({ type: 'hello', clientId: 'mock-avalon-seat-one' });
     send({ type: 'create_room', name: '测试信号', gameId: 'avalon' });
-    send({ type: 'set_options', options: { botDifficulty: 'advanced' } });
+    send({ type: 'set_options', options: { botDifficulty: 'advanced', discussionMode: 'manual' } });
     for (let i = 0; i < 3; i++) send({ type: 'add_bot' });
     send({ type: 'set_avalon_bot_models', profile: 'deepseek' });
     send({ type: 'add_bot' });
@@ -108,6 +126,7 @@ test('a room runs an entire discussion with independently routed bots and one hu
     const seatTwo = snapshot!.players[1];
     send({ type: 'set_avalon_bot_model', playerId: seatTwo.id, profile: 'alt' });
     send({ type: 'start_game' });
+    assert.equal((snapshot!.view as Avalon.AvalonView).speechMode, 'text');
     act({ type: 'confirm_role' });
 
     const acted = new Set<string>();
@@ -158,4 +177,52 @@ test('a room runs an entire discussion with independently routed bots and one hu
       else process.env[key] = value;
     }
   }
+});
+
+test('one local bot is enough to enable and participate in text discussion', async () => {
+  const { RoomManager } = await import('./rooms');
+  const rooms = new RoomManager();
+  const snapshots = new Map<Connection, Extract<ServerMessage, { type: 'room' }>['room']>();
+  const humans = Array.from({ length: 4 }, (_, index) => {
+    const conn: Connection = {
+      identity: null, account: null,
+      send(message) {
+        if (message.type === 'room') snapshots.set(conn, message.room);
+        if (message.type === 'error') assert.fail(message.message);
+      },
+    };
+    rooms.handle(conn, { type: 'hello', clientId: `single-bot-test-player-${index}` });
+    return conn;
+  });
+  const host = humans[0]!;
+  rooms.handle(host, { type: 'create_room', name: '房主', gameId: 'avalon' });
+  const code = snapshots.get(host)!.code;
+  for (const [index, conn] of humans.slice(1).entries()) {
+    rooms.handle(conn, { type: 'join_room', code, name: `玩家 ${index + 2}` });
+  }
+  rooms.handle(host, { type: 'set_options', options: { discussionMode: 'manual', speechSeconds: 0 } });
+  rooms.handle(host, { type: 'add_bot' });
+  rooms.handle(host, { type: 'set_avalon_bot_models', profile: 'local' });
+  rooms.handle(host, { type: 'start_game' });
+  const act = (conn: Connection, action: Avalon.AvalonAction) => rooms.handle(conn, { type: 'game_action', action });
+  for (const conn of humans) act(conn, { type: 'confirm_role' });
+
+  const bot = snapshots.get(host)!.players.find((player) => player.isBot)!;
+  let botText: string | undefined;
+  for (let tries = 0; tries < 110; tries++) {
+    const view = snapshots.get(host)!.view as Avalon.AvalonView;
+    assert.equal(view.speechMode, 'text');
+    botText = view.speeches.find((speech) => speech.player === bot.id && speech.result === 'spoken')?.text;
+    if (botText) break;
+    const activeId = view.discussion?.currentSpeaker ?? view.leader;
+    const active = humans.find((conn) => snapshots.get(conn)!.you === activeId);
+    if (active && view.phase === 'team' && !view.discussionComplete) {
+      act(active, { type: 'start_discussion', preselectedTeam: false, leaderFirst: true, direction: 'left' });
+    }
+    if (active && view.discussion) {
+      act(active, { type: 'submit_speech', turn: view.discussion.turn, text: '我先看这个队伍的理由。' });
+    }
+    await pause(10);
+  }
+  assert.ok(botText, 'the local bot also submits an actual text message');
 });

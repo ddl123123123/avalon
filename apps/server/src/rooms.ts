@@ -19,7 +19,7 @@ import {
 import { answerAvalonAssistant } from './deepseek';
 import type { GameRecorder } from './stats';
 import {
-  askAvalonBot, botModelDirectory, decisionToken, localBotModel, modelFor, needsAvalonModel, rememberAction, speechEditorFor,
+  askAvalonBot, botModelDirectory, decisionToken, localAvalonSpeech, localBotModel, modelFor, needsAvalonModel, rememberAction, speechEditorFor,
   type BotMemory,
 } from './avalon-bot';
 
@@ -84,6 +84,7 @@ const AI_FEATURES = new Set(['team-comparison', 'role-coach', 'speech-prep', 'sp
 /** 机器人行动间隔的倍率。调试时设 BOT_PACE=0.1 可以让机器人快十倍。 */
 const BOT_PACE = Math.max(0, Number(process.env.BOT_PACE ?? 1) || 1);
 const AVALON_BOT_SPEECH_MS = 10_000;
+const secureGameRng = Object.assign(() => randomInt(2 ** 46) / 2 ** 46, { int: (max: number) => randomInt(max) });
 const BOT_NAMES = ['高文', '兰斯洛特', '加拉哈德', '特里斯坦', '凯', '贝狄威尔', '格尼薇儿', '伊莲', '鲍斯'];
 
 const newId = () => randomBytes(6).toString('base64url');
@@ -277,7 +278,7 @@ export class RoomManager {
         if (blocker) throw new GameError(blocker);
         // 隐藏身份游戏开局时由服务器提供安全随机数。
         const rng = room.game.id === Avalon.avalon.id || room.game.id === SevenSins.sevenSins.id
-          ? () => randomInt(2 ** 46) / 2 ** 46
+          ? secureGameRng
           : Math.random;
         room.state = room.game.setup(
           [...room.members].sort((a, b) => a.seatIndex - b.seatIndex).map((m) => m.id),
@@ -285,8 +286,7 @@ export class RoomManager {
           rng,
         );
         if (room.game.id === Avalon.avalon.id && room.members.some((m) => m.isBot)) {
-          const state = room.state as Avalon.AvalonState;
-          if (state.speechMode !== 'manual') state.speechMode = 'text';
+          (room.state as Avalon.AvalonState).speechMode = 'text';
           room.avalonAgents = { memory: new Map(), running: new Map(), requests: 0 };
         }
         room.status = 'playing';
@@ -569,7 +569,14 @@ export class RoomManager {
   private afterAction(room: Room) {
     if (room.game.isOver(room.state)) {
       room.status = 'ended';
-      if (room.record) this.recorder.gameEnded(room.record, 'finished');
+      if (room.record) {
+        const avalon = room.game.id === Avalon.avalon.id ? room.state as Avalon.AvalonState : null;
+        const results = avalon?.winner ? avalon.players.map((id) => {
+          const role = avalon.roles[id]!;
+          return { role, won: Avalon.ROLES[role].alignment === avalon.winner };
+        }) : undefined;
+        this.recorder.gameEnded(room.record, 'finished', results);
+      }
       this.clearBotTimers(room);
     }
     this.broadcast(room);
@@ -738,10 +745,11 @@ export class RoomManager {
           this.botModelInFlight--;
         }
       }
-      if (reply?.action.type === 'submit_speech' && view.discussion && view.discussion.timerSeconds !== 0) {
+      if (action.type === 'finish_speech' && view.discussion) {
         const { deadline, timerSeconds } = view.discussion;
         // 生成和等待并行计时，从该座位开始发言时算约十秒。
-        const publishAt = Math.min(deadline - 100, deadline - timerSeconds * 1000 + AVALON_BOT_SPEECH_MS * BOT_PACE);
+        const delay = AVALON_BOT_SPEECH_MS * BOT_PACE;
+        const publishAt = timerSeconds === 0 ? ts + delay : Math.min(deadline - 100, deadline - timerSeconds * 1000 + delay);
         const remaining = publishAt - Date.now();
         if (remaining > 0) await wait(remaining, undefined, { signal: controller.signal });
       }
@@ -769,12 +777,11 @@ export class RoomManager {
       }
     }
     if (fallback.type === 'finish_speech' && latest.discussion) {
-      const next = Avalon.skipUnavailableSpeech(room.state as Avalon.AvalonState, bot.id, latest.discussion.turn, Date.now());
-      if (next !== room.state) {
-        room.state = next;
-        rememberAction(memory, latest, fallback, players);
-        this.afterAction(room);
-      }
+      const speech: Avalon.AvalonAction = {
+        type: 'submit_speech', turn: latest.discussion.turn, text: localAvalonSpeech(latest, players),
+      };
+      this.applyAction(room, bot.id, speech);
+      rememberAction(memory, latest, speech, players);
       return;
     }
     this.applyAction(room, bot.id, fallback);

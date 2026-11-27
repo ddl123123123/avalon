@@ -1,4 +1,4 @@
-import { Avalon } from '@tabletop/shared';
+import { Avalon, type RoomPlayer } from '@tabletop/shared';
 import { LadyToken, QuestRoundel, RoleFace } from './art';
 
 const { EVIL_COUNT, MAX_PLAYERS, MIN_PLAYERS, OPTIONAL_ROLES, ROLES, TEAM_SIZES } = Avalon;
@@ -7,15 +7,18 @@ const { EVIL_COUNT, MAX_PLAYERS, MIN_PLAYERS, OPTIONAL_ROLES, ROLES, TEAM_SIZES 
 export function AvalonOptions({
   options,
   playerCount,
+  players,
   editable,
   onChange,
 }: {
   options: Avalon.AvalonOptions;
   playerCount: number;
+  players: RoomPlayer[];
   editable: boolean;
   onChange: (options: unknown) => void;
 }) {
   const n = Math.min(MAX_PLAYERS, Math.max(MIN_PLAYERS, playerCount));
+  const hasBots = players.some((player) => player.isBot);
   const evil = EVIL_COUNT[n]!;
   const deck = Avalon.validateOptions(options, n) === null ? Avalon.buildRoleDeck(n, options) : [];
   const counts = new Map<Avalon.Role, number>();
@@ -53,7 +56,7 @@ export function AvalonOptions({
 
       <fieldset className="av-timer-setting">
         <legend>发言方式</legend>
-        <div className="av-timer-options av-pair-options" role="group" aria-label="发言方式">
+        {hasBots ? <p className="av-setting-hint">本桌有机器人，全员逐位打字，发言会记入本局记录。</p> : <div className="av-timer-options av-pair-options" role="group" aria-label="发言方式">
           {(['turns', 'manual'] as const).map((mode) => (
             <button key={mode} type="button" className="av-timer-choice"
               aria-pressed={options.discussionMode === mode} disabled={!editable}
@@ -61,8 +64,8 @@ export function AvalonOptions({
               {mode === 'turns' ? '逐位发言' : '线下手动计时'}
             </button>
           ))}
-        </div>
-        {options.discussionMode === 'manual' && <p className="av-setting-hint">自由接着说，房主控制全桌计时。</p>}
+        </div>}
+        {!hasBots && options.discussionMode === 'manual' && <p className="av-setting-hint">自由接着说，房主控制全桌计时。</p>}
       </fieldset>
 
       <fieldset className="av-timer-setting">
@@ -112,6 +115,7 @@ export function AvalonOptions({
 
       <div className="av-roster" aria-live="polite">
         <h2 className="av-options-heading">{custom ? '自定义阵容' : '推荐阵容'}</h2>
+        <p className="av-setting-hint">开局随机洗牌，真人和机器人从同一副身份牌抽取。</p>
         {deck.length > 0 && (
           <div className="av-deck">
             {(['good', 'evil'] as const).map((alignment) => (

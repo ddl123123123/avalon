@@ -52,3 +52,29 @@ test('统计：日活、开局记录、按天趋势和用户列表', async () =>
   assert.equal(rooms.stats().playing, 1);
   await db.close();
 });
+
+test('个人主页保留历史对局数，按账号统计已结算的身份和胜场', async () => {
+  const db = await openPglite();
+  try {
+    const accounts = new AccountStore(db);
+    const stats = new Stats(db);
+    const alice = await accounts.register('alice', 'password-1', '爱丽丝');
+    const bob = await accounts.register('bob', 'password-2', '鲍勃');
+    const start = () => stats.gameStarted({
+      roomCode: '1234', gameId: 'avalon',
+      players: [{ userId: alice.id, isBot: false }, { userId: bob.id, isBot: false }],
+    });
+    await stats.gameEnded(start(), 'finished');
+    await stats.gameEnded(start(), 'abandoned');
+    const current = start();
+    await stats.gameEnded(current, 'finished', [{ role: 'morgana', won: true }, { role: 'merlin', won: false }]);
+    await stats.gameEnded(current, 'finished', [{ role: 'servant', won: false }, { role: 'assassin', won: true }]);
+    assert.deepEqual(await stats.playerProfile(alice.id), {
+      games: [{ gameId: 'avalon', played: 3, finished: 2 }],
+      avalonRoles: [{ role: 'morgana', played: 1, wins: 1 }],
+    });
+    assert.deepEqual((await stats.playerProfile(bob.id)).avalonRoles, [{ role: 'merlin', played: 1, wins: 0 }]);
+  } finally {
+    await db.close();
+  }
+});

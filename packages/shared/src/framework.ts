@@ -9,8 +9,8 @@
 
 export type PlayerId = string;
 
-/** 返回 [0, 1) 的随机数。注入它是为了让规则可以被确定性地测试。 */
-export type Rng = () => number;
+/** 返回 [0, 1) 的随机数。若提供 int，则直接在 [0, max) 均匀抽取整数。 */
+export type Rng = (() => number) & { int?: (max: number) => number };
 
 /** 由房间服务器提供，用于处理离线座位和房主权限。 */
 export interface GameActionContext {
@@ -60,7 +60,7 @@ export interface GameDefinition<State = any, Action = any, View = any, Options =
 export function shuffle<T>(items: readonly T[], rng: Rng): T[] {
   const out = items.slice();
   for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
+    const j = rng.int?.(i + 1) ?? Math.floor(rng() * (i + 1));
     [out[i], out[j]] = [out[j]!, out[i]!];
   }
   return out;

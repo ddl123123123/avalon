@@ -58,7 +58,7 @@ const handleAuth = createAuthHandler(accounts, {
     for (const conn of sockets.values()) if (conn.account?.id === user.id) conn.account = user;
     rooms.renameAccount(user);
   },
-});
+}, stats);
 
 const handleAdmin = createAdminHandler({
   accounts,

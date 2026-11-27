@@ -280,9 +280,9 @@ export function AccountButton() {
     );
   }
   return (
-    <button type="button" className="account-chip is-user" onClick={() => openAccountSheet()} aria-label={`我的账号：${user.displayName}`}>
+    <button type="button" className="account-chip is-user" onClick={() => navigate('/profile')} aria-label={`个人主页：${user.displayName}`}>
       <span className="account-avatar" aria-hidden="true">{[...user.displayName][0]}</span>
-      <span className="account-chip-name">{user.displayName}</span>
+      <span className="account-chip-name">个人主页</span>
     </button>
   );
 }

@@ -1,13 +1,15 @@
 import { createHash } from 'node:crypto';
-import type { AdminOverview, AdminUserList } from '@tabletop/shared';
+import type { AdminOverview, AdminUserList, Avalon, PlayerProfileStats } from '@tabletop/shared';
 import { dayOf, TIME_ZONE, type Database } from './db';
 
 /** 房间服务往统计里写的东西。写失败只记日志，绝不影响对局。 */
+type AvalonSeatResult = { role: Avalon.Role; won: boolean };
+
 export interface GameRecorder {
   /** 一条连接认出了身份（每人每天只记一次） */
   visit(identity: string, userId: string | null): void;
   gameStarted(info: { roomCode: string; gameId: string; players: { userId: string | null; isBot: boolean }[] }): Promise<number | null>;
-  gameEnded(record: Promise<number | null>, status: 'finished' | 'abandoned'): void;
+  gameEnded(record: Promise<number | null>, status: 'finished' | 'abandoned', results?: readonly AvalonSeatResult[]): void;
 }
 
 const DAY_MS = 24 * 3600_000;
@@ -66,11 +68,42 @@ export class Stats implements GameRecorder {
     });
   }
 
-  gameEnded(record: Promise<number | null>, status: 'finished' | 'abandoned') {
-    void record.then(async (id) => {
+  gameEnded(record: Promise<number | null>, status: 'finished' | 'abandoned', results?: readonly AvalonSeatResult[]) {
+    return record.then(async (id) => {
       if (id === null) return;
-      await this.db.query("UPDATE games SET status = $2, ended_at = $3 WHERE id = $1 AND status = 'playing'", [id, status, new Date(this.now())]);
+      await this.db.transaction(async (tx) => {
+        const { rows } = await tx.query(
+          "UPDATE games SET status = $2, ended_at = $3 WHERE id = $1 AND status = 'playing' RETURNING id",
+          [id, status, new Date(this.now())],
+        );
+        if (!rows.length || status !== 'finished' || !results) return;
+        for (const [seat, { role, won }] of results.entries()) {
+          await tx.query('UPDATE game_players SET role = $3, won = $4 WHERE game_id = $1 AND seat = $2 AND user_id IS NOT NULL',
+            [id, seat, role, won]);
+        }
+      });
     }).catch(this.log('gameEnded'));
+  }
+
+  async playerProfile(userId: string): Promise<PlayerProfileStats> {
+    const [games, roles] = await Promise.all([
+      this.db.query<{ gameId: string; played: number; finished: number }>(
+        `SELECT g.game_id AS "gameId", count(*)::int AS played,
+                count(*) FILTER (WHERE g.status = 'finished')::int AS finished
+         FROM game_players p JOIN games g ON g.id = p.game_id
+         WHERE p.user_id = $1 GROUP BY g.game_id ORDER BY played DESC, g.game_id`,
+        [userId],
+      ),
+      this.db.query<PlayerProfileStats['avalonRoles'][number]>(
+        `SELECT p.role, count(*)::int AS played, count(*) FILTER (WHERE p.won)::int AS wins
+         FROM game_players p JOIN games g ON g.id = p.game_id
+         WHERE p.user_id = $1 AND g.game_id = 'avalon' AND g.status = 'finished'
+           AND p.role IS NOT NULL AND p.won IS NOT NULL
+         GROUP BY p.role ORDER BY played DESC, p.role`,
+        [userId],
+      ),
+    ]);
+    return { games: games.rows, avalonRoles: roles.rows };
   }
 
   /** 管理页总览：累计数字 + 最近 days 天按天的趋势 + 各桌游的对局 */

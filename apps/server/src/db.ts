@@ -84,6 +84,10 @@ const MIGRATIONS: string[] = [
   );
   CREATE INDEX game_players_user ON game_players (user_id);
   `,
+  `
+  ALTER TABLE game_players ADD COLUMN role text;
+  ALTER TABLE game_players ADD COLUMN won boolean;
+  `,
 ];
 
 export async function migrate(db: Database) {

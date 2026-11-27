@@ -1,10 +1,10 @@
 import { useSyncExternalStore } from 'react';
 
-/** 几个页面用不着路由库：/ 是大厅，/room/<房间号> 是房间，/admin 是管理页。 */
-export type Route = { page: 'home' } | { page: 'room'; code: string } | { page: 'admin' };
+export type Route = { page: 'home' } | { page: 'room'; code: string } | { page: 'admin' } | { page: 'profile' };
 
 function parse(): Route {
   if (/^\/admin\/?$/.test(location.pathname)) return { page: 'admin' };
+  if (/^\/profile\/?$/.test(location.pathname)) return { page: 'profile' };
   const m = location.pathname.match(/^\/room\/(\d{4,8})\/?$/);
   return m ? { page: 'room', code: m[1]! } : { page: 'home' };
 }

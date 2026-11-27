@@ -632,7 +632,14 @@ function view(state: AvalonState, viewer: PlayerId | null): AvalonView {
   };
 }
 
-/** 简单的试玩机器人：不追求聪明，只保证牌局能合乎规则地推进。 */
+/** 任何一方距完成任务目标只差一轮时，不能为了伪装放弃破坏机会。 */
+export function mustSabotage(alignment: Alignment | undefined, quests: readonly Pick<QuestRecord, 'success'>[]): boolean {
+  if (alignment !== 'evil') return false;
+  const successes = quests.filter((quest) => quest.success).length;
+  return successes >= QUESTS_TO_WIN - 1 || quests.length - successes >= QUESTS_TO_WIN - 1;
+}
+
+/** 模型不可用时的本地决策。 */
 function botAction(state: AvalonState, player: PlayerId, rng: Rng): AvalonAction | null {
   const role = state.roles[player];
   if (!role) return null;
@@ -670,7 +677,7 @@ function botAction(state: AvalonState, player: PlayerId, rng: Rng): AvalonAction
     }
     case 'quest': {
       if (!state.team.includes(player) || player in state.questCards) return null;
-      return { type: 'quest', success: !evil || rng() < 0.15 };
+      return { type: 'quest', success: !evil };
     }
     case 'lady': {
       if (state.lady?.holder !== player) return null;
